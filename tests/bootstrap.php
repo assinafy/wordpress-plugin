@@ -105,6 +105,22 @@ tests_add_filter(
 			 * consumes the flag on an ordinary admin page load long before any ajax request.
 			 */
 			update_option( WC_Install::NEWLY_INSTALLED_OPTION, 'no' );
+
+			/*
+			 * HPOS creates its tables the first time the feature is switched on. When that
+			 * happens inside a test it runs under WP_UnitTestCase's `query` filter, which
+			 * rewrites CREATE TABLE into CREATE TEMPORARY TABLE — and MySQL refuses to open a
+			 * temporary table twice in one statement, which every HPOS order read does: it
+			 * joins wc_order_addresses once as billing and once as shipping. wc_get_order()
+			 * then returns false and WooCommerce's own wc_paying_customer() fatals on it.
+			 * Creating the tables here, before the first transaction, keeps them real ones,
+			 * which is also what an installed site has.
+			 */
+			$assinafy_hpos_sync = '\\Automattic\\WooCommerce\\Internal\\DataStores\\Orders\\DataSynchronizer';
+
+			if ( function_exists( 'wc_get_container' ) && class_exists( $assinafy_hpos_sync ) ) {
+				wc_get_container()->get( $assinafy_hpos_sync )->create_database_tables();
+			}
 		}
 		if ( class_exists( '\\WPForms\\Helpers\\DB' ) ) {
 			\WPForms\Helpers\DB::create_custom_tables();
