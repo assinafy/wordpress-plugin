@@ -95,6 +95,16 @@ tests_add_filter(
 	static function (): void {
 		if ( class_exists( 'WC_Install' ) ) {
 			WC_Install::install();
+
+			/*
+			 * install() leaves `woocommerce_newly_installed` set, and WooCommerce consumes it
+			 * on the next `admin_init`. The suite boots as frontend, so the first admin_init it
+			 * ever runs is the one inside WP_Ajax_UnitTestCase::_handleAjax() — which means
+			 * `maybe_enable_hpos()` runs in the middle of an admin-ajax request and prints its
+			 * database errors into the buffer the test then decodes as JSON. A real site
+			 * consumes the flag on an ordinary admin page load long before any ajax request.
+			 */
+			update_option( WC_Install::NEWLY_INSTALLED_OPTION, 'no' );
 		}
 		if ( class_exists( '\\WPForms\\Helpers\\DB' ) ) {
 			\WPForms\Helpers\DB::create_custom_tables();
