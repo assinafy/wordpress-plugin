@@ -36,7 +36,7 @@ A desativação não exclui recibos, documentos nem evidências de assinatura. R
 
 Habilitar um fluxo envia o PDF selecionado, o nome/e-mail mapeados do signatário e a mensagem de convite para a conta e o ambiente Assinafy configurados no core. Respostas da API, identificadores remotos e o status da assinatura são espelhados localmente. É necessária uma conta Assinafy, e os termos e preços do serviço se aplicam. A redação feita pelo WordPress não exclui registros remotos no Assinafy.
 
-Serviço: [Assinafy](https://assinafy.com.br/). Revise seus [Termos de Uso](https://assinafy.com.br/termos-de-uso) e a [Política de Privacidade](https://assinafy.com.br/politica-de-privacidade).
+Serviço: [Assinafy](https://www.assinafy.com.br/). Revise seus [Termos de Uso](https://www.assinafy.com.br/termos-de-uso) e a [Política de Privacidade](https://www.assinafy.com.br/politica-de-privacidade).
 
 ## Validação em desenvolvimento
 

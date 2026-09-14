@@ -36,7 +36,7 @@ Deactivation does not delete receipts, documents or signature evidence. Removing
 
 Enabling a workflow sends the selected PDF, mapped signer name/email and invitation message to the Assinafy account and environment configured in core. API responses, remote identifiers and signature status are mirrored locally. An Assinafy account is required and its service terms/pricing apply. WordPress redaction does not delete remote Assinafy records.
 
-Service: [Assinafy](https://assinafy.com.br/). Review its [Terms of Use](https://assinafy.com.br/termos-de-uso) and [Privacy Policy](https://assinafy.com.br/politica-de-privacidade).
+Service: [Assinafy](https://www.assinafy.com.br/). Review its [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 ## Development validation
 

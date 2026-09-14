@@ -25,7 +25,7 @@ Signer contact data is stored in the core privacy-managed projection. Redaction 
 
 = External service =
 
-This addon uses the Assinafy account and environment configured in the required core plugin. On accepted submissions, it sends the selected PDF, mapped signer name/email and invitation message to Assinafy to create an electronic signature request. Service: https://assinafy.com.br/ — Terms: https://assinafy.com.br/termos-de-uso — Privacy: https://assinafy.com.br/politica-de-privacidade. Review these before enabling the workflow. WordPress redaction does not delete remote records.
+This addon uses the Assinafy account and environment configured in the required core plugin. On accepted submissions, it sends the selected PDF, mapped signer name/email and invitation message to Assinafy to create an electronic signature request. Service: https://www.assinafy.com.br/ — Terms: https://www.assinafy.com.br/termos-de-uso — Privacy: https://www.assinafy.com.br/politica-de-privacidade. Review these before enabling the workflow. WordPress redaction does not delete remote records.
 
 == Installation ==
 

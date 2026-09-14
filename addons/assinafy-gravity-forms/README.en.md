@@ -12,7 +12,7 @@ One entry/feed pair produces one signature request. A keyed fingerprint of the o
 
 The entry details page links to the core document and offers a nonce-protected retry for failed requests. Retries require `assinafy_send` and `gravityforms_view_entries`. Core status, webhook synchronization, signing links, downloads and privacy handling remain shared. An upload with an unknown outcome requires checking the Assinafy account before any new send. Entry data remains subject to Gravity Forms' own privacy and retention controls; core erasure covers the signature mirror.
 
-This add-on uses the Assinafy service through Assinafy Core. On eligible feed processing it sends the selected PDF, mapped signer name/email, configured message, and signing settings to the configured Assinafy account. An Assinafy account and document allowance are required. See the [service](https://assinafy.com.br), [terms](https://assinafy.com.br/termos-de-uso) and [privacy policy](https://assinafy.com.br/politica-de-privacidade). No separate credentials or transport are bundled.
+This add-on uses the Assinafy service through Assinafy Core. On eligible feed processing it sends the selected PDF, mapped signer name/email, configured message, and signing settings to the configured Assinafy account. An Assinafy account and document allowance are required. See the [service](https://www.assinafy.com.br), [terms](https://www.assinafy.com.br/termos-de-uso) and [privacy policy](https://www.assinafy.com.br/politica-de-privacidade). No separate credentials or transport are bundled.
 
 Test command from the repository root (requires the WordPress test library):
 

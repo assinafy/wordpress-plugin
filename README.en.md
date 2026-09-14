@@ -2,7 +2,7 @@
 
 *[Leia em português](README.md) · English*
 
-Send a PDF from WordPress for electronic signature with [Assinafy](https://assinafy.com.br/),
+Send a PDF from WordPress for electronic signature with [Assinafy](https://www.assinafy.com.br/),
 and track it from upload to signed artifact without leaving the admin.
 
 This document describes the current plugin source and its integration contract. API payloads

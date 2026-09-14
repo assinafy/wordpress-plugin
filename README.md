@@ -2,7 +2,7 @@
 
 *Português · [Read in English](README.en.md)*
 
-Envie um PDF do WordPress para assinatura eletrônica com a [Assinafy](https://assinafy.com.br/)
+Envie um PDF do WordPress para assinatura eletrônica com a [Assinafy](https://www.assinafy.com.br/)
 e acompanhe-o do upload ao artefato assinado sem sair do admin.
 
 Este documento descreve o código-fonte atual do plugin e seu contrato de integração. Os payloads

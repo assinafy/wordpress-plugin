@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-14T19:53:45+00:00\n"
+"POT-Creation-Date: 2026-09-14T22:18:40+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: assinafy\n"
@@ -25,14 +25,18 @@ msgid "Assinafy"
 msgstr ""
 
 #. Plugin URI of the plugin
-#. Author URI of the plugin
 #: assinafy.php
-msgid "https://assinafy.com.br/"
+msgid "https://github.com/assinafy/wordpress-plugin"
 msgstr ""
 
 #. Description of the plugin
 #: assinafy.php
 msgid "Send WordPress documents for electronic signature with Assinafy and track them to completion."
+msgstr ""
+
+#. Author URI of the plugin
+#: assinafy.php
+msgid "https://www.assinafy.com.br/"
 msgstr ""
 
 #. translators: 1: required PHP version, 2: current PHP version.
@@ -119,7 +123,7 @@ msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:171
 #: src/Admin/SendScreen.php:176
-#: src/Documents/DocumentPostType.php:115
+#: src/Documents/DocumentPostType.php:117
 msgid "Signers"
 msgstr ""
 
@@ -137,12 +141,12 @@ msgid "Progress"
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:176
-#: src/Admin/DocumentMetaBox.php:226
+#: src/Admin/DocumentMetaBox.php:237
 msgid "Signing link"
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:194
-#: src/Documents/DocumentPostType.php:213
+#: src/Documents/DocumentPostType.php:215
 #: src/Privacy.php:180
 msgid "Signed"
 msgstr ""
@@ -159,88 +163,88 @@ msgstr ""
 msgid "The link does not sign anyone in on its own: Assinafy emails the signer a one-time code when they open it."
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:228
-msgid "Open"
-msgstr ""
-
-#: src/Admin/DocumentMetaBox.php:237
+#: src/Admin/DocumentMetaBox.php:223
 msgid "No longer needed"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:238
+#: src/Admin/DocumentMetaBox.php:229
 msgid "Available once this signer is invited"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:255
-msgid "Original PDF"
+#: src/Admin/DocumentMetaBox.php:239
+msgid "Open"
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:256
-msgid "Signed PDF"
+msgid "Original PDF"
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:257
-msgid "Signature certificate"
+msgid "Signed PDF"
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:258
-msgid "PAdES signed PDF"
+msgid "Signature certificate"
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:259
+msgid "PAdES signed PDF"
+msgstr ""
+
+#: src/Admin/DocumentMetaBox.php:260
 msgid "Everything (zip)"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:270
+#: src/Admin/DocumentMetaBox.php:271
 msgid "Downloads"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:295
+#: src/Admin/DocumentMetaBox.php:291
 #: src/Admin/SendScreen.php:185
-#: src/Documents/DocumentPostType.php:117
+#: src/Documents/DocumentPostType.php:119
 msgid "Actions"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:325
+#: src/Admin/DocumentMetaBox.php:348
 msgid "Document name"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:335
+#: src/Admin/DocumentMetaBox.php:358
 msgid "Rename"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:336
+#: src/Admin/DocumentMetaBox.php:359
 msgid "Renaming is only possible until the signature request is created. Assinafy folds accents and replaces unsupported characters."
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:351
+#: src/Admin/DocumentMetaBox.php:374
 msgid "New deadline"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:361
+#: src/Admin/DocumentMetaBox.php:384
 msgid "Move deadline"
 msgstr ""
 
 #. translators: %s: signer name or email address.
-#: src/Admin/DocumentMetaBox.php:387
+#: src/Admin/DocumentMetaBox.php:410
 #, php-format
 msgid "Resend invitation to %s"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:407
+#: src/Admin/DocumentMetaBox.php:430
 msgid "Cancel and delete from Assinafy"
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:412
+#: src/Admin/DocumentMetaBox.php:435
 msgid "Signers can no longer open the document. This cannot be undone, and a cancelled request cannot be restarted — send the file again instead."
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:413
+#: src/Admin/DocumentMetaBox.php:436
 msgid "Removes the document from your Assinafy account. This cannot be undone."
 msgstr ""
 
-#: src/Admin/DocumentMetaBox.php:469
-#: src/Admin/DocumentMetaBox.php:482
+#: src/Admin/DocumentMetaBox.php:492
+#: src/Admin/DocumentMetaBox.php:505
 msgid "History"
 msgstr ""
 
@@ -248,7 +252,7 @@ msgstr ""
 #: src/Admin/SendScreen.php:72
 #: src/Admin/SendScreen.php:148
 #: src/Admin/SendScreen.php:232
-#: src/Integrations/WooCommerceProductTab.php:87
+#: src/Integrations/WooCommerceProductTab.php:89
 msgid "Send for signature"
 msgstr ""
 
@@ -279,9 +283,9 @@ msgid "You are not allowed to send documents for signature."
 msgstr ""
 
 #: src/Admin/SendScreen.php:160
-#: src/Documents/DocumentPostType.php:245
-#: src/Documents/DocumentPostType.php:248
-#: src/Integrations/WooCommerceProductTab.php:96
+#: src/Documents/DocumentPostType.php:247
+#: src/Documents/DocumentPostType.php:250
+#: src/Integrations/WooCommerceProductTab.php:98
 #: src/Privacy.php:152
 msgid "Document"
 msgstr ""
@@ -425,133 +429,129 @@ msgstr ""
 msgid "The stored Assinafy API key could not be decrypted. This happens when the site security salts change. Enter the key again."
 msgstr ""
 
-#: src/Documents/CostEstimate.php:98
+#: src/Documents/CostEstimate.php:95
 #: src/Documents/StatusSync.php:178
 msgid "Assinafy is not configured."
 msgstr ""
 
-#: src/Documents/CostEstimate.php:112
-msgid "No document has been sent from this site yet, so the cost cannot be priced in advance."
-msgstr ""
-
-#: src/Documents/CostEstimate.php:162
+#: src/Documents/CostEstimate.php:171
 msgid "The Assinafy account has a payment outstanding. Settle it to send documents again."
 msgstr ""
 
-#: src/Documents/CostEstimate.php:163
+#: src/Documents/CostEstimate.php:172
 msgid "The Assinafy account has no document allowance left on its plan."
 msgstr ""
 
-#: src/Documents/CostEstimate.php:164
+#: src/Documents/CostEstimate.php:173
 msgid "The Assinafy account does not have enough credits for the selected notification method."
 msgstr ""
 
-#: src/Documents/CostEstimate.php:167
+#: src/Documents/CostEstimate.php:176
 msgid "The Assinafy account cannot cover this signature request."
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:88
+#: src/Documents/DocumentPostType.php:90
 msgid "Uploading"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:89
+#: src/Documents/DocumentPostType.php:91
 msgid "Uploaded"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:90
+#: src/Documents/DocumentPostType.php:92
 msgid "Processing"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:91
+#: src/Documents/DocumentPostType.php:93
 msgid "Ready to send"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:92
+#: src/Documents/DocumentPostType.php:94
 msgid "Awaiting signatures"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:93
+#: src/Documents/DocumentPostType.php:95
 msgid "All signed — certifying"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:94
+#: src/Documents/DocumentPostType.php:96
 msgid "Signed and certified"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:95
+#: src/Documents/DocumentPostType.php:97
 msgid "Declined by a signer"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:96
+#: src/Documents/DocumentPostType.php:98
 msgid "Cancelled"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:97
+#: src/Documents/DocumentPostType.php:99
 msgid "Expired"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:98
+#: src/Documents/DocumentPostType.php:100
 msgid "Failed"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:114
+#: src/Documents/DocumentPostType.php:116
 #: src/Privacy.php:160
 msgid "Status"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:116
+#: src/Documents/DocumentPostType.php:118
 msgid "Sent"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:163
+#: src/Documents/DocumentPostType.php:165
 msgid "Not synced"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:182
+#: src/Documents/DocumentPostType.php:184
 msgid "No assignment yet"
 msgstr ""
 
 #. translators: 1: number of signers who have signed, 2: total number of signers.
-#: src/Documents/DocumentPostType.php:195
+#: src/Documents/DocumentPostType.php:197
 #, php-format
 msgid "%1$d of %2$d signed"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:212
+#: src/Documents/DocumentPostType.php:214
 msgid "Original"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:214
+#: src/Documents/DocumentPostType.php:216
 msgid "Certificate"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:215
+#: src/Documents/DocumentPostType.php:217
 msgid "PAdES"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:216
+#: src/Documents/DocumentPostType.php:218
 msgid "Bundle"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:244
 #: src/Documents/DocumentPostType.php:246
-#: src/Documents/DocumentPostType.php:247
+#: src/Documents/DocumentPostType.php:248
+#: src/Documents/DocumentPostType.php:249
 msgid "Documents"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:249
+#: src/Documents/DocumentPostType.php:251
 msgid "View document"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:250
+#: src/Documents/DocumentPostType.php:252
 msgid "Search documents"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:251
+#: src/Documents/DocumentPostType.php:253
 msgid "No documents sent yet."
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:252
+#: src/Documents/DocumentPostType.php:254
 msgid "No documents in the trash."
 msgstr ""
 
@@ -571,71 +571,71 @@ msgstr ""
 msgid "Not found"
 msgstr ""
 
-#: src/Documents/SendAttempt.php:109
+#: src/Documents/SendAttempt.php:120
 msgid "Signers must be unique, and their signing steps must start at 1 without gaps."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:114
+#: src/Documents/SendAttempt.php:125
 msgid "A digital certificate signer must have a signing step of their own."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:143
+#: src/Documents/SendAttempt.php:154
 msgid "The uploaded document id could not be saved. Check the Assinafy account before retrying."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:167
+#: src/Documents/SendAttempt.php:178
 msgid "Assinafy returned no assignment id. Retry to check whether signatures were requested."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:200
+#: src/Documents/SendAttempt.php:211
 msgid "Assinafy returned no valid signer id."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:219
+#: src/Documents/SendAttempt.php:230
 msgid "The previous upload outcome is unknown. Check the Assinafy account before starting a new send with a new idempotency key."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:239
+#: src/Documents/SendAttempt.php:250
 msgid "This record already mirrors a document. Start a new send without post_id to keep its signature history."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:253
+#: src/Documents/SendAttempt.php:264
 msgid "The local document record could not be created. Nothing was uploaded."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:259
+#: src/Documents/SendAttempt.php:270
 msgid "The integration source could not be saved. Nothing was uploaded."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:264
+#: src/Documents/SendAttempt.php:275
 msgid "The send reservation could not be saved. Nothing was uploaded."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:278
+#: src/Documents/SendAttempt.php:289
 msgid "Upload returned no valid document id. Check the Assinafy account before retrying."
 msgstr ""
 
-#: src/Documents/SendService.php:171
+#: src/Documents/SendService.php:173
 msgid "Add an Assinafy API key and account id before sending a document."
 msgstr ""
 
-#: src/Documents/SendService.php:273
+#: src/Documents/SendService.php:269
 msgid "The signature deadline must be a valid date in the future."
 msgstr ""
 
-#: src/Documents/SendService.php:327
+#: src/Documents/SendService.php:323
 msgid "This document is already being sent. Wait for the first attempt to finish."
 msgstr ""
 
-#: src/Documents/SendService.php:373
+#: src/Documents/SendService.php:345
 msgid "Only PDF attachments can be sent for signature."
 msgstr ""
 
-#: src/Documents/SendService.php:384
+#: src/Documents/SendService.php:356
 msgid "The selected attachment has no file on disk."
 msgstr ""
 
-#: src/Documents/SendService.php:396
+#: src/Documents/SendService.php:368
 msgid "Choose a PDF to send: pass either attachment_id or file_path."
 msgstr ""
 
@@ -768,27 +768,27 @@ msgstr ""
 msgid "Assinafy: signature request for \"%1$s\" failed — %2$s. Re-completing the order will try again."
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:53
+#: src/Integrations/WooCommerceProductTab.php:55
 msgid "Signature"
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:88
+#: src/Integrations/WooCommerceProductTab.php:90
 msgid "Request a signature from the customer when an order containing this product is completed."
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:97
+#: src/Integrations/WooCommerceProductTab.php:99
 msgid "The PDF the customer signs. Upload it to the media library first."
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:107
+#: src/Integrations/WooCommerceProductTab.php:109
 msgid "Message"
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:108
+#: src/Integrations/WooCommerceProductTab.php:110
 msgid "Shown in the invitation. Leave empty to use the default from the Assinafy settings."
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:163
+#: src/Integrations/WooCommerceProductTab.php:208
 msgid "— Select a PDF —"
 msgstr ""
 

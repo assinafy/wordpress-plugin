@@ -139,7 +139,7 @@ Nothing else is transmitted. No site visitor data, no post content and no WordPr
 
 Assinafy delivers status notifications back to this site over the webhook endpoint, if you register one. Those deliveries are used only as a signal to re-check a document.
 
-Service terms: [Terms of Use](https://assinafy.com.br/termos-de-uso) and [Privacy Policy](https://assinafy.com.br/politica-de-privacidade).
+Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 == Changelog ==
 

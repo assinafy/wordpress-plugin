@@ -23,7 +23,7 @@ No full Contact Form 7 submission is retained. Only the mapped signer identity i
 
 = External service =
 
-This add-on uses the Assinafy account and environment configured in the required core plugin. On an eligible submission it sends the selected PDF, mapped signer name/email and invitation to Assinafy to create an electronic signature request. Service: https://assinafy.com.br/ — Terms of Use: https://assinafy.com.br/termos-de-uso — Privacy Policy: https://assinafy.com.br/politica-de-privacidade. Review these before enabling this workflow. Remote records are not deleted by WordPress personal-data redaction.
+This add-on uses the Assinafy account and environment configured in the required core plugin. On an eligible submission it sends the selected PDF, mapped signer name/email and invitation to Assinafy to create an electronic signature request. Service: https://www.assinafy.com.br/ — Terms of Use: https://www.assinafy.com.br/termos-de-uso — Privacy Policy: https://www.assinafy.com.br/politica-de-privacidade. Review these before enabling this workflow. Remote records are not deleted by WordPress personal-data redaction.
 
 == Installation ==
 

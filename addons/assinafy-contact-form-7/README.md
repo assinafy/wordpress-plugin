@@ -44,7 +44,7 @@ Envios bem-sucedidos removem a configuração de nova tentativa do add-on. Recib
 
 ## Dados e serviço externo
 
-Em uma submissão elegível, o PDF, o nome/e-mail mapeados do signatário e o convite são enviados ao serviço Assinafy configurado no plugin core. Veja o [Assinafy](https://assinafy.com.br/), seus [Termos de Uso](https://assinafy.com.br/termos-de-uso) e a [Política de Privacidade](https://assinafy.com.br/politica-de-privacidade).
+Em uma submissão elegível, o PDF, o nome/e-mail mapeados do signatário e o convite são enviados ao serviço Assinafy configurado no plugin core. Veja o [Assinafy](https://www.assinafy.com.br/), seus [Termos de Uso](https://www.assinafy.com.br/termos-de-uso) e a [Política de Privacidade](https://www.assinafy.com.br/politica-de-privacidade).
 
 Apenas a identidade mapeada do signatário é armazenada na projeção de signatários do documento no core. O add-on retém separadamente a seleção de PDF, o convite, a origem e a chave de idempotência enquanto a nova tentativa for necessária. Ele não copia submissões completas, endereços IP, metadados do navegador nem campos não relacionados. As ferramentas de privacidade do WordPress no core exportam e apagam os dados do signatário, inclusive de signatários pendentes sem ID remoto. Tentar de novo com uma identidade apagada é recusado. Documentos remotos e evidências de assinatura são gerenciados separadamente pelo Assinafy.
 

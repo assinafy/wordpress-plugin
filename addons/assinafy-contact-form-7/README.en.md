@@ -44,7 +44,7 @@ Successful sends remove the add-on's retry configuration. Trashed receipts, dele
 
 ## Data and external service
 
-On an eligible submission, the PDF, mapped signer name/email and invitation are sent to the Assinafy service configured in the core plugin. See [Assinafy](https://assinafy.com.br/), its [Terms of Use](https://assinafy.com.br/termos-de-uso) and [Privacy Policy](https://assinafy.com.br/politica-de-privacidade).
+On an eligible submission, the PDF, mapped signer name/email and invitation are sent to the Assinafy service configured in the core plugin. See [Assinafy](https://www.assinafy.com.br/), its [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 Only the mapped signer identity is stored in the core document's signer projection. The add-on separately retains the PDF selection, invitation, source and idempotency key while retry is needed. It does not copy complete submissions, IP addresses, browser metadata or unrelated fields. Core WordPress privacy tools export and redact the signer data, including pending signers without a remote ID. Retrying erased identity is refused. Remote documents and signature evidence are managed separately by Assinafy.
 

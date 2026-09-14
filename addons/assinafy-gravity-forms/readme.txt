@@ -16,7 +16,7 @@ Map a name and email field to a signature request. Uses Gravity Forms feeds, con
 Development version: documented API contract tests exist; licensed Gravity Forms runtime validation is pending. Requires Gravity Forms 2.9.4+, Assinafy Core 1.0.0+, PHP 8.2+.
 
 = External service =
-Eligible feeds send your selected PDF, mapped signer name/email, message and signing settings to your Assinafy account through Assinafy Core. An account and document allowance are required. Service: https://assinafy.com.br — Terms: https://assinafy.com.br/termos-de-uso — Privacy: https://assinafy.com.br/politica-de-privacidade
+Eligible feeds send your selected PDF, mapped signer name/email, message and signing settings to your Assinafy account through Assinafy Core. An account and document allowance are required. Service: https://www.assinafy.com.br — Terms: https://www.assinafy.com.br/termos-de-uso — Privacy: https://www.assinafy.com.br/politica-de-privacidade
 
 == Installation ==
 1. Install and configure Assinafy Core and licensed Gravity Forms.
