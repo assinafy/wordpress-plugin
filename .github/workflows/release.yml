@@ -1,0 +1,106 @@
+# Fires on a v* tag. It packages the plugin, proves the package's version
+# matches the tag, publishes the GitHub release and attests the zip.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A half-cancelled publish is worse than a slow queue.
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  plugin-check:
+    uses: ./.github/workflows/plugin-check.yml
+
+  release:
+    name: Build and publish
+    needs: [checks, plugin-check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      # actions/attest needs exactly these three alongside contents: write.
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install build tools and prepare runtime dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+
+      - name: Build the distribution zip
+        run: bin/build-zip.sh
+
+      # Read both version markers back out of the package rather than out of
+      # the checkout, so what is published is what was verified.
+      - name: Verify the packaged version matches the tag
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          zip="dist/assinafy-${version}.zip"
+          if [ ! -f "$zip" ]; then
+            echo "No package named for tag ${TAG_NAME}; built $(ls dist/*.zip)" >&2
+            exit 1
+          fi
+          header="$(unzip -p "$zip" assinafy/assinafy.php | grep -m1 -oP '^\s*\*\s*Version:\s*\K.+' | tr -d '[:space:]')"
+          stable="$(unzip -p "$zip" assinafy/readme.txt | grep -m1 -oP '^Stable tag:\s*\K.+' | tr -d '[:space:]')"
+          if [ "$header" != "$version" ]; then
+            echo "Plugin header Version is ${header}, tag is ${version}" >&2
+            exit 1
+          fi
+          if [ "$stable" != "$version" ]; then
+            echo "readme.txt Stable tag is ${stable}, tag is ${version}" >&2
+            exit 1
+          fi
+          echo "Package, readme and tag all agree on ${version}."
+
+      - name: Upload the zip as a workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: assinafy-plugin-zip
+          path: dist/*.zip
+          if-no-files-found: error
+
+      # Artifact attestations need GitHub Enterprise Cloud on a private or
+      # internal repository, so this step only runs when the mirror is public.
+      - name: Attest the zip
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.zip
+
+      - name: Publish the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: gh release create "$TAG_NAME" dist/*.zip --verify-tag --generate-notes
+
+  wordpress-org:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/') && vars.DEPLOY_TO_WPORG == 'true'
+    uses: ./.github/workflows/wp-org-deploy.yml
+    secrets: inherit

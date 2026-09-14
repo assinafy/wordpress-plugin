@@ -1,0 +1,55 @@
+parameters:
+	# The one place the level is declared. Composer's phpstan script passes no --level.
+	level: 8
+
+	paths:
+		- src
+		- integrations
+		- addons
+		- assinafy.php
+		- uninstall.php
+
+	excludePaths:
+		- addons/*/tests/*
+
+	# Strauss rewrites the SDK into vendor-prefixed/, which Composer's autoloader does not
+	# cover. Scanning it lets PHPStan resolve the prefixed SDK classes without analysing them.
+	scanDirectories:
+		- vendor-prefixed
+
+	# The plugin's own array shapes describe data nothing validates row by row:
+	# DocumentRecord::signers() declares array{id: string, ...} over a bare
+	# array_values( get_post_meta() ), and SignerRedaction's @phpstan-type Signer carries that
+	# shape on through remote JSON. Treating those shapes as certain reports the defensive
+	# `?? ''` and is_array() guards over that data as redundant and demands deleting them.
+	treatPhpDocTypesAsCertain: false
+
+	# WooCommerce and WP-CLI are optional integrations, registered behind class_exists()
+	# guards, so their symbols are absent from a plain install. The WooCommerce stubs come from
+	# php-stubs/woocommerce-stubs; WP-CLI is stubbed locally because php-stubs/wp-cli-stubs
+	# still caps at php-stubs/wordpress-stubs ^6.0 and this plugin targets WordPress 7.1.
+	# tests/stubs/constants.php declares what assinafy.php define()s, which PHPStan cannot
+	# follow across files.
+	bootstrapFiles:
+		- tests/stubs/constants.php
+		- tests/stubs/elementor.php
+		- tests/stubs/gravity-forms.php
+
+	scanFiles:
+		- vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+		- tests/stubs/wp-cli.php
+		- tests/stubs/contact-form-7.php
+		- addons/assinafy-wpforms/tests/stubs/wpforms.php
+		- tests/stubs/elementor.php
+		- tests/stubs/gravity-forms.php
+
+	ignoreErrors:
+		# php-stubs/wordpress-stubs types register_setting()'s `sanitize_callback` as
+		# `callable(): mixed` — a callable taking no arguments. WordPress actually invokes it
+		# through `sanitize_option_{$option}` with up to three ($value, $option, $original),
+		# so no real sanitiser can satisfy the declared type and the stub rejects every
+		# correct callback. The callbacks here are plain WordPress sanitisers and methods on
+		# Settings; they are exercised by the option round-trip tests.
+		-
+			message: '#Parameter \#3 \$args of function register_setting expects array\{.*sanitize_callback.*#'
+			path: src/Settings.php

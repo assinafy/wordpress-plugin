@@ -1,0 +1,25 @@
+* text=auto eol=lf
+
+*.php text diff=php
+
+*.mo  binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary
+
+# Keep the harness out of `git archive` exports, mirroring .distignore.
+/.github           export-ignore
+/.wordpress-org    export-ignore
+/tests             export-ignore
+/.distignore       export-ignore
+/.gitignore        export-ignore
+/.gitattributes    export-ignore
+/.editorconfig     export-ignore
+/.wp-env.json      export-ignore
+/package.json      export-ignore
+/package-lock.json export-ignore
+/phpcs.xml.dist    export-ignore
+/phpstan.neon.dist export-ignore
+/phpmd.xml.dist    export-ignore
+/phpunit.xml.dist  export-ignore

@@ -1,0 +1,31 @@
+{
+  "name": "assinafy-wordpress-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local development harness for the Assinafy WordPress plugin. No build step: the plugin ships hand-written CSS and JS.",
+  "license": "GPL-2.0-or-later",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@wordpress/env": "11.15.0"
+  },
+  "scripts": {
+    "wp-env": "wp-env",
+    "start": "wp-env start",
+    "stop": "wp-env stop",
+    "reset": "wp-env reset",
+    "logs": "wp-env logs",
+    "wp": "wp-env run cli wp",
+    "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/assinafy vendor/bin/phpunit",
+    "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/assinafy vendor/bin/phpunit --testsuite unit",
+    "test:php:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/assinafy vendor/bin/phpunit -c phpunit-integration.xml.dist",
+    "makepot": "wp-env run cli --env-cwd=wp-content/plugins/assinafy wp i18n make-pot . languages/assinafy.pot --exclude=vendor,vendor-prefixed,node_modules,build,dist,tests,addons,.cache",
+    "test:php:ajax": "wp-env run tests-cli --env-cwd=wp-content/plugins/assinafy vendor/bin/phpunit -c phpunit-integration.xml.dist --group ajax",
+    "test:e2e": "playwright test tests/e2e --workers=1"
+  },
+  "overrides": {
+    "qs": "6.16.0"
+  }
+}

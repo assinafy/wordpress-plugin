@@ -1,0 +1,71 @@
+# Ignore-only. The 10up deploy action and the build:zip job both read this file, which is what
+# keeps the wordpress.org SVN checkout and the release zip byte-identical. There is no negation
+# syntax here: anything listed is gone, and nothing can be added back.
+
+# Version control and CI
+/.git
+/.github
+/.gitignore
+/.gitattributes
+/.distignore
+/.agents
+/.codex
+
+# wordpress.org listing assets live at SVN root, not in trunk/
+/.wordpress-org
+
+# Local development harness
+/.wp-env.json
+/.wp-env.override.json
+/.editorconfig
+/.cache
+/.idea
+/.vscode
+/node_modules
+/bin
+package.json
+package-lock.json
+npm-debug.log*
+
+# Tests and quality tooling
+/tests
+phpcs.xml.dist
+phpstan.neon.dist
+phpmd.xml.dist
+phpunit.xml.dist
+phpunit-integration.xml.dist
+phpcs.xml
+phpstan.neon
+phpunit.xml
+.phpunit.result.cache
+.phpunit.integration.result.cache
+.phpcs.cache
+
+# The un-prefixed Composer tree. Only vendor-prefixed/ ships.
+/vendor
+composer.lock
+
+# Build scratch
+/build
+/dist
+/artifacts
+/coverage
+clover.xml
+composer.phar
+
+.DS_Store
+
+# Audit and browser test output
+/AUDIT.md
+/test-results
+/playwright-report
+
+# Dedicated integrations are packaged and installed separately.
+/addons
+
+# Long-form contributor docs live in the source repository. readme.txt is the packaged documentation.
+/README.md
+/README.en.md
+/CONTRIBUTING.md
+/CONTRIBUTING.en.md
+/docs

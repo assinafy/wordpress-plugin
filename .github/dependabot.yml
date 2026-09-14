@@ -1,0 +1,13 @@
+# Dependabot only rewrites an action's version documentation when the comment
+# sits on the same line as the `uses:`, which is the style every workflow here
+# uses.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	The unit suite: no WordPress, no database, no Docker. Composer's autoloader plus
+	tests/wp-stubs.php, which is what lets this suite gate every CI job.
+
+	PHPUnit 9 schema throughout, because the integration suite shares these dependencies and the
+	WordPress core test suite is PHPUnit-9-only — it still calls
+	\PHPUnit\Util\Test::parseTestMethodAnnotations() and $this->getName( false ), both removed
+	in PHPUnit 10.
+
+	The integration suite lives in phpunit-integration.xml.dist: PHPUnit 9 allows exactly one
+	bootstrap per configuration file.
+-->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+	bootstrap="tests/bootstrap-unit.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	convertDeprecationsToExceptions="false"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	forceCoversAnnotation="true"
+	failOnRisky="true"
+	failOnWarning="true"
+	cacheResultFile=".phpunit.result.cache"
+	>
+	<testsuites>
+		<!-- No WordPress. Pure logic: transport, credentials, record mapping. -->
+		<testsuite name="unit">
+			<directory suffix="Test.php">tests/Unit</directory>
+		</testsuite>
+	</testsuites>
+
+	<!--
+		There is deliberately no <groups><exclude><group>ajax</group></exclude></groups> block.
+		The WordPress core configuration excludes that group; copying it here would silently
+		skip every admin-ajax test the plugin has.
+	-->
+
+	<coverage>
+		<include>
+			<directory suffix=".php">src</directory>
+		</include>
+	</coverage>
+</phpunit>

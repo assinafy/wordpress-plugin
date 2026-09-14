@@ -1,0 +1,40 @@
+# Composer install targets. vendor-prefixed/ is Strauss output and is regenerated on install.
+/vendor/
+/vendor-prefixed/
+composer.phar
+
+# composer.lock IS tracked. The dev toolchain has to resolve to the same PHPCS, PHPStan and
+# PHPUnit versions on every machine and in CI; the lock file is what guarantees that.
+
+# Local dev harness
+/node_modules/
+npm-debug.log*
+
+# Build output
+/build/
+/dist/
+*.zip
+
+# Tool caches and reports
+.phpunit.result.cache
+.phpunit.integration.result.cache
+.phpcs.cache
+/artifacts/
+/coverage/
+clover.xml
+
+# Local, uncommitted overrides of the .dist configurations
+/.wp-env.override.json
+/phpcs.xml
+/phpstan.neon
+/phpunit.xml
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+/.idea/
+/.vscode/
+
+# Browser test output
+/test-results/
+/playwright-report/

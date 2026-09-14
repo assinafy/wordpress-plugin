@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<ruleset name="Assinafy">
+	<description>Coding standard for the Assinafy WordPress plugin.</description>
+
+	<!--
+		Scans every PHP file in the plugin, including assinafy.php and uninstall.php.
+		Third-party trees are the only thing excluded: vendor/ is Composer's, vendor-prefixed/
+		is Strauss output, node_modules/ is the local dev harness.
+	-->
+	<file>.</file>
+	<exclude-pattern>/vendor/*</exclude-pattern>
+	<exclude-pattern>/vendor-prefixed/*</exclude-pattern>
+	<exclude-pattern>/node_modules/*</exclude-pattern>
+	<exclude-pattern>/build/*</exclude-pattern>
+	<exclude-pattern>/dist/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="basepath" value="."/>
+	<arg name="parallel" value="8"/>
+	<arg name="cache" value=".phpcs.cache"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<!-- Oldest WordPress the plugin supports; drives the deprecation sniffs. -->
+	<config name="minimum_wp_version" value="6.8"/>
+
+	<!-- Oldest PHP the plugin supports. Open-ended so new PHP releases are checked too. -->
+	<config name="testVersion" value="8.2-"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<rule ref="WordPress-Extra">
+		<!--
+			PSR-4 autoloading requires the file name to match the class name exactly
+			(src/Http/WpHttpClient.php). WordPress's hyphenated class-*.php convention is
+			incompatible with it, so the file-name sniff is dropped plugin-wide.
+		-->
+		<exclude name="WordPress.Files.FileName"/>
+
+		<!--
+			Short array syntax is used throughout. The plugin's floor is PHP 8.2, where
+			array() carries no compatibility benefit.
+		-->
+		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+
+		<!--
+			Yoda conditions are not used. Strict typing plus PHPStan level 6 catch the
+			assignment-in-condition mistake the convention exists to prevent.
+		-->
+		<exclude name="WordPress.PHP.YodaConditions"/>
+	</rule>
+
+	<!--
+		WordPress-Extra pulls in only the translator-comment parts of the I18n sniff.
+		The full sniff is what verifies the text domain on every translation call.
+	-->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="assinafy"/>
+				<element value="assinafy-gravity-forms"/>
+				<element value="assinafy-contact-form-7"/>
+				<element value="assinafy-wpforms"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Everything global the plugin declares carries one of these prefixes. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="assinafy"/>
+				<element value="Assinafy\WP"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!--
+		The capabilities the plugin installs itself: three primary caps plus the meta-cap set
+		WordPress derives from capability_type ['assinafy_document','assinafy_documents'].
+		Without this list the sniff reports each of them as an unknown capability.
+	-->
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="assinafy_send"/>
+				<element value="gravityforms_edit_forms"/>
+				<element value="gravityforms_view_entries"/>
+				<element value="wpcf7_edit_contact_form"/>
+				<element value="assinafy_manage"/>
+				<element value="assinafy_view"/>
+				<element value="edit_assinafy_document"/>
+				<element value="read_assinafy_document"/>
+				<element value="delete_assinafy_document"/>
+				<element value="create_assinafy_documents"/>
+				<element value="edit_assinafy_documents"/>
+				<element value="edit_others_assinafy_documents"/>
+				<element value="edit_private_assinafy_documents"/>
+				<element value="edit_published_assinafy_documents"/>
+				<element value="publish_assinafy_documents"/>
+				<element value="read_private_assinafy_documents"/>
+				<element value="delete_assinafy_documents"/>
+				<element value="delete_others_assinafy_documents"/>
+				<element value="delete_private_assinafy_documents"/>
+				<element value="delete_published_assinafy_documents"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!--
+		Test doubles and fixtures are not production output: escaping every assertion string
+		and nonce-checking every simulated request would obscure what each test proves.
+		Production code under src/ and the root files get no such exemption.
+	-->
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.NonceVerification">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
+
+	<!-- PHPUnit fixture methods (setUpBeforeClass, tearDownAfterClass) are camelCase by contract. -->
+	<rule ref="WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
+	<!--
+		Exception messages are escaped where they are displayed, not where they are thrown:
+		every admin render runs them through esc_html() (src/Admin/DocumentMetaBox.php,
+		src/Settings.php), and the remaining consumers are WP-CLI output, WP_Error payloads and
+		the log, none of which are HTML. Escaping at the throw site instead would put HTML
+		entities into log lines and CLI output, so the sniff is dropped rather than satisfied.
+	-->
+	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+		<severity>0</severity>
+	</rule>
+
+	<!--
+		The two stub files exist to reproduce somebody else's API for static analysis and for
+		the WordPress-free unit suite: tests/wp-stubs.php declares WordPress functions and
+		WP_Error, tests/stubs/wp-cli.php declares the WP_CLI class and WP_CLI\Utils. Their
+		names, namespaces and file layout are dictated by WordPress and WP-CLI, so the sniffs
+		that police naming and file structure cannot apply. Neither file is ever loaded at
+		runtime, and neither is shipped — .distignore excludes /tests.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<exclude-pattern>/tests/wp-stubs\.php</exclude-pattern>
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+		<exclude-pattern>/tests/bootstrap\.php</exclude-pattern>
+		<exclude-pattern>/tests/Integration/*</exclude-pattern>
+		<exclude-pattern>/addons/*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Files.SeparateFunctionsFromOO">
+		<exclude-pattern>/tests/wp-stubs\.php</exclude-pattern>
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+	</rule>
+	<!--
+		WP-CLI declares `WP_CLI` and `WP_CLI\ExitException` as two structures its callers use
+		together, and the stub reproduces the pair. Splitting them across files would describe
+		a layout WP-CLI does not have.
+	-->
+	<rule ref="Generic.Files.OneObjectStructurePerFile">
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Namespaces.DisallowCurlyBraceSyntax">
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Namespaces.DisallowDeclarationWithoutName">
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Namespaces.OneDeclarationPerFile">
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+	</rule>
+	<rule ref="Universal.NamingConventions.NoReservedKeywordParameterNames">
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+		<exclude-pattern>/tests/stubs/*</exclude-pattern>
+		<exclude-pattern>/tests/wp-stubs\.php</exclude-pattern>
+	</rule>
+
+	<!--
+		WP_Filesystem is not loaded in the unit suite (there is no WordPress at all) and is not
+		what a test should exercise anyway: fixtures are created and removed with the plain
+		filesystem so a failure points at the assertion, not at a filesystem abstraction.
+	-->
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
+
+	<!--
+		Integration tests set up WordPress state by assigning to core globals; that is the
+		documented way to drive WP_UnitTestCase, and each assignment is restored in tear_down().
+	-->
+	<rule ref="WordPress.WP.GlobalVariablesOverride">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
+</ruleset>

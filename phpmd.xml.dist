@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<ruleset name="Assinafy"
+	xmlns="https://pmd.sourceforge.io/ruleset/2.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://pmd.sourceforge.io/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+	<description>
+		Complexity and dead-code analysis for the Assinafy WordPress plugin.
+
+		PHPMD ships rules written for general PHP, several of which contradict the WordPress
+		coding standards that PHPCS enforces on the same files. Where the two disagree,
+		WordPress wins — a plugin that ignores its platform's conventions fails review — so
+		those rules are tuned here with the reason stated. Everything left measures something
+		real: complexity, dead code, and constructs that hide bugs.
+
+		Every deviation below is either a rule property narrowed to the exact construct that
+		is unavoidable, or a whole-rule exclusion where no property can express the exception.
+		Nothing in `src/` carries an inline `@SuppressWarnings`.
+	</description>
+
+	<rule ref="rulesets/cleancode.xml">
+		<!--
+			The reported call sites are the plugin's own static accessors and named
+			constructors — `Settings::get()`, `Capabilities::add()`, `Route::url()`,
+			`ApiException::fromResponse()` — plus WooCommerce's `FeaturesUtil`. WordPress has
+			no container to resolve them through, and the dependencies that can be injected
+			already are, through constructors. What is left is state that is global by
+			definition: the site's options, its capabilities, and the SDK's own factories.
+		-->
+		<exclude name="StaticAccess"/>
+
+		<!--
+			Re-declared below with `ignore-global` on.
+		-->
+		<exclude name="MissingImport"/>
+	</rule>
+
+	<!--
+		`\InvalidArgumentException` and `\RuntimeException` are written fully qualified at the
+		throw site. Importing SPL's global-namespace classes into a plugin namespace buys
+		nothing and hides which are PHP's and which are the plugin's. Any other unimported
+		class — an SDK type, a WordPress class — is still reported.
+	-->
+	<rule ref="rulesets/cleancode.xml/MissingImport">
+		<properties>
+			<property name="ignore-global" value="true"/>
+		</properties>
+	</rule>
+
+	<rule ref="rulesets/codesize.xml"/>
+
+	<rule ref="rulesets/design.xml">
+		<!--
+			`exit` is how a WordPress request ends after a redirect or a streamed file, and
+			omitting it lets execution continue into output the handler already replaced.
+			`DownloadProxy` and the `admin_post_` handlers rely on it.
+		-->
+		<exclude name="ExitExpression"/>
+
+		<!--
+			Re-declared below with the composition root's own count as the maximum.
+		-->
+		<exclude name="CouplingBetweenObjects"/>
+	</rule>
+
+	<!--
+		`Plugin` is the single wiring file: `register()` constructs the object graph and hands
+		each piece to WordPress, so it names every class the plugin has. Its coupling is 20.
+		Splitting it would only move the same edge list into a second file that `Plugin` then
+		also depends on.
+
+		The rule fires at or above its `maximum`, so 21 admits the wiring file's 20 and nothing
+		above it. That is the composition root's own count, not a round number chosen to clear
+		it: the next most coupled class is `WpHttpClient` at 11, so every class that is not the
+		wiring file still clears the rule by a wide margin, and one more dependency in `Plugin`
+		is reported.
+	-->
+	<rule ref="rulesets/design.xml/CouplingBetweenObjects">
+		<properties>
+			<property name="maximum" value="21"/>
+		</properties>
+	</rule>
+
+	<rule ref="rulesets/unusedcode.xml">
+		<!--
+			WordPress and WP-CLI pass a fixed argument list to every callback. A WP-CLI command
+			that reads only `$assoc_args` still has to declare the positional `$args` the
+			dispatcher calls it with. The rule has no property to scope this to a signature.
+		-->
+		<exclude name="UnusedFormalParameter"/>
+
+		<!--
+			The rule resolves a private call only through `$this->` and `self::`. `Plugin`
+			holds its instance in a static property and boots through it —
+			`self::$instance->register()` — which the rule cannot follow, so it reports
+			`register()` as dead code while it is the method that builds the entire object
+			graph. It is provably wrong here, and it is the whole rule that is wrong: PHPMD
+			offers no property or pattern to scope it to one call shape.
+
+			Nothing is lost by dropping it. PHPStan reports an unused private method under
+			`method.unused`, resolves the call through the static property correctly, and runs
+			at level 8 over the same files on the same CI job. Confirmed against a class
+			holding one private method reached through a static property and one reached by
+			nothing: PHPStan flags the second and leaves the first alone.
+		-->
+		<exclude name="UnusedPrivateMethod"/>
+	</rule>
+
+	<rule ref="rulesets/naming.xml">
+		<!--
+			`$e` for a caught exception and `$id` for an identifier are clearer than the longer
+			names this rule would otherwise force. Every other short name is still reported.
+		-->
+		<exclude name="ShortVariable"/>
+	</rule>
+
+	<rule ref="rulesets/naming.xml/ShortVariable">
+		<properties>
+			<property name="exceptions" value="e,id"/>
+		</properties>
+	</rule>
+
+	<!--
+		`controversial` is not included. It is `Superglobals` plus the camelCase rules.
+		`Superglobals` forbids reading `$_POST` in a form handler or a REST callback — the exact
+		places WordPress requires superglobals to be read, and where PHPCS's WordPress.Security
+		sniffs already verify the nonce check, the capability check, `wp_unslash()` and the
+		sanitiser. The camelCase rules are the direct opposite of the snake_case naming
+		WordPress mandates and PHPCS enforces on these same files through WordPress-Extra.
+		Neither describes a defect in this codebase.
+	-->
+
+</ruleset>

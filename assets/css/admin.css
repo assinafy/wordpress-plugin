@@ -1,0 +1,181 @@
+/*
+ * Assinafy admin styles.
+ *
+ * Hand-written, unminified, no build step. Uses WordPress admin conventions —
+ * the core colour palette, 13px admin type, `.form-table` spacing — rather than a
+ * visual language of its own.
+ *
+ * Status badges cover the eleven document status codes the API returns. The class
+ * is the code verbatim, so PHP composes it as
+ * 'assinafy-status assinafy-status--' . $status with no translation table.
+ *
+ * Colour is carried by custom properties. There is no prefers-color-scheme block:
+ * the admin ground is #f0f0f1 whatever the OS says, so a second palette would only
+ * make light-on-light text. Every badge is a tinted ground with dark text, which
+ * clears WCAG AA at 13px; a saturated ground with white text does not.
+ */
+
+:root {
+	--assinafy-neutral-bg: #f0f0f1;
+	--assinafy-neutral-fg: #2c3338;
+	--assinafy-neutral-edge: #c3c4c7;
+
+	--assinafy-info-bg: #eaf2fa;
+	--assinafy-info-fg: #0a4b78;
+	--assinafy-info-edge: #a7c8e6;
+
+	--assinafy-progress-bg: #fcf3d9;
+	--assinafy-progress-fg: #7a5b00;
+	--assinafy-progress-edge: #e8d191;
+
+	--assinafy-success-bg: #e6f4ea;
+	--assinafy-success-fg: #0a6b33;
+	--assinafy-success-edge: #a3d4b4;
+
+	--assinafy-danger-bg: #fcebeb;
+	--assinafy-danger-fg: #8a2424;
+	--assinafy-danger-edge: #e8b3b3;
+
+	--assinafy-muted-bg: #e9e9ea;
+	--assinafy-muted-fg: #3c434a;
+	--assinafy-muted-edge: #bcbdbf;
+
+	--assinafy-text-dim: #50575e;
+}
+
+/* Status badges. */
+
+.assinafy-status {
+	display: inline-block;
+	padding: 2px 8px;
+	border: 1px solid var( --assinafy-neutral-edge );
+	border-radius: 9px;
+	background: var( --assinafy-neutral-bg );
+	color: var( --assinafy-neutral-fg );
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
+	vertical-align: baseline;
+}
+
+/* Bytes accepted, pages not rendered yet. */
+.assinafy-status--uploading,
+.assinafy-status--uploaded,
+.assinafy-status--metadata_processing {
+	background: var( --assinafy-neutral-bg );
+	border-color: var( --assinafy-neutral-edge );
+	color: var( --assinafy-neutral-fg );
+}
+
+/* Pages rendered; ready to be assigned. */
+.assinafy-status--metadata_ready {
+	background: var( --assinafy-info-bg );
+	border-color: var( --assinafy-info-edge );
+	color: var( --assinafy-info-fg );
+}
+
+/* Work is in flight: signers notified, or the platform is sealing the PDF. */
+.assinafy-status--pending_signature,
+.assinafy-status--certificating {
+	background: var( --assinafy-progress-bg );
+	border-color: var( --assinafy-progress-edge );
+	color: var( --assinafy-progress-fg );
+}
+
+/* Terminal success. */
+.assinafy-status--certificated {
+	background: var( --assinafy-success-bg );
+	border-color: var( --assinafy-success-edge );
+	color: var( --assinafy-success-fg );
+}
+
+/* Terminal failure. */
+.assinafy-status--rejected_by_signer,
+.assinafy-status--rejected_by_user,
+.assinafy-status--failed {
+	background: var( --assinafy-danger-bg );
+	border-color: var( --assinafy-danger-edge );
+	color: var( --assinafy-danger-fg );
+}
+
+/* Terminal, but nobody refused: the deadline simply passed. */
+.assinafy-status--expired {
+	background: var( --assinafy-muted-bg );
+	border-color: var( --assinafy-muted-edge );
+	color: var( --assinafy-muted-fg );
+}
+
+/* Signer repeater. */
+
+.assinafy-signers {
+	margin: 0 0 12px;
+	max-width: 900px;
+}
+
+/* Created by send-screen.js on first use, so it has no server-rendered position. */
+.assinafy-signer-error {
+	margin: 0;
+	color: var( --assinafy-danger-fg );
+	font-size: 12px;
+	min-height: 1em;
+}
+
+.assinafy-signer-error:empty {
+	display: none;
+}
+
+.assinafy-field-invalid {
+	border-color: var( --assinafy-danger-fg );
+}
+
+/* AJAX result lines on the settings screen. */
+
+.assinafy-result {
+	display: inline-block;
+	margin-left: 8px;
+	font-size: 13px;
+	line-height: 2.15;
+	vertical-align: middle;
+}
+
+.assinafy-result:empty {
+	display: none;
+}
+
+.assinafy-result.is-busy {
+	color: var( --assinafy-text-dim );
+}
+
+.assinafy-result.is-success {
+	color: var( --assinafy-success-fg );
+}
+
+.assinafy-result.is-warning {
+	color: var( --assinafy-progress-fg );
+}
+
+.assinafy-result.is-error {
+	color: var( --assinafy-danger-fg );
+}
+
+/* Event log on the settings screen. */
+
+.assinafy-log td {
+	vertical-align: top;
+	word-break: break-word;
+}
+
+.assinafy-log td:first-child,
+.assinafy-log td:nth-child( 2 ) {
+	white-space: nowrap;
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+
+	.assinafy-status,
+	.assinafy-result {
+		transition: none;
+		animation: none;
+	}
+}

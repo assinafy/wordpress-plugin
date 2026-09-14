@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	The integration suite: WP_UnitTestCase against a real WordPress supplied by wp-env.
+
+	PHPUnit 9 schema. The WordPress core test suite is PHPUnit-9-only — it still calls
+	\PHPUnit\Util\Test::parseTestMethodAnnotations() and $this->getName( false ), both removed
+	in PHPUnit 10 — so the 10.x shape (cacheDirectory, <source>, beStrictAboutCoverageMetadata)
+	is not available here.
+
+	A separate config from phpunit.xml.dist because PHPUnit 9 allows exactly one bootstrap per
+	configuration file, and the unit suite must boot without WordPress.
+-->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+	bootstrap="tests/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	convertDeprecationsToExceptions="false"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	forceCoversAnnotation="true"
+	failOnRisky="true"
+	failOnWarning="true"
+	cacheResultFile=".phpunit.integration.result.cache"
+	>
+	<testsuites>
+		<!-- WP_UnitTestCase against the core test suite supplied by wp-env at WP_TESTS_DIR. -->
+		<testsuite name="integration">
+			<directory suffix="Test.php">tests/Integration</directory>
+			<directory suffix="Test.php">addons/assinafy-contact-form-7/tests</directory>
+			<directory suffix="Test.php">addons/assinafy-wpforms/tests</directory>
+			<directory suffix="Test.php">addons/assinafy-gravity-forms/tests</directory>
+		</testsuite>
+	</testsuites>
+
+	<!--
+		There is deliberately no <groups><exclude><group>ajax</group></exclude></groups> block.
+		The WordPress core configuration excludes that group; copying it here would silently
+		skip every admin-ajax test the plugin has.
+	-->
+
+	<coverage>
+		<include>
+			<directory suffix=".php">src</directory>
+		</include>
+	</coverage>
+</phpunit>

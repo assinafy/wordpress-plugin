@@ -1,0 +1,61 @@
+# Talks to the live Assinafy sandbox.
+#
+# Manual only. It spends real sandbox resources and mutates a shared workspace, so it is never
+# attached to a push or a pull request — a fork PR must not be able to reach the credentials.
+#
+# Configure ASSINAFY_SANDBOX_API_KEY and ASSINAFY_SANDBOX_ACCOUNT_ID as secrets on the `sandbox`
+# environment, and protect that environment with required reviewers. Never place their values in
+# this file. Tests that reach the live API carry @group sandbox and must not require WordPress.
+name: Sandbox integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialised: the sandbox account is shared state, and two concurrent runs would see each
+# other's documents. Not cancel-in-progress — a half-finished run leaves orphaned documents.
+concurrency:
+  group: assinafy-sandbox-integration
+  cancel-in-progress: false
+
+jobs:
+  sandbox:
+    name: Live sandbox
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: sandbox
+    env:
+      ASSINAFY_INTEGRATION: '1'
+      ASSINAFY_BASE_URL: https://sandbox.assinafy.com.br/v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          extensions: json, mbstring, sodium
+          coverage: none
+          tools: composer:v2
+
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+
+      - name: Require the credentials and refuse any host but the sandbox
+        env:
+          ASSINAFY_API_KEY: ${{ secrets.ASSINAFY_SANDBOX_API_KEY }}
+          ASSINAFY_ACCOUNT_ID: ${{ secrets.ASSINAFY_SANDBOX_ACCOUNT_ID }}
+        run: |
+          test -n "${ASSINAFY_API_KEY}" || { echo "ASSINAFY_SANDBOX_API_KEY is not set" >&2; exit 1; }
+          test -n "${ASSINAFY_ACCOUNT_ID}" || { echo "ASSINAFY_SANDBOX_ACCOUNT_ID is not set" >&2; exit 1; }
+          php -r '$url = (string) getenv("ASSINAFY_BASE_URL"); if (parse_url($url, PHP_URL_HOST) !== "sandbox.assinafy.com.br") { fwrite(STDERR, "Refusing to run integration tests outside the sandbox.\n"); exit(1); }'
+
+      - name: Sandbox suite
+        env:
+          ASSINAFY_API_KEY: ${{ secrets.ASSINAFY_SANDBOX_API_KEY }}
+          ASSINAFY_ACCOUNT_ID: ${{ secrets.ASSINAFY_SANDBOX_ACCOUNT_ID }}
+        run: |
+          vendor/bin/phpunit --group sandbox --log-junit sandbox-results.xml
+          php -r '$r = simplexml_load_file("sandbox-results.xml"); if (!$r || (int) $r->testsuite["tests"] === 0) { fwrite(STDERR, "No sandbox tests were executed. Live API coverage is not implemented.\n"); exit(1); }'

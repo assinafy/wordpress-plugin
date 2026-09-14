@@ -1,0 +1,53 @@
+# Plugin Check is the official wordpress.org pre-submission tool. It needs
+# Docker and wp-env and reports as GitHub file annotations, so it lives here
+# against the built runtime tree, which is what wordpress.org's reviewers run.
+name: Plugin Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plugin-check:
+    name: Plugin Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install build tools and prepare runtime dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+
+      - name: Build the distribution tree
+        run: bin/build-zip.sh
+
+      # Scanning the repository root would report the dev dependencies, the
+      # test suite and the CI configuration, none of which ship.
+      - name: Run Plugin Check
+        uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e # v1.1.9
+        with:
+          build-dir: ./dist/assinafy
+          wp-version: latest
+          # Pinned rather than left to the action's default so the effective
+          # check set does not change between action releases.
+          include-experimental: 'false'
