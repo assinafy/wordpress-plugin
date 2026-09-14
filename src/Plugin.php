@@ -174,13 +174,9 @@ final class Plugin {
 	 * Build the graph and attach it to WordPress.
 	 */
 	private function register(): void {
-		// Just-in-time loading never looks inside a plugin's own directory, so the bundled
-		// catalogue in /languages is only found once this call registers the path.
-		// Plugin Check reports this function as discouraged. That advice assumes translations
-		// arrive as wordpress.org language packs, which take precedence here when they exist;
-		// the call stays so pt_BR works from the first install, before any pack is published.
-		load_plugin_textdomain( 'assinafy', false, dirname( plugin_basename( ASSINAFY_FILE ) ) . '/languages' );
-
+		// No load_plugin_textdomain() call: translations come from wordpress.org language
+		// packs, which WordPress loads just in time from WP_LANG_DIR without being asked.
+		// Only languages/assinafy.pot ships, as the source translators work from.
 		$credentials = new Credentials();
 		$log         = new Log();
 		$clients     = new ClientFactory( $credentials, $log );

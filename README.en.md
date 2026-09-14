@@ -172,7 +172,7 @@ not implement.
 | | Minimum | Why |
 |---|---|---|
 | PHP | **8.2** | `assinafy/php-sdk` requires `^8.2`. The bootstrap shows an admin notice and returns on anything older rather than fatalling. |
-| WordPress | **6.8** | The release that extended just-in-time translation loading to all plugins. The plugin still calls `load_plugin_textdomain()` on boot, because just-in-time loading never looks inside a plugin's own directory and the bundled `languages/` catalogue would otherwise be ignored. |
+| WordPress | **6.8** | The release that extended just-in-time translation loading to all plugins. Translations are served as wordpress.org language packs and load from `WP_LANG_DIR` without the plugin asking, so there is no `load_plugin_textdomain()` call and no compiled catalogue in the package. |
 | Tested to | 7.1 | |
 | Extensions | `sodium`, `mbstring` | Credential encryption and SDK Unicode handling; JSON is built into supported PHP versions. |
 | WooCommerce (optional) | **10.2.2** | Tested with WooCommerce 10.2.2 and 11.1.0; core also boots without WooCommerce. |

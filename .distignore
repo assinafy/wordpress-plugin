@@ -69,3 +69,8 @@ composer.phar
 /CONTRIBUTING.md
 /CONTRIBUTING.en.md
 /docs
+
+# Translations are served as wordpress.org language packs, so only the source catalogue
+# ships. The pt_BR files stay in the repository as what gets uploaded to translate.wordpress.org.
+/languages/assinafy-pt_BR.po
+/languages/assinafy-pt_BR.mo
