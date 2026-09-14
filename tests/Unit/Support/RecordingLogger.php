@@ -23,11 +23,16 @@ final class RecordingLogger extends AbstractLogger {
 	public array $records = array();
 
 	/**
+	 * PSR-3 1.x declares `log()` without parameter types, so neither `$level` nor `$message`
+	 * may be typed here: adding a parameter type an interface does not declare is a
+	 * contravariance violation and fatals under `composer update --prefer-lowest`. The types
+	 * live in the docblock, where PHPStan still reads them.
+	 *
 	 * @param mixed                $level   Log level.
 	 * @param string|\Stringable   $message Log message.
 	 * @param array<string, mixed> $context Structured context.
 	 */
-	public function log( $level, string|\Stringable $message, array $context = array() ): void {
+	public function log( $level, $message, array $context = array() ): void {
 		$this->records[] = array(
 			'level'   => (string) $level,
 			'message' => (string) $message,

@@ -38,10 +38,17 @@ final class WooCommerceTest extends AssinafyTestCase {
 	 * Both order stores and checkout presentations use the native order-status integration.
 	 */
 	public function test_woocommerce_feature_compatibility_is_declared(): void {
-		foreach ( array( 'custom_order_tables', 'cart_checkout_blocks' ) as $feature ) {
-			$compatible = \Automattic\WooCommerce\Utilities\FeaturesUtil::get_compatible_plugins_for_feature( $feature );
-			$this->assertContains( plugin_basename( ASSINAFY_FILE ), $compatible['compatible'] );
-		}
+		// Asserted through the hook rather than through FeaturesUtil on purpose.
+		// `FeaturesController::get_compatible_plugins_for_feature()` only ever reports plugins
+		// returned by `get_woocommerce_aware_plugins()`, which reads WordPress's installed
+		// plugin list; the suite `require`s this plugin instead of installing and activating
+		// it, so it is absent from that list and no declaration can ever appear there. The
+		// attachment below is the part this plugin owns, and deleting the `add_action()` in
+		// integrations/bootstrap.php — the way this would actually regress — fails this test.
+		$this->assertNotFalse(
+			has_action( 'before_woocommerce_init', array( WooCommerce::class, 'declare_compatibility' ) ),
+			'Feature compatibility is not attached to before_woocommerce_init.'
+		);
 	}
 
 	/**

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "149d65c114fd89aa6a62bc2e764ea880",
+    "content-hash": "49c10a70906d4414556f449c27880f43",
     "packages": [
         {
             "name": "assinafy/php-sdk",
