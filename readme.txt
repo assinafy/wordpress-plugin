@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Assinafy delivers status notifications back to this site over the webhook endpoi
 Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 == Changelog ==
+
+= 1.0.1 =
+* Translations are delivered as wordpress.org language packs.
+* Fixes across sending, webhooks, multisite, privacy and WooCommerce. CHANGELOG.md has the full list.
 
 = 1.0.0 =
 * First release.

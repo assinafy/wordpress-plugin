@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-22
+
+### Changed
+
+- Translations come from wordpress.org language packs. The package ships only the
+  `languages/assinafy.pot` template and no longer bundles or loads a pt_BR catalogue.
+- The Plugin URI points at the source repository rather than the company site, and
+  `Tested up to` is declared only in `readme.txt`.
+
 ### Fixed
 
 - Kept pending signer details through unassigned uploads, preserved native metadata escaping,
@@ -90,4 +99,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Webhook routes authenticate with a rotatable high-entropy token compared using
   `hash_equals()`, and deliveries are de-duplicated by delivery id.
 
+[1.0.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.1
 [1.0.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.0
