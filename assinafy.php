@@ -5,7 +5,6 @@
  * Description:       Send WordPress documents for electronic signature with Assinafy and track them to completion.
  * Version:           1.0.0
  * Requires at least: 6.8
- * Tested up to:      7.1
  * Requires PHP:      8.2
  * WC requires at least: 10.2.2
  * WC tested up to:   11.1
