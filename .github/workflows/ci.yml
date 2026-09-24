@@ -159,6 +159,7 @@ jobs:
               -e "s/yourusernamehere/root/" \
               -e "s/yourpasswordhere/wordpress/" \
               -e "s/'localhost'/'127.0.0.1'/" \
+              -e "/^define( 'LOGGED_IN_KEY'/s/put your unique phrase here/assinafy-ci-test-key/" \
               .cache/wordpress-develop/wp-tests-config-sample.php \
               > .cache/wordpress-develop/wp-tests-config.php
 
