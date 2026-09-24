@@ -156,8 +156,8 @@ final class ElementorAction extends Action_Base {
 			( new Log() )->add(
 				'elementor_send_failed',
 				array(
-					'code'    => $result->get_error_code(),
-					'post_id' => is_array( $data ) ? (int) ( $data['post_id'] ?? 0 ) : 0,
+					'error_code' => $result->get_error_code(),
+					'post_id'    => is_array( $data ) ? (int) ( $data['post_id'] ?? 0 ) : 0,
 				)
 			);
 		}

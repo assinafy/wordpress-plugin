@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Assinafy 1.0.0\n"
+"Project-Id-Version: Assinafy 1.1.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/assinafy\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-14T22:18:40+00:00\n"
+"POT-Creation-Date: 2026-09-24T17:42:37+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: assinafy\n"
@@ -18,9 +18,9 @@ msgstr ""
 #. Author of the plugin
 #: assinafy.php
 #: src/Integrations/ElementorAction.php:59
-#: src/Settings.php:210
-#: src/Settings.php:211
-#: src/Settings.php:327
+#: src/Settings.php:240
+#: src/Settings.php:241
+#: src/Settings.php:362
 msgid "Assinafy"
 msgstr ""
 
@@ -100,6 +100,7 @@ msgid "That document does not exist."
 msgstr ""
 
 #: src/Admin/DocumentActions.php:278
+#: src/Admin/SettingsAjax.php:71
 msgid "Connect the plugin to Assinafy first."
 msgstr ""
 
@@ -319,12 +320,12 @@ msgid "Signers sharing an order number are invited at the same time. A higher nu
 msgstr ""
 
 #: src/Admin/SendScreen.php:205
-#: src/Settings.php:516
+#: src/Settings.php:464
 msgid "Message to signers"
 msgstr ""
 
 #: src/Admin/SendScreen.php:215
-#: src/Settings.php:504
+#: src/Settings.php:452
 msgid "Signature deadline"
 msgstr ""
 
@@ -393,10 +394,6 @@ msgstr ""
 msgid "Add a name and a valid, unique email address for every signer."
 msgstr ""
 
-#: src/Admin/SettingsAjax.php:71
-msgid "Enter an account id and an API key first."
-msgstr ""
-
 #. translators: %s: Assinafy account name.
 #: src/Admin/SettingsAjax.php:102
 #, php-format
@@ -421,12 +418,118 @@ msgstr ""
 msgid "This Assinafy account already delivers webhooks to %s. Registering this site replaces that subscription."
 msgstr ""
 
-#: src/Credentials.php:132
-msgid "The stored Assinafy API key was written by a different version of this plugin and cannot be read. Enter the key again."
+#: src/ConnectionSettings.php:33
+msgid "Connection"
 msgstr ""
 
-#: src/Credentials.php:189
-msgid "The stored Assinafy API key could not be decrypted. This happens when the site security salts change. Enter the key again."
+#: src/ConnectionSettings.php:36
+msgid "Assinafy OAuth"
+msgstr ""
+
+#: src/ConnectionSettings.php:43
+msgid "Environment"
+msgstr ""
+
+#: src/ConnectionSettings.php:48
+msgid "Production"
+msgstr ""
+
+#: src/ConnectionSettings.php:51
+msgid "Sandbox"
+msgstr ""
+
+#: src/ConnectionSettings.php:54
+msgid "Sandbox documents have no legal effect and are billed separately."
+msgstr ""
+
+#: src/ConnectionSettings.php:60
+msgid "Legacy account ID"
+msgstr ""
+
+#: src/ConnectionSettings.php:68
+msgid "Legacy / Sandbox API key"
+msgstr ""
+
+#: src/ConnectionSettings.php:74
+msgid "Test connection"
+msgstr ""
+
+#. translators: %s: Assinafy workspace ID.
+#: src/ConnectionSettings.php:93
+#, php-format
+msgid "Production connected to workspace %s."
+msgstr ""
+
+#: src/ConnectionSettings.php:99
+msgid "Reconnect Assinafy"
+msgstr ""
+
+#: src/ConnectionSettings.php:99
+msgid "Connect Assinafy"
+msgstr ""
+
+#: src/ConnectionSettings.php:102
+msgid "Authorization opens in a new tab. Copy the code shown by Assinafy and paste it here within 60 seconds."
+msgstr ""
+
+#: src/ConnectionSettings.php:103
+msgid "Authorization code"
+msgstr ""
+
+#: src/ConnectionSettings.php:105
+msgid "Complete connection"
+msgstr ""
+
+#: src/ConnectionSettings.php:109
+msgid "Disconnect"
+msgstr ""
+
+#: src/ConnectionSettings.php:116
+msgid "OAuth is available in Production. Sandbox still uses an API key."
+msgstr ""
+
+#: src/ConnectionSettings.php:119
+msgid "The Assinafy WordPress OAuth app is awaiting registration."
+msgstr ""
+
+#: src/ConnectionSettings.php:122
+msgid "Connect from an HTTPS WordPress admin page."
+msgstr ""
+
+#: src/ConnectionSettings.php:151
+msgid "Defined by ASSINAFY_ACCOUNT_ID in wp-config.php."
+msgstr ""
+
+#: src/ConnectionSettings.php:175
+msgid "Defined in wp-config.php"
+msgstr ""
+
+#: src/ConnectionSettings.php:176
+msgid "Defined by ASSINAFY_API_KEY in wp-config.php."
+msgstr ""
+
+#: src/ConnectionSettings.php:184
+msgid "Saved — leave blank to keep it"
+msgstr ""
+
+#: src/ConnectionSettings.php:184
+msgid "Paste your API key"
+msgstr ""
+
+#: src/ConnectionSettings.php:185
+msgid "Stored encrypted. Leave the field blank to keep the current key."
+msgstr ""
+
+#: src/CredentialCipher.php:48
+msgid "A stored Assinafy credential was written by a different version of this plugin and cannot be read. Reconnect Assinafy."
+msgstr ""
+
+#: src/CredentialCipher.php:113
+msgid "A stored Assinafy credential could not be decrypted. Check the site security salts, then reconnect Assinafy."
+msgstr ""
+
+#: src/Credentials.php:207
+msgid "Set unique WordPress security keys and salts, or ASSINAFY_ENCRYPTION_KEY, in wp-config.php before storing Assinafy credentials."
 msgstr ""
 
 #: src/Documents/CostEstimate.php:95
@@ -616,7 +719,7 @@ msgid "Upload returned no valid document id. Check the Assinafy account before r
 msgstr ""
 
 #: src/Documents/SendService.php:173
-msgid "Add an Assinafy API key and account id before sending a document."
+msgid "Connect the plugin to Assinafy before sending a document."
 msgstr ""
 
 #: src/Documents/SendService.php:269
@@ -792,6 +895,72 @@ msgstr ""
 msgid "— Select a PDF —"
 msgstr ""
 
+#: src/OAuthConnection.php:56
+#: src/OAuthConnection.php:102
+msgid "OAuth requires a registered WordPress app and an HTTPS production site."
+msgstr ""
+
+#: src/OAuthConnection.php:90
+msgid "Could not start the Assinafy connection. Try again."
+msgstr ""
+
+#: src/OAuthConnection.php:119
+msgid "Assinafy could not complete the connection. Try again."
+msgstr ""
+
+#: src/OAuthConnection.php:125
+msgid "Assinafy is connected with OAuth."
+msgstr ""
+
+#: src/OAuthConnection.php:126
+msgid "Assinafy is connected, but the previous workspace could not be revoked. Revoke it in Assinafy Connected Apps."
+msgstr ""
+
+#: src/OAuthConnection.php:153
+msgid "The Assinafy connection expired or was invalid. Try again."
+msgstr ""
+
+#: src/OAuthConnection.php:165
+msgid "The Assinafy connection code was invalid. Try again."
+msgstr ""
+
+#: src/OAuthConnection.php:177
+msgid "Assinafy could not remove the connection from this site. Try again."
+msgstr ""
+
+#: src/OAuthConnection.php:182
+msgid "Assinafy has been disconnected."
+msgstr ""
+
+#: src/OAuthConnection.php:183
+msgid "This site is disconnected, but Assinafy could not confirm revocation. Revoke the app in Assinafy Connected Apps."
+msgstr ""
+
+#: src/OAuthConnection.php:215
+#: src/Settings.php:355
+msgid "You are not allowed to manage Assinafy settings."
+msgstr ""
+
+#: src/OAuthTokens.php:41
+msgid "Reconnect Assinafy to continue."
+msgstr ""
+
+#: src/OAuthTokens.php:51
+msgid "Assinafy is renewing the connection. Try again shortly."
+msgstr ""
+
+#: src/OAuthTokens.php:88
+msgid "Assinafy was reconnected during renewal. Try again."
+msgstr ""
+
+#: src/OAuthTokens.php:94
+msgid "Assinafy could not be reached. Try again shortly."
+msgstr ""
+
+#: src/OAuthTokens.php:100
+msgid "Assinafy needs to be reconnected."
+msgstr ""
+
 #: src/Privacy.php:89
 msgid "<p>When we request an electronic signature, we send the document, signer names and email addresses, and signature instructions to Assinafy. Assinafy processes the document and may send signature invitations. We keep local records of document and assignment identifiers, signer details, signing links, signature progress, timestamps, and operational logs.</p><p>WordPress personal-data tools export local signature-request details and redact signer names, email addresses and signing links. Document and signer identifiers, signature evidence, and timestamps are retained. Documents held by Assinafy, their contents, and WooCommerce order data are not erased by this tool; requests concerning these records must be handled separately. Describe your retention period and the applicable Assinafy service terms and privacy policy here.</p>"
 msgstr ""
@@ -832,177 +1001,117 @@ msgstr ""
 msgid "Assinafy signature records for this address were redacted: the signer name, email address and signing link were replaced with a token. The signature evidence itself — the Assinafy document id, the assignment id, the signing order and every timestamp — is retained, because an electronic signature has to stay verifiable for the life of the document it signed."
 msgstr ""
 
-#: src/Settings.php:221
+#: src/Settings.php:251
 msgid "Assinafy Settings"
 msgstr ""
 
-#: src/Settings.php:222
+#: src/Settings.php:252
 msgid "Settings"
 msgstr ""
 
-#: src/Settings.php:261
+#: src/Settings.php:291
 msgid "Testing…"
 msgstr ""
 
-#: src/Settings.php:262
+#: src/Settings.php:292
 msgid "Working…"
 msgstr ""
 
-#: src/Settings.php:263
+#: src/Settings.php:293
 msgid "Request failed."
 msgstr ""
 
-#: src/Settings.php:264
+#: src/Settings.php:294
 msgid "This page has expired. Reload it and try again."
 msgstr ""
 
-#: src/Settings.php:265
+#: src/Settings.php:295
 msgid "This account already sends webhooks to another address. Replace it with this site?"
 msgstr ""
 
-#: src/Settings.php:320
-msgid "You are not allowed to manage Assinafy settings."
-msgstr ""
-
-#: src/Settings.php:345
+#: src/Settings.php:394
 msgid "Recent activity"
 msgstr ""
 
-#: src/Settings.php:359
-msgid "Connection"
-msgstr ""
-
-#: src/Settings.php:363
-msgid "Environment"
-msgstr ""
-
-#: src/Settings.php:368
-msgid "Production"
-msgstr ""
-
-#: src/Settings.php:371
-msgid "Sandbox"
-msgstr ""
-
-#: src/Settings.php:374
-msgid "Sandbox documents have no legal effect and are billed separately."
-msgstr ""
-
-#: src/Settings.php:379
-msgid "Account ID"
-msgstr ""
-
-#: src/Settings.php:387
-msgid "API key"
-msgstr ""
-
-#: src/Settings.php:393
-msgid "Test connection"
-msgstr ""
-
-#: src/Settings.php:414
-msgid "Defined by ASSINAFY_ACCOUNT_ID in wp-config.php."
-msgstr ""
-
-#: src/Settings.php:438
-msgid "Defined in wp-config.php"
-msgstr ""
-
-#: src/Settings.php:439
-msgid "Defined by ASSINAFY_API_KEY in wp-config.php."
-msgstr ""
-
-#: src/Settings.php:447
-msgid "Saved — leave blank to keep it"
-msgstr ""
-
-#: src/Settings.php:447
-msgid "Paste your API key"
-msgstr ""
-
-#: src/Settings.php:448
-msgid "Stored encrypted. Leave the field blank to keep the current key."
-msgstr ""
-
-#: src/Settings.php:459
+#: src/Settings.php:407
 msgid "Webhook"
 msgstr ""
 
-#: src/Settings.php:462
+#: src/Settings.php:410
 msgid "Status updates"
 msgstr ""
 
-#: src/Settings.php:467
+#: src/Settings.php:415
 msgid "Accept webhook deliveries from Assinafy"
 msgstr ""
 
-#: src/Settings.php:469
+#: src/Settings.php:417
 msgid "Document status is also reconciled hourly, so webhooks are an optimisation rather than a requirement."
 msgstr ""
 
-#: src/Settings.php:474
+#: src/Settings.php:422
 msgid "Endpoint"
 msgstr ""
 
-#: src/Settings.php:481
+#: src/Settings.php:429
 msgid "Register this site with Assinafy"
 msgstr ""
 
-#: src/Settings.php:485
+#: src/Settings.php:433
 msgid "An Assinafy account has one webhook subscription. Registering this site replaces any subscription already on file."
 msgstr ""
 
-#: src/Settings.php:500
+#: src/Settings.php:448
 msgid "Defaults"
 msgstr ""
 
-#: src/Settings.php:510
+#: src/Settings.php:458
 msgid "days"
 msgstr ""
 
-#: src/Settings.php:511
+#: src/Settings.php:459
 msgid "Zero sends no deadline."
 msgstr ""
 
-#: src/Settings.php:525
+#: src/Settings.php:473
 msgid "Capability required to send"
 msgstr ""
 
 #. translators: %s: default capability name.
-#: src/Settings.php:535
+#: src/Settings.php:483
 #, php-format
 msgid "Defaults to %s, which administrators and editors are granted on activation."
 msgstr ""
 
-#: src/Settings.php:552
+#: src/Settings.php:500
 msgid "Data"
 msgstr ""
 
-#: src/Settings.php:555
+#: src/Settings.php:503
 msgid "On uninstall"
 msgstr ""
 
-#: src/Settings.php:560
+#: src/Settings.php:508
 msgid "Delete the plugin settings and document records when the plugin is deleted"
 msgstr ""
 
-#: src/Settings.php:562
+#: src/Settings.php:510
 msgid "Documents already sent stay in your Assinafy account either way."
 msgstr ""
 
-#: src/Settings.php:576
+#: src/Settings.php:524
 msgid "Nothing logged yet."
 msgstr ""
 
-#: src/Settings.php:582
+#: src/Settings.php:530
 msgid "When"
 msgstr ""
 
-#: src/Settings.php:583
+#: src/Settings.php:531
 msgid "Event"
 msgstr ""
 
-#: src/Settings.php:584
+#: src/Settings.php:532
 msgid "Detail"
 msgstr ""
 

@@ -7,6 +7,8 @@ parallel on step 1.** Steps 0–4 run through
 [`SendService::send()`](../src/Documents/SendService.php). Links, later synchronization and
 downloads use the resulting local mirror. Admin, hook, WooCommerce, CLI and cron callers
 share the same send service.
+The HTTP examples show the legacy/Sandbox API key; a Production OAuth connection uses
+`Authorization: Bearer {ACCESS_TOKEN}` on the same endpoints.
 
 ### Step 0 — Validate locally, before spending a request
 

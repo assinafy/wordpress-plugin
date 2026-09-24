@@ -93,7 +93,7 @@ Three consequences fall straight out of the model and shape the whole plugin:
    look the signer up before creating one, or the second send fails.
 3. **Artifact endpoints require account authentication.** The plugin stores artifact names
    and uses [`DownloadProxy`](src/Documents/DownloadProxy.php) to fetch their bytes server-side
-   with the API key. Browser download links point to the permission-checked WordPress proxy.
+   with the active credential. Browser download links point to the permission-checked WordPress proxy.
 
 ### The state machine
 
@@ -222,8 +222,9 @@ site. Shipping zero Guzzle deletes that failure mode, and the `runtime-smoke` CI
 `class_exists( 'GuzzleHttp\Client' ) === false` in the production tree on every pipeline.
 
 It also means **the plugin must never call `AssinafyClient::create()`, `::fromArray()`,
-`::forAuth()` or `::forBearer()`** — each falls back to the absent Guzzle transport. There is
-exactly one construction site, in [`ClientFactory`](src/ClientFactory.php):
+`::forAuth()` or `::forBearer()`** — each falls back to the absent Guzzle transport.
+[`ClientFactory`](src/ClientFactory.php) builds API clients and [`OAuthTokens`](src/OAuthTokens.php)
+builds the public OAuth exchange client. Both inject `WpHttpClient`:
 
 ```php
 $config = new Assinafy\SDK\Configuration( $api_key, $account_id, $base_url, 30, 10 );
@@ -239,7 +240,7 @@ Going through `wp_remote_request()` also buys the site's configured proxy (`WP_P
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.0.0.zip
+# Built /path/to/dist/assinafy-1.1.0.zip
 ```
 
 `bin/build-zip.sh` applies `.distignore`, then refuses to produce a zip unless the plugin
@@ -258,6 +259,8 @@ Settings live under **Assinafy → Settings** (capability `manage_options`).
 | Environment | `assinafy_environment` | `production` |
 | Account ID | `assinafy_account_id` | `''` |
 | API key | `assinafy_api_key_enc` | `''` (stored encrypted) |
+| OAuth connection | `assinafy_oauth_connection_enc` | `''` (stored encrypted) |
+| Authentication mode | `assinafy_auth_mode` | `''` (legacy until connected) |
 | Accept webhook deliveries | `assinafy_webhook_enabled` | `false` |
 | Webhook endpoint token | `assinafy_webhook_token` | generated at activation |
 | Signature deadline (days) | `assinafy_default_expiry_days` | `30` |
@@ -269,11 +272,37 @@ Settings live under **Assinafy → Settings** (capability `manage_options`).
 registration, the screen and `uninstall.php` all iterate the same map, so an option cannot be
 added in one place and forgotten in another.
 
+### Production OAuth
+
+On an HTTPS site, select Production under **Assinafy → Settings** and click **Connect Assinafy**.
+Assinafy consent opens in a new tab. Copy the displayed code into the original WordPress settings
+tab within 60 seconds of approval. The plugin discovers the approved workspace from the token, so
+there is no account ID or API key to copy. It uses a Public Authorization Code client with PKCE S256
+and a dedicated callback. The callback validates state and issuer and shows the code only in that
+tab; WordPress retains the PKCE verifier and encrypts both tokens. Refresh
+tokens rotate, and the connection expires after 30 days. **Disconnect** attempts to revoke the
+refresh token and always removes the local connection; if remote revocation fails, revoke the app
+in Assinafy Connected Apps.
+
+Register a Public app named **Assinafy para WordPress** with:
+
+- Callback: `https://integrations.assinafy.com.br/wordpress/oauth-callback`
+- SVG icon: `https://integrations.assinafy.com.br/wordpress/wordpress-icon.svg`
+- Scopes: `account:read documents:read documents:write webhooks:write offline_access`
+- Portuguese description: “Conecta sites WordPress à Assinafy para enviar documentos para assinatura, acompanhar o andamento e receber atualizações.”
+
+The public `client_id` is bundled in the plugin and callback service. The hosted route accepts only
+that registered app. No client secret or DCR is involved.
+
 ### Credentials
 
-The API key is encrypted at rest with libsodium. The stored blob is
+The legacy API key and OAuth connection are encrypted at rest with libsodium. The stored blob is
 `hex( version-byte || nonce || secretbox )`; the leading version byte exists so a future
 change of key derivation is *detectable* rather than silently producing garbage.
+New credentials require a unique `LOGGED_IN_KEY`, `LOGGED_IN_SALT`, or `SECRET_KEY` in `wp-config.php`,
+or `ASSINAFY_ENCRYPTION_KEY`. WordPress-generated salts stored in the database cannot protect
+credentials against a database dump. Existing values remain readable; adding
+`ASSINAFY_ENCRYPTION_KEY` after storing credentials requires reconnecting or re-entering the API key.
 
 The field renders with `value=""` so ciphertext never reaches the browser, which means every
 save that does not change the key arrives blank. **Blank means keep** — a
@@ -291,7 +320,7 @@ If those returned `''` instead, a site whose salts were rotated would report its
 
 ### wp-config.php constants
 
-Nonempty string `ASSINAFY_API_KEY` and `ASSINAFY_ACCOUNT_ID` constants override their saved
+For legacy and Sandbox connections, nonempty string `ASSINAFY_API_KEY` and `ASSINAFY_ACCOUNT_ID` constants override their saved
 options and make those two settings fields read-only. `ASSINAFY_ENCRYPTION_KEY` optionally
 supplies encryption key material; it has no settings field.
 
@@ -305,9 +334,9 @@ define( 'ASSINAFY_API_KEY', '{API_KEY}' );
 define( 'ASSINAFY_ACCOUNT_ID', '{ACCOUNT_ID}' );
 
 /**
- * Key material for encrypting the stored API key. Optional.
- * Without it the key is derived from wp_salt( 'logged_in' ), which means
- * rotating the site salts invalidates the stored API key.
+ * Key material for encrypting stored credentials. Optional when WordPress
+ * security keys and salts are unique in wp-config.php. Without it the key
+ * comes from wp_salt( 'logged_in' ); rotating salts invalidates stored values.
  */
 define( 'ASSINAFY_ENCRYPTION_KEY', 'a long random string, generated once, never committed' );
 ```
@@ -316,9 +345,9 @@ define( 'ASSINAFY_ENCRYPTION_KEY', 'a long random string, generated once, never 
 want the key material out of the database entirely. It is hashed through
 `sodium_crypto_generichash` to 32 bytes, so its length does not matter — its entropy does.
 
-With `ASSINAFY_API_KEY` and `ASSINAFY_ACCOUNT_ID` configured, credentials need not be stored
-in the database. Defining constants does not delete previously saved credentials. Sending
-and webhook account checks both honor these overrides.
+For legacy and Sandbox connections, `ASSINAFY_API_KEY` and `ASSINAFY_ACCOUNT_ID` avoid storing the
+key in the database. Defining constants does not delete saved credentials. After Production OAuth
+connects, the plugin uses the approved workspace and ignores these constants for production API calls.
 
 ### Environment selection
 
@@ -1008,6 +1037,8 @@ a separate WooCommerce product. See [the workflow decisions](docs/integrations.e
 
 The resource methods used by this plugin are listed below. The bundled SDK also supplies
 local validation, configuration and transport helpers.
+The HTTP examples show `X-Api-Key` for legacy and Sandbox connections. Production OAuth uses
+`Authorization: Bearer {ACCESS_TOKEN}` on the same endpoints.
 
 ### `accounts()->get()`
 

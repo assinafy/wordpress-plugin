@@ -229,6 +229,7 @@ final class WpHttpClientEnvelopeTest extends TransportTestCase {
 			$this->fail( 'Expected a NetworkException.' );
 		} catch ( NetworkException $e ) {
 			$this->assertSame( 'Network error while calling the Assinafy API', $e->getMessage() );
+			$this->assertSame( array(), $e->getContext() );
 
 			$previous = $e->getPrevious();
 			$this->assertInstanceOf( \RuntimeException::class, $previous );
@@ -251,6 +252,7 @@ final class WpHttpClientEnvelopeTest extends TransportTestCase {
 		} catch ( NetworkException $e ) {
 			$this->assertStringContainsString( 'WP_ACCESSIBLE_HOSTS', $e->getMessage() );
 			$this->assertStringContainsString( 'WP_HTTP_BLOCK_EXTERNAL', $e->getMessage() );
+			$this->assertSame( array( 'request_sent' => false ), $e->getContext() );
 		}
 	}
 

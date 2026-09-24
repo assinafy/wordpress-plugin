@@ -86,7 +86,7 @@ final class WebhookCli {
 			WP_CLI::error(
 				null !== $error
 					? $error->get_error_message()
-					: 'Set an account id and an API key before touching the webhook subscription.'
+					: 'Connect the plugin to Assinafy before touching the webhook subscription.'
 			);
 
 			return;

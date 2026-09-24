@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-24
+
+### Added
+
+- Public OAuth authorization-code and PKCE connection for production WordPress sites, with a dedicated Assinafy callback, encrypted tokens, refresh rotation, and disconnect/revoke.
+
+### Changed
+
+- Existing API-key connections remain usable; fresh production connections use OAuth. Sandbox continues to use an API key.
+- New stored credentials require file-backed key material. Failed remote revocation still disconnects the site, and refresh requests that never left WordPress can be retried.
+- Upgrade the Assinafy PHP SDK to 2.4.0 for OAuth support.
+
 ## [1.0.1] - 2026-09-22
 
 ### Changed
@@ -99,5 +111,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Webhook routes authenticate with a rotatable high-entropy token compared using
   `hash_equals()`, and deliveries are de-duplicated by delivery id.
 
+[1.1.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.0
 [1.0.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.1
 [1.0.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.0

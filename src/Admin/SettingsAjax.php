@@ -68,7 +68,7 @@ final class SettingsAjax {
 					'message' => esc_html(
 						null !== $error
 							? $error->get_error_message()
-							: __( 'Enter an account id and an API key first.', 'assinafy' )
+							: __( 'Connect the plugin to Assinafy first.', 'assinafy' )
 					),
 				)
 			);
@@ -186,8 +186,8 @@ final class SettingsAjax {
 		$this->log->add(
 			'webhook_registration_failed',
 			array(
-				'error' => $error->get_error_message(),
-				'code'  => $error->get_error_code(),
+				'error'      => $error->get_error_message(),
+				'error_code' => $error->get_error_code(),
 			)
 		);
 

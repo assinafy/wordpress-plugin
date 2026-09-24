@@ -31,10 +31,9 @@ final class Credentials {
 
 	public const OPTION_ACCOUNT_ID = 'assinafy_account_id';
 
-	/**
-	 * Key-derivation version stamped into every blob this build writes.
-	 */
-	private const KEY_VERSION = 1;
+	public const OPTION_OAUTH_CONNECTION = 'assinafy_oauth_connection_enc';
+
+	public const OPTION_AUTH_MODE = 'assinafy_auth_mode';
 
 	/**
 	 * The API key, or an empty string when none is configured.
@@ -79,11 +78,105 @@ final class Credentials {
 	 * The account id, or an empty string when none is configured.
 	 */
 	public function account_id(): string {
+		if ( $this->uses_oauth() ) {
+			$connection = $this->oauth_connection();
+
+			return is_array( $connection ) ? $connection['account_id'] : '';
+		}
+
 		if ( $this->is_account_id_constant() ) {
 			return (string) constant( 'ASSINAFY_ACCOUNT_ID' );
 		}
 
 		return (string) get_option( self::OPTION_ACCOUNT_ID, '' );
+	}
+
+	/**
+	 * Whether production requests use OAuth. Sandbox keeps its legacy API-key path;
+	 * disconnecting production cannot silently reactivate a production API key.
+	 */
+	public function uses_oauth(): bool {
+		return 'oauth' === (string) get_option( self::OPTION_AUTH_MODE, '' )
+			&& 'sandbox' !== Settings::get( Settings::OPTION_ENVIRONMENT );
+	}
+
+	/**
+	 * The encrypted OAuth connection, null when absent, or an error when unreadable.
+	 *
+	 * @return array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string}|WP_Error|null
+	 */
+	public function oauth_connection(): array|WP_Error|null {
+		$snapshot = $this->oauth_connection_snapshot();
+
+		return is_array( $snapshot ) ? $snapshot['connection'] : $snapshot;
+	}
+
+	/**
+	 * Return the encrypted option alongside its value for a conditional refresh write.
+	 *
+	 * @return array{connection: array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string}, ciphertext: string}|WP_Error|null
+	 */
+	public function oauth_connection_snapshot(): array|WP_Error|null {
+		$stored = (string) get_option( self::OPTION_OAUTH_CONNECTION, '' );
+		if ( '' === $stored ) {
+			return null;
+		}
+
+		$json = $this->decrypt( $stored );
+		if ( $json instanceof WP_Error ) {
+			return $json;
+		}
+
+		$value = json_decode( $json, true );
+		if ( ! is_array( $value ) || ! self::valid_oauth_connection( $value ) ) {
+			return CredentialCipher::unreadable();
+		}
+
+		/** @var array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string} $value */
+		return array(
+			'connection' => $value,
+			'ciphertext' => $stored,
+		);
+	}
+
+	/** @param array<string, mixed> $value Decrypted connection. */
+	private static function valid_oauth_connection( array $value ): bool {
+		foreach ( array( 'account_id', 'access_token', 'refresh_token', 'scope' ) as $field ) {
+			if ( ! is_string( $value[ $field ] ?? null ) || '' === $value[ $field ] ) {
+				return false;
+			}
+		}
+
+		return is_int( $value['expires_at'] ?? null ) && is_int( $value['connected_at'] ?? null );
+	}
+
+	/**
+	 * Replace both rotating tokens in one non-autoloaded option write.
+	 *
+	 * @param array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string} $connection OAuth tokens and workspace.
+	 */
+	public function set_oauth_connection( array $connection ): void {
+		$json = wp_json_encode( $connection );
+		if ( false === $json ) {
+			throw new \RuntimeException( 'Assinafy OAuth connection could not be encoded' );
+		}
+		if ( ! update_option( self::OPTION_OAUTH_CONNECTION, $this->encrypt( $json ), false ) ) {
+			throw new \RuntimeException( 'Assinafy OAuth connection could not be stored' );
+		}
+		if ( 'oauth' !== get_option( self::OPTION_AUTH_MODE ) && ! update_option( self::OPTION_AUTH_MODE, 'oauth', true ) ) {
+			delete_option( self::OPTION_OAUTH_CONNECTION );
+			throw new \RuntimeException( 'Assinafy OAuth mode could not be stored' );
+		}
+	}
+
+	/** Clear OAuth while keeping legacy credentials unused after disconnect. */
+	public function clear_oauth_connection(): bool {
+		if ( 'oauth' !== get_option( self::OPTION_AUTH_MODE ) && ! update_option( self::OPTION_AUTH_MODE, 'oauth', true ) ) {
+			return false;
+		}
+		delete_option( self::OPTION_OAUTH_CONNECTION );
+
+		return '' === (string) get_option( self::OPTION_OAUTH_CONNECTION, '' );
 	}
 
 	/**
@@ -101,13 +194,17 @@ final class Credentials {
 	 * @param string $plaintext Value to protect.
 	 */
 	public function encrypt( string $plaintext ): string {
-		$nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
-		$key   = $this->derive_key();
-		$blob  = chr( self::KEY_VERSION ) . $nonce . sodium_crypto_secretbox( $plaintext, $nonce, $key );
+		return ( new CredentialCipher() )->encrypt( $plaintext );
+	}
 
-		sodium_memzero( $key );
+	/** Whether the encryption key includes a secret absent from a database dump. */
+	public function has_server_key_material(): bool {
+		return CredentialCipher::is_file_backed();
+	}
 
-		return bin2hex( $blob );
+	/** The remediation shown before an admin starts OAuth or saves an API key. */
+	public static function missing_key_material_message(): string {
+		return __( 'Set unique WordPress security keys and salts, or ASSINAFY_ENCRYPTION_KEY, in wp-config.php before storing Assinafy credentials.', 'assinafy' );
 	}
 
 	/**
@@ -118,33 +215,7 @@ final class Credentials {
 	 * @return string|WP_Error Plaintext, or an error naming why it could not be read.
 	 */
 	public function decrypt( string $stored ): string|WP_Error {
-		$minimum = 1 + SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES;
-
-		if ( '' === $stored || 0 !== strlen( $stored ) % 2 || ! ctype_xdigit( $stored ) || strlen( $stored ) / 2 < $minimum ) {
-			return $this->unreadable();
-		}
-
-		$blob = (string) hex2bin( $stored );
-
-		if ( self::KEY_VERSION !== ord( $blob[0] ) ) {
-			return new WP_Error(
-				'assinafy_credentials_key_version',
-				__( 'The stored Assinafy API key was written by a different version of this plugin and cannot be read. Enter the key again.', 'assinafy' )
-			);
-		}
-
-		$nonce      = substr( $blob, 1, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
-		$ciphertext = substr( $blob, 1 + SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
-		$key        = $this->derive_key();
-		$plaintext  = sodium_crypto_secretbox_open( $ciphertext, $nonce, $key );
-
-		sodium_memzero( $key );
-
-		if ( false === $plaintext ) {
-			return $this->unreadable();
-		}
-
-		return $plaintext;
+		return ( new CredentialCipher() )->decrypt( $stored );
 	}
 
 	/**
@@ -155,38 +226,5 @@ final class Credentials {
 	 */
 	public function is_encrypted( string $value ): bool {
 		return ! is_wp_error( $this->decrypt( $value ) );
-	}
-
-	/**
-	 * The 32-byte secret-box key.
-	 *
-	 * `ASSINAFY_ENCRYPTION_KEY` lets a site keep the key out of the database entirely.
-	 * Otherwise WordPress resolves the authentication salts, including its generated fallback
-	 * when constants are missing or still contain sample values. Rotating those salts
-	 * invalidates the stored key — reported, never silently swallowed.
-	 */
-	private function derive_key(): string {
-		return sodium_crypto_generichash( $this->key_material(), '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES );
-	}
-
-	/**
-	 * The secret the key is derived from.
-	 */
-	private function key_material(): string {
-		if ( defined( 'ASSINAFY_ENCRYPTION_KEY' ) && is_string( constant( 'ASSINAFY_ENCRYPTION_KEY' ) ) && '' !== constant( 'ASSINAFY_ENCRYPTION_KEY' ) ) {
-			return (string) constant( 'ASSINAFY_ENCRYPTION_KEY' );
-		}
-
-		return wp_salt( 'logged_in' );
-	}
-
-	/**
-	 * The error returned for a blob that exists but cannot be decrypted.
-	 */
-	private function unreadable(): WP_Error {
-		return new WP_Error(
-			'assinafy_credentials_unreadable',
-			__( 'The stored Assinafy API key could not be decrypted. This happens when the site security salts change. Enter the key again.', 'assinafy' )
-		);
 	}
 }

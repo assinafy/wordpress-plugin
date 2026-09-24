@@ -101,6 +101,57 @@ final class SettingsTest extends AssinafyTestCase {
 		$this->assertArrayNotHasKey( Settings::OPTION_API_KEY, wp_load_alloptions( true ) );
 	}
 
+	/** A settings save cannot erase or autoload the encrypted OAuth connection. */
+	public function test_settings_save_preserves_oauth_tokens(): void {
+		$credentials = new Credentials();
+		$credentials->set_oauth_connection(
+			array(
+				'account_id'    => self::ACCOUNT_ID,
+				'access_token'  => 'synthetic-access',
+				'refresh_token' => 'synthetic-refresh',
+				'expires_at'    => time() + 3600,
+				'connected_at'  => time(),
+				'scope'         => 'account:read documents:read documents:write webhooks:write',
+			)
+		);
+		$before = get_option( Settings::OPTION_OAUTH_CONNECTION );
+		$this->settings->register_options();
+		$allowed = apply_filters( 'allowed_options', array() );
+		$this->assertNotContains( Settings::OPTION_OAUTH_CONNECTION, $allowed[ Settings::PAGE ] );
+		$this->assertNotContains( Settings::OPTION_AUTH_MODE, $allowed[ Settings::PAGE ] );
+		$this->assertNotContains( Settings::OPTION_API_KEY, $allowed[ Settings::PAGE ] );
+		$this->assertNotContains( Settings::OPTION_ACCOUNT_ID, $allowed[ Settings::PAGE ] );
+		foreach ( $allowed[ Settings::PAGE ] as $option ) {
+			update_option( $option, get_option( $option ) );
+		}
+		$this->assertSame( $before, get_option( Settings::OPTION_OAUTH_CONNECTION ) );
+		$this->assertArrayNotHasKey( Settings::OPTION_OAUTH_CONNECTION, wp_load_alloptions( true ) );
+	}
+
+	/** A new HTTPS production site can start OAuth without exposing legacy credential fields. */
+	public function test_new_production_settings_show_oauth_connect(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$previous_https   = $_SERVER['HTTPS'] ?? null;
+		$_SERVER['HTTPS'] = 'on';
+		ob_start();
+		try {
+			$this->settings->render_page();
+			$html = (string) ob_get_contents();
+		} finally {
+			ob_end_clean();
+			if ( null === $previous_https ) {
+				unset( $_SERVER['HTTPS'] );
+			} else {
+				$_SERVER['HTTPS'] = $previous_https;
+			}
+		}
+
+		$this->assertStringContainsString( 'form="assinafy-oauth-start"', $html );
+		$this->assertStringContainsString( 'target="_blank" rel="noopener"', $html );
+		$this->assertStringContainsString( 'form="assinafy-oauth-complete"', $html );
+		$this->assertStringNotContainsString( 'name="assinafy_api_key_enc"', $html );
+	}
+
 	/**
 	 * The same request-scoped factory must use the current site's account and key.
 	 *

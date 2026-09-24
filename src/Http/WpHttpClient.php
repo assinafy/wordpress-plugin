@@ -368,11 +368,22 @@ final class WpHttpClient implements HttpClientInterface {
 			throw new NetworkException(
 				self::network_message( $result ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- This sanitized exception is not HTML; display consumers escape it.
 				0,
-				self::sanitized_previous( $result ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Preserve the sanitized Throwable cause without converting it into HTML.
+				self::sanitized_previous( $result ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Preserve the sanitized Throwable cause without converting it into HTML.
+				self::request_was_not_sent( $result ) ? array( 'request_sent' => false ) : array()
 			);
 		}
 
 		return $result;
+	}
+
+	/** Only transport failures before an HTTP request may retry a rotating token. */
+	private static function request_was_not_sent( \WP_Error $error ): bool {
+		if ( 'http_request_not_executed' === $error->get_error_code() ) {
+			return true;
+		}
+
+		return 'http_request_failed' === $error->get_error_code()
+			&& 1 === preg_match( '/^cURL error (?:6|7|35|60):/', $error->get_error_message() );
 	}
 
 	/**

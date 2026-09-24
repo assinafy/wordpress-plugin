@@ -170,7 +170,7 @@ final class SendService {
 		if ( null === $client ) {
 			return $this->clients->error() ?? new WP_Error(
 				'assinafy_not_configured',
-				__( 'Add an Assinafy API key and account id before sending a document.', 'assinafy' )
+				__( 'Connect the plugin to Assinafy before sending a document.', 'assinafy' )
 			);
 		}
 

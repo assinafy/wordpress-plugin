@@ -7,6 +7,8 @@ signatários em paralelo na etapa 1.** Os passos 0–4 rodam através de
 [`SendService::send()`](../src/Documents/SendService.php). Os links, a sincronização posterior e os
 downloads usam o espelho local resultante. Os chamadores do admin, dos hooks, do WooCommerce, da
 CLI e do cron compartilham o mesmo serviço de envio.
+Os exemplos HTTP mostram a chave de API legada/Sandbox; uma conexão OAuth de produção usa
+`Authorization: Bearer {ACCESS_TOKEN}` nos mesmos endpoints.
 
 ### Passo 0 — Validar localmente, antes de gastar uma requisição
 

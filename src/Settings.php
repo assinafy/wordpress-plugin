@@ -30,6 +30,12 @@ final class Settings {
 
 	public const OPTION_API_KEY = Credentials::OPTION_API_KEY;
 
+	public const OPTION_OAUTH_CONNECTION = Credentials::OPTION_OAUTH_CONNECTION;
+
+	public const OPTION_AUTH_MODE = Credentials::OPTION_AUTH_MODE;
+
+	public const OPTION_REFRESH_LOCK = OAuthTokens::OPTION_REFRESH_LOCK;
+
 	public const OPTION_ENVIRONMENT = 'assinafy_environment';
 
 	public const OPTION_WEBHOOK_TOKEN = 'assinafy_webhook_token';
@@ -53,55 +59,73 @@ final class Settings {
 	 * @var array<string, array{default: mixed, sanitize: string, autoload: bool, type: string}>
 	 */
 	public const OPTIONS = array(
-		self::OPTION_ACCOUNT_ID      => array(
+		self::OPTION_ACCOUNT_ID       => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_text_field',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_ENVIRONMENT     => array(
+		self::OPTION_ENVIRONMENT      => array(
 			'default'  => 'production',
 			'sanitize' => 'sanitize_key',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_API_KEY         => array(
+		self::OPTION_API_KEY          => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_api_key',
 			'autoload' => false,
 			'type'     => 'string',
 		),
-		self::OPTION_WEBHOOK_TOKEN   => array(
+		self::OPTION_OAUTH_CONNECTION => array(
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+			'autoload' => false,
+			'type'     => 'string',
+		),
+		self::OPTION_AUTH_MODE        => array(
+			'default'  => '',
+			'sanitize' => 'sanitize_key',
+			'autoload' => true,
+			'type'     => 'string',
+		),
+		self::OPTION_REFRESH_LOCK     => array(
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+			'autoload' => false,
+			'type'     => 'string',
+		),
+		self::OPTION_WEBHOOK_TOKEN    => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_key',
 			'autoload' => false,
 			'type'     => 'string',
 		),
-		self::OPTION_WEBHOOK_ENABLED => array(
+		self::OPTION_WEBHOOK_ENABLED  => array(
 			'default'  => false,
 			'sanitize' => 'rest_sanitize_boolean',
 			'autoload' => true,
 			'type'     => 'boolean',
 		),
-		self::OPTION_EXPIRY_DAYS     => array(
+		self::OPTION_EXPIRY_DAYS      => array(
 			'default'  => 30,
 			'sanitize' => 'absint',
 			'autoload' => true,
 			'type'     => 'integer',
 		),
-		self::OPTION_MESSAGE         => array(
+		self::OPTION_MESSAGE          => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_textarea_field',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_SENDER_CAP      => array(
+		self::OPTION_SENDER_CAP       => array(
 			'default'  => Capabilities::SEND,
 			'sanitize' => 'sanitize_key',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_DELETE_DATA     => array(
+		self::OPTION_DELETE_DATA      => array(
 			'default'  => false,
 			'sanitize' => 'rest_sanitize_boolean',
 			'autoload' => true,
@@ -170,6 +194,7 @@ final class Settings {
 	 * Register every option from the map.
 	 */
 	public function register_options(): void {
+		$connection_settings = new ConnectionSettings( $this->credentials );
 		foreach ( self::OPTIONS as $name => $spec ) {
 			$sanitize = method_exists( $this, $spec['sanitize'] )
 				? array( $this, $spec['sanitize'] )
@@ -182,8 +207,13 @@ final class Settings {
 			// An option the form cannot post stays out of the saved group, or options.php
 			// would erase it as an omitted input: the token has no field at all, and the
 			// account id drops its `name` while `ASSINAFY_ACCOUNT_ID` defines it.
-			$internal = self::OPTION_WEBHOOK_TOKEN === $name
+			$internal   = in_array( $name, array( self::OPTION_WEBHOOK_TOKEN, self::OPTION_OAUTH_CONNECTION, self::OPTION_AUTH_MODE, self::OPTION_REFRESH_LOCK ), true )
+				|| ( ! $connection_settings->show_legacy_fields() && in_array( $name, array( self::OPTION_ACCOUNT_ID, self::OPTION_API_KEY ), true ) )
 				|| ( self::OPTION_ACCOUNT_ID === $name && $this->credentials->is_account_id_constant() );
+			$registered = get_registered_settings()[ $name ]['group'] ?? null;
+			if ( is_string( $registered ) ) {
+				unregister_setting( $registered, $name );
+			}
 
 			register_setting(
 				$internal ? self::PAGE . '_internal' : self::PAGE,
@@ -297,6 +327,11 @@ final class Settings {
 		if ( '' === $value || $this->credentials->is_encrypted( $value ) ) {
 			return $value;
 		}
+		if ( ! $this->credentials->has_server_key_material() ) {
+			add_settings_error( self::OPTION_API_KEY, 'assinafy_missing_key_material', Credentials::missing_key_material_message() );
+
+			return (string) get_option( self::OPTION_API_KEY, '' );
+		}
 
 		return $this->credentials->encrypt( $value );
 	}
@@ -320,21 +355,35 @@ final class Settings {
 			wp_die( esc_html__( 'You are not allowed to manage Assinafy settings.', 'assinafy' ) );
 		}
 
-		$api_key   = $this->credentials->api_key();
+		$api_key   = $this->credentials->uses_oauth() ? '' : $this->credentials->api_key();
 		$key_error = $api_key instanceof WP_Error ? $api_key->get_error_message() : '';
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Assinafy', 'assinafy' ); ?></h1>
 			<?php settings_errors(); ?>
+			<?php OAuthConnection::render_notice(); ?>
 
 			<?php if ( '' !== $key_error ) : ?>
 				<div class="notice notice-error"><p><?php echo esc_html( $key_error ); ?></p></div>
 			<?php endif; ?>
 
+			<form id="assinafy-oauth-start" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" target="_blank" rel="noopener">
+				<input type="hidden" name="action" value="assinafy_oauth_start" />
+				<?php wp_nonce_field( 'assinafy_oauth_start' ); ?>
+			</form>
+			<form id="assinafy-oauth-complete" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+				<input type="hidden" name="action" value="assinafy_oauth_complete" />
+				<?php wp_nonce_field( 'assinafy_oauth_complete' ); ?>
+			</form>
+			<form id="assinafy-oauth-disconnect" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+				<input type="hidden" name="action" value="assinafy_oauth_disconnect" />
+				<?php wp_nonce_field( 'assinafy_oauth_disconnect' ); ?>
+			</form>
+
 			<form action="options.php" method="post">
 				<?php
 				settings_fields( self::PAGE );
-				$this->render_connection_section( '' === $key_error && '' !== $api_key );
+				( new ConnectionSettings( $this->credentials ) )->render( '' === $key_error && '' !== $api_key );
 				$this->render_webhook_section();
 				$this->render_defaults_section();
 				$this->render_data_section();
@@ -345,107 +394,6 @@ final class Settings {
 			<h2><?php esc_html_e( 'Recent activity', 'assinafy' ); ?></h2>
 			<?php $this->render_log(); ?>
 		</div>
-		<?php
-	}
-
-	/**
-	 * Render the environment, account and API key fields.
-	 *
-	 * @param bool $key_present Whether a usable API key is already stored.
-	 */
-	private function render_connection_section( bool $key_present ): void {
-		$environment = (string) self::get( self::OPTION_ENVIRONMENT );
-		?>
-		<h2><?php esc_html_e( 'Connection', 'assinafy' ); ?></h2>
-		<table class="form-table" role="presentation">
-			<tr>
-				<th scope="row">
-					<label for="assinafy-environment"><?php esc_html_e( 'Environment', 'assinafy' ); ?></label>
-				</th>
-				<td>
-					<select name="<?php echo esc_attr( self::OPTION_ENVIRONMENT ); ?>" id="assinafy-environment">
-						<option value="production" <?php selected( $environment, 'production' ); ?>>
-							<?php esc_html_e( 'Production', 'assinafy' ); ?>
-						</option>
-						<option value="sandbox" <?php selected( $environment, 'sandbox' ); ?>>
-							<?php esc_html_e( 'Sandbox', 'assinafy' ); ?>
-						</option>
-					</select>
-					<p class="description"><?php esc_html_e( 'Sandbox documents have no legal effect and are billed separately.', 'assinafy' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row">
-					<label for="assinafy-account-id"><?php esc_html_e( 'Account ID', 'assinafy' ); ?></label>
-				</th>
-				<td>
-					<?php $this->render_account_id_field(); ?>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row">
-					<label for="assinafy-api-key"><?php esc_html_e( 'API key', 'assinafy' ); ?></label>
-				</th>
-				<td>
-					<?php $this->render_api_key_field( $key_present ); ?>
-					<p>
-						<button type="button" class="button" id="assinafy-test-connection">
-							<?php esc_html_e( 'Test connection', 'assinafy' ); ?>
-						</button>
-						<span id="assinafy-test-connection-result" class="assinafy-result" role="status" aria-live="polite"></span>
-					</p>
-				</td>
-			</tr>
-		</table>
-		<?php
-	}
-
-	/**
-	 * Render the account id input, read-only when a constant defines it.
-	 *
-	 * A constant wins over the option, so offering an editable field would invite an operator
-	 * to change a value the site then ignores.
-	 */
-	private function render_account_id_field(): void {
-		if ( $this->credentials->is_account_id_constant() ) {
-			?>
-			<input type="text" class="regular-text" id="assinafy-account-id"
-				value="<?php echo esc_attr( $this->credentials->account_id() ); ?>" readonly />
-			<p class="description"><?php esc_html_e( 'Defined by ASSINAFY_ACCOUNT_ID in wp-config.php.', 'assinafy' ); ?></p>
-			<?php
-
-			return;
-		}
-		?>
-		<input type="text" class="regular-text" id="assinafy-account-id"
-			name="<?php echo esc_attr( self::OPTION_ACCOUNT_ID ); ?>"
-			value="<?php echo esc_attr( $this->credentials->account_id() ); ?>" />
-		<?php
-	}
-
-	/**
-	 * Render the API key input, read-only when a constant defines it.
-	 *
-	 * The stored key is never rendered back into the page in either branch: the field posts a
-	 * replacement or is left blank to keep what is on file.
-	 *
-	 * @param bool $key_present Whether a usable API key is already stored.
-	 */
-	private function render_api_key_field( bool $key_present ): void {
-		if ( $this->credentials->is_api_key_constant() ) {
-			?>
-			<input type="password" class="regular-text" id="assinafy-api-key" value="" readonly
-				placeholder="<?php esc_attr_e( 'Defined in wp-config.php', 'assinafy' ); ?>" />
-			<p class="description"><?php esc_html_e( 'Defined by ASSINAFY_API_KEY in wp-config.php.', 'assinafy' ); ?></p>
-			<?php
-
-			return;
-		}
-		?>
-		<input type="password" class="regular-text" id="assinafy-api-key" autocomplete="off"
-			name="<?php echo esc_attr( self::OPTION_API_KEY ); ?>" value=""
-			placeholder="<?php echo esc_attr( $key_present ? __( 'Saved — leave blank to keep it', 'assinafy' ) : __( 'Paste your API key', 'assinafy' ) ); ?>" />
-		<p class="description"><?php esc_html_e( 'Stored encrypted. Leave the field blank to keep the current key.', 'assinafy' ); ?></p>
 		<?php
 	}
 

@@ -63,22 +63,22 @@ final class ClientFactory {
 
 		$this->error = null;
 
-		$api_key = $this->credentials->api_key();
-
-		if ( $api_key instanceof WP_Error ) {
-			$this->error = $api_key;
+		$oauth_mode = $this->credentials->uses_oauth();
+		$credential = $this->credential();
+		if ( $credential instanceof WP_Error ) {
+			$this->error = $credential;
 
 			return null;
 		}
 
 		$account_id = $this->credentials->account_id();
-
-		if ( '' === $api_key || '' === $account_id ) {
+		if ( '' === $credential || '' === $account_id ) {
 			return null;
 		}
-
 		try {
-			$config = new Configuration( $api_key, $account_id, $this->base_url(), 30, 10 );
+			$config = $oauth_mode
+				? Configuration::forBearer( $credential, $account_id, $this->base_url(), 30, 10 )
+				: new Configuration( $credential, $account_id, $this->base_url(), 30, 10 );
 
 			$this->client = new AssinafyClient( $config, new WpHttpClient( $config ) );
 		} catch ( \Throwable $e ) {
@@ -96,6 +96,15 @@ final class ClientFactory {
 		}
 
 		return $this->client;
+	}
+
+	/** @return string|WP_Error Active credential. */
+	private function credential(): string|WP_Error {
+		if ( ! $this->credentials->uses_oauth() ) {
+			return $this->credentials->api_key();
+		}
+
+		return ( new OAuthTokens( $this->credentials ) )->access_token();
 	}
 
 	/**

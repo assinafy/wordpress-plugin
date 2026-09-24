@@ -222,10 +222,10 @@ final class Handler {
 			$this->log->add(
 				'webhook_sync_failed',
 				array(
-					'event'    => $event,
-					'document' => $document_id,
-					'error'    => $result->get_error_message(),
-					'code'     => $result->get_error_code(),
+					'event'      => $event,
+					'document'   => $document_id,
+					'error'      => $result->get_error_message(),
+					'error_code' => $result->get_error_code(),
 				)
 			);
 

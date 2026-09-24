@@ -187,6 +187,7 @@ final class Plugin {
 		( new Capabilities() )->register();
 		( new DocumentPostType() )->register();
 		( new Settings( $credentials, $clients, $log ) )->register();
+		( new OAuthConnection( $credentials ) )->register();
 		( new DownloadProxy( $clients, $records ) )->register();
 		( new Hook( $send ) )->register();
 		( new Route( new Handler( $sync, $log ) ) )->register();

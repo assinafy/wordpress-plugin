@@ -253,6 +253,41 @@ $GLOBALS['assinafy_test_transients'] = array();
 $GLOBALS['assinafy_test_meta']       = array();
 $GLOBALS['assinafy_test_posts']      = array();
 
+/** Minimal conditional option write used by OAuth refresh tests. */
+$GLOBALS['wpdb'] = new class() {
+	public string $options = 'wp_options';
+
+	/** @param mixed ...$arguments Prepared values. */
+	public function prepare( string $query, mixed ...$arguments ): string {
+		return (string) json_encode( $arguments );
+	}
+
+	/** Return one affected row only when the expected encrypted value still exists. */
+	public function query( string $prepared ): int {
+		$values = json_decode( $prepared, true );
+		if ( ! is_array( $values ) || ! in_array( count( $values ), array( 2, 3 ), true ) ) {
+			return 0;
+		}
+		$option   = 2 === count( $values ) ? $values[0] : $values[1];
+		$expected = 2 === count( $values ) ? $values[1] : $values[2];
+		if ( get_option( $option, '' ) !== $expected ) {
+			return 0;
+		}
+		if ( 2 === count( $values ) ) {
+			delete_option( $option );
+		} else {
+			update_option( $option, $values[0] );
+		}
+
+		return 1;
+	}
+};
+
+/** @param string $key Cache key. @param string $group Cache group. */
+function wp_cache_delete( string $key, string $group = '' ): bool {
+	return true;
+}
+
 if ( ! function_exists( 'get_option' ) ) {
 	/**
 	 * @param string $option  Option name.
@@ -271,6 +306,24 @@ if ( ! function_exists( 'update_option' ) ) {
 	 * @param bool|null $autoload Autoload flag, ignored here.
 	 */
 	function update_option( string $option, $value, $autoload = null ): bool {
+		$GLOBALS['assinafy_test_options'][ $option ] = $value;
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'add_option' ) ) {
+	/**
+	 * @param string    $option   Option name.
+	 * @param mixed     $value    Value.
+	 * @param string    $deprecated Unused legacy argument.
+	 * @param bool|null $autoload Autoload flag.
+	 */
+	function add_option( string $option, $value = '', string $deprecated = '', $autoload = null ): bool {
+		if ( array_key_exists( $option, $GLOBALS['assinafy_test_options'] ) ) {
+			return false;
+		}
+
 		$GLOBALS['assinafy_test_options'][ $option ] = $value;
 
 		return true;

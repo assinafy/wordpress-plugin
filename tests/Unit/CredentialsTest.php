@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace Assinafy\WP\Tests\Unit;
 
 use Assinafy\WP\Credentials;
+use Assinafy\WP\CredentialCipher;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 use WP_Error;
 
 /**
@@ -37,6 +39,25 @@ final class CredentialsTest extends TestCase {
 		$plaintext = 'ak_live_not_a_real_key_0e3a1c4b9f2d47a8';
 
 		$this->assertSame( $plaintext, $this->credentials->decrypt( $this->credentials->encrypt( $plaintext ) ) );
+	}
+
+	/** Missing, sample, and duplicate wp-config secrets must not secure a database dump. */
+	public function test_only_a_unique_file_backed_logged_in_secret_allows_new_credentials(): void {
+		$check = new ReflectionMethod( CredentialCipher::class, 'has_unique_logged_in_secret' );
+		$this->assertFalse( $check->invoke( null, array() ) );
+		$this->assertFalse( $check->invoke( null, array( 'LOGGED_IN_KEY' => 'put your unique phrase here' ) ) );
+		$this->assertFalse(
+			$check->invoke(
+				null,
+				array(
+					'LOGGED_IN_KEY' => 'duplicate',
+					'AUTH_KEY'      => 'duplicate',
+				)
+			)
+		);
+		$this->assertTrue( $check->invoke( null, array( 'LOGGED_IN_SALT' => 'unique-salt' ) ) );
+		$this->assertTrue( $check->invoke( null, array( 'SECRET_KEY' => 'unique-secret' ) ) );
+		$this->assertTrue( $this->credentials->has_server_key_material() );
 	}
 
 	public function test_a_key_survives_a_round_trip_through_the_option(): void {

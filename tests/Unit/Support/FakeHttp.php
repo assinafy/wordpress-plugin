@@ -35,12 +35,16 @@ final class FakeHttp {
 	 */
 	private static array $queue = array();
 
+	/** @var (\Closure(): void)|null Simulates another request during an HTTP call. */
+	public static ?\Closure $before_response = null;
+
 	/**
 	 * Forget every recorded request and queued response.
 	 */
 	public static function reset(): void {
-		self::$requests = array();
-		self::$queue    = array();
+		self::$requests        = array();
+		self::$queue           = array();
+		self::$before_response = null;
 	}
 
 	/**
@@ -110,6 +114,9 @@ final class FakeHttp {
 			'url'  => $url,
 			'args' => $args,
 		);
+		if ( null !== self::$before_response ) {
+			( self::$before_response )();
+		}
 
 		if ( array() === self::$queue ) {
 			return new WP_Error( 'assinafy_test_no_response', 'No response was queued for this request.' );

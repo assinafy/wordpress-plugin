@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Send PDFs for electronic signature with Assinafy, follow every signer from wp-ad
 
 Assinafy connects your WordPress site to the Assinafy electronic signature service. Choose a PDF you have already uploaded, name the people who must sign it, and send it for signature without leaving the admin. Each request stays on record inside WordPress, and its status is kept current until the document is signed and certified.
 
-An Assinafy account and an API key are required. Assinafy has a free plan, and the plugin can run against the Assinafy sandbox while you set it up.
+An Assinafy account is required. Connect your production workspace with OAuth from the settings screen. Existing API keys continue to work, and the sandbox still uses an API key.
 
 = What it does =
 
@@ -62,26 +62,27 @@ Signing happens on Assinafy's own hosted pages, not inside WordPress. This plugi
 == Installation ==
 
 1. In wp-admin go to **Plugins &rarr; Add New**, search for Assinafy, then install and activate. To install manually, upload the plugin folder to `wp-content/plugins/` and activate it from the Plugins screen.
-2. Create a free account at assinafy.com.br, then open **Minha Conta &rarr; API** to generate an API key and **Minha Conta &rarr; Workspaces** to copy your account id.
-3. In wp-admin open **Assinafy &rarr; Settings**. Choose Production or Sandbox, paste the account id and the API key, and save.
-4. Press **Test connection**. It should name your account.
+2. Create a free account at assinafy.com.br and use an HTTPS WordPress admin page.
+3. In wp-admin open **Assinafy &rarr; Settings**, choose Production, and press **Connect Assinafy**. Approve access in the new tab, then copy the displayed code into the original WordPress settings tab within 60 seconds. The plugin selects the workspace you approved.
+4. For Sandbox, choose Sandbox and enter its account id and API key. Existing production API-key connections continue to work until you connect with OAuth.
 5. Press **Register this site with Assinafy** to receive status updates over a webhook. This is optional: status is reconciled hourly regardless.
 6. Set a default deadline and an optional default message, and choose which capability is allowed to send.
 
 Activation grants administrators all three Assinafy capabilities, editors send and view, and authors view; registers the Documents post type; generates the webhook token; and schedules the hourly reconcile job. Nothing is deleted on deactivation.
 
-Instead of storing the credentials in the database, define them in `wp-config.php`:
+For a legacy or sandbox API-key connection, you may define credentials in `wp-config.php`:
 
 `define( 'ASSINAFY_ACCOUNT_ID', '...' );
 define( 'ASSINAFY_API_KEY', '...' );`
 
-Otherwise the API key is stored encrypted, and the settings field never renders it back to the browser.
+Otherwise the API key is stored encrypted, and the settings field never renders it back to the browser. OAuth access and refresh tokens are also encrypted in WordPress; you can disconnect from the settings screen.
+New stored credentials require unique WordPress security keys and salts in `wp-config.php`, or a random `ASSINAFY_ENCRYPTION_KEY` constant. WordPress-generated database salts alone cannot protect credentials in a database backup. Existing credentials remain readable; if you add a new encryption key, reconnect Assinafy or re-enter the API key.
 
 == Frequently Asked Questions ==
 
 = Do I need an Assinafy account? =
 
-Yes. The plugin does nothing until an account id and an API key are entered. Assinafy has a free plan with an API included.
+Yes. Connect your production workspace with OAuth, or use an API key for Sandbox or an existing legacy connection. Assinafy has a free plan.
 
 = Can I try it without spending a document? =
 
@@ -119,12 +120,15 @@ One document from your Assinafy plan allowance. Email invitations cost no credit
 
 This plugin connects to the Assinafy electronic signature service, which is where documents are uploaded, signed, certified and stored. It is required for the plugin to do anything.
 
-One of two hosts is used, chosen by the Environment setting:
+API requests use one of two hosts, chosen by the Environment setting:
 
 * `api.assinafy.com.br` &mdash; Production. Real, legally effective signatures.
 * `sandbox.assinafy.com.br` &mdash; Sandbox. Test signatures with no legal effect.
 
-Every request the plugin sends carries your Assinafy API key in an `X-Api-Key` header. The only exception is the signer-side token route, which Assinafy serves without credentials.
+Production OAuth connection opens `auth.assinafy.com.br` for consent. A new tab first visits `integrations.assinafy.com.br/wordpress/oauth-start` with the public client ID, requested permissions, random state and PKCE challenge. Assinafy sends a short-lived authorization code to `integrations.assinafy.com.br/wordpress/oauth-callback`. That page validates the browser session, state and issuer, then shows the code for the admin to copy into the original WordPress settings tab. It does not forward the code to a site or receive the PKCE verifier, access token or refresh token. The plugin exchanges the code directly with `api.assinafy.com.br` using the verifier stored on this WordPress site. WordPress stores both tokens encrypted, renews them as needed, and asks you to reconnect after 30 days.
+
+Production API requests use `Authorization: Bearer` after OAuth connection. Existing API-key connections and Sandbox requests use `X-Api-Key`. The signer-side token route needs neither credential.
+Disconnect removes this site's OAuth tokens even if remote revocation fails. In that case, revoke the app in Assinafy Connected Apps.
 
 What is sent, and when:
 
@@ -135,13 +139,17 @@ What is sent, and when:
 * **Resending, moving a deadline, cancelling or renaming** (when you press the button): the Assinafy document or assignment id, and the new deadline or name.
 * **Downloading a file** (when you press a download link): the Assinafy document id and the name of the file requested.
 
-Nothing else is transmitted. No site visitor data, no post content and no WordPress user account data leaves the site beyond what you enter or explicitly map into a signature request.
+No site visitor data, no post content and no WordPress user account data leaves the site beyond the connection details above and what you enter or explicitly map into a signature request.
 
 Assinafy delivers status notifications back to this site over the webhook endpoint, if you register one. Those deliveries are used only as a signal to re-check a document.
 
 Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 == Changelog ==
+
+= 1.1.0 =
+* Adds OAuth connection for production WordPress sites, with encrypted rotating tokens, a dedicated callback and disconnect control.
+* Existing API-key connections continue to work; Sandbox still uses an API key.
 
 = 1.0.1 =
 * Translations are delivered as wordpress.org language packs.
@@ -151,6 +159,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Connect your production workspace through Assinafy OAuth. Existing API-key connections remain usable.
 
 = 1.0.0 =
 First release. Requires PHP 8.2, WordPress 6.8, and an Assinafy account with an API key.

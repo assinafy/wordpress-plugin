@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49c10a70906d4414556f449c27880f43",
+    "content-hash": "824f5196a2238ab69c96a4a43601235d",
     "packages": [
         {
             "name": "assinafy/php-sdk",
-            "version": "v2.1.3",
+            "version": "v2.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/assinafy/php-sdk.git",
-                "reference": "b66153945432a6135c84e44e692e4ceffd551fc4"
+                "reference": "7cd4b070586c28630762d7a87008abcbf5927ef5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/assinafy/php-sdk/zipball/b66153945432a6135c84e44e692e4ceffd551fc4",
-                "reference": "b66153945432a6135c84e44e692e4ceffd551fc4",
+                "url": "https://api.github.com/repos/assinafy/php-sdk/zipball/7cd4b070586c28630762d7a87008abcbf5927ef5",
+                "reference": "7cd4b070586c28630762d7a87008abcbf5927ef5",
                 "shasum": ""
             },
             "require": {
@@ -60,9 +60,9 @@
             ],
             "support": {
                 "issues": "https://github.com/assinafy/php-sdk/issues",
-                "source": "https://github.com/assinafy/php-sdk/tree/v2.1.3"
+                "source": "https://github.com/assinafy/php-sdk/tree/v2.4.0"
             },
-            "time": "2026-08-28T00:29:25+00:00"
+            "time": "2026-09-23T23:47:15+00:00"
         },
         {
             "name": "psr/log",

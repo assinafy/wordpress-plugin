@@ -178,8 +178,8 @@ final class ElementorTest extends AssinafyTestCase {
 		$bridge->core_ready( new SendService( new ClientFactory( new Credentials(), new Log() ), new DocumentRecord(), new Log() ) );
 		$registrar->actions['assinafy']->run( $this->record(), new Ajax_Handler() );
 		$entries = ( new Log() )->entries();
-		$this->assertSame( 'assinafy_not_ready', $entries[0]['context']['code'] );
-		$this->assertSame( 'assinafy_not_configured', $entries[1]['context']['code'] );
+		$this->assertSame( 'assinafy_not_ready', $entries[0]['context']['error_code'] );
+		$this->assertSame( 'assinafy_not_configured', $entries[1]['context']['error_code'] );
 		$this->assertSame( array(), $this->requests );
 	}
 

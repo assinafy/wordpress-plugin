@@ -580,7 +580,7 @@ final class CliTest extends AssinafyTestCase {
 		$this->cli = $this->command_object();
 
 		$this->assertCommandStops(
-			'Set an account id and an API key before touching the webhook subscription.',
+			'Connect the plugin to Assinafy before touching the webhook subscription.',
 			'webhook',
 			array( 'status' )
 		);
