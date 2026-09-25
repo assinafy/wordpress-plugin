@@ -250,7 +250,7 @@ Passar por `wp_remote_request()` também entrega de graça o proxy configurado n
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.2.0.zip
+# Built /path/to/dist/assinafy-1.1.2.zip
 ```
 
 O `bin/build-zip.sh` aplica o `.distignore` e depois se recusa a produzir um zip a menos que o

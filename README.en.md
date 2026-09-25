@@ -241,7 +241,7 @@ site's own SSL settings, and the existing `http_request_*` filter surface.
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.2.0.zip
+# Built /path/to/dist/assinafy-1.1.2.zip
 ```
 
 `bin/build-zip.sh` applies `.distignore`, then refuses to produce a zip unless the plugin
