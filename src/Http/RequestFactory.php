@@ -126,16 +126,12 @@ final class RequestFactory {
 			return;
 		}
 
-		throw new NetworkException(
-			sprintf(
-				/* translators: %s: Assinafy API host, such as api.assinafy.com.br. */
-				__( 'Without the PHP cURL extension, WordPress cannot send Assinafy requests securely through the HTTP proxy configured for this site. Enable cURL, or add %s to WP_PROXY_BYPASS_HOSTS.', 'assinafy' ),
-				(string) wp_parse_url( $url, PHP_URL_HOST )
-			),
-			0,
-			null,
-			array( 'request_sent' => false )
+		$message = sprintf(
+			/* translators: %s: Assinafy API host, such as api.assinafy.com.br. */
+			__( 'Without the PHP cURL extension, WordPress cannot send Assinafy requests securely through the HTTP proxy configured for this site. Enable cURL, or add %s to WP_PROXY_BYPASS_HOSTS.', 'assinafy' ),
+			(string) wp_parse_url( $url, PHP_URL_HOST )
 		);
+		throw new NetworkException( $message, 0, null, array( 'request_sent' => false ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- A translated plain-text message; display consumers escape it.
 	}
 
 
