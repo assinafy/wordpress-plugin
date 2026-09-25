@@ -208,6 +208,46 @@ if ( ! function_exists( 'wp_check_filetype' ) ) {
 	}
 }
 
+if ( ! function_exists( 'add_action' ) ) {
+	/**
+	 * Registered actions: hook => list of [callback, priority]. Order and priority are enough
+	 * for the transport's add/remove pair; nothing in the unit suite fires actions by priority.
+	 *
+	 * @var array<string, list<array{0: callable, 1: int}>>
+	 */
+	$GLOBALS['wp_stub_actions'] = array();
+
+	/**
+	 * @param string   $hook          Hook name.
+	 * @param callable $callback      Callback.
+	 * @param int      $priority      Priority.
+	 * @param int      $accepted_args Accepted arguments.
+	 */
+	function add_action( string $hook, callable $callback, int $priority = 10, int $accepted_args = 1 ): bool {
+		$GLOBALS['wp_stub_actions'][ $hook ][] = array( $callback, $priority );
+
+		return true;
+	}
+
+	/**
+	 * @param string   $hook     Hook name.
+	 * @param callable $callback Callback.
+	 * @param int      $priority Priority it was added with.
+	 */
+	function remove_action( string $hook, callable $callback, int $priority = 10 ): bool {
+		foreach ( $GLOBALS['wp_stub_actions'][ $hook ] ?? array() as $index => $entry ) {
+			if ( $entry[0] === $callback && $entry[1] === $priority ) {
+				unset( $GLOBALS['wp_stub_actions'][ $hook ][ $index ] );
+				$GLOBALS['wp_stub_actions'][ $hook ] = array_values( $GLOBALS['wp_stub_actions'][ $hook ] );
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
+
 if ( ! function_exists( 'wp_remote_request' ) ) {
 	/**
 	 * @param string               $url  Request URL.

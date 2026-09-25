@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-25
+
+### Security
+
+- The plugin's own HTTPS requests to Assinafy now require TLS 1.2 or newer when WordPress uses its cURL transport; TLS 1.0 and 1.1 connections are refused. Other HTTP requests on the site are unchanged.
+
 ## [1.1.0] - 2026-09-24
 
 ### Added
@@ -111,6 +117,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Webhook routes authenticate with a rotatable high-entropy token compared using
   `hash_equals()`, and deliveries are de-duplicated by delivery id.
 
+[1.1.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.1
 [1.1.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.0
 [1.0.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.1
 [1.0.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.0

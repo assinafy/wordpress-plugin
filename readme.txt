@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -147,6 +147,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.1.1 =
+* The plugin's own HTTPS requests to Assinafy now require TLS 1.2 or newer; TLS 1.0 and 1.1 connections are refused. Other HTTP requests on the site are unchanged.
+
 = 1.1.0 =
 * Adds OAuth connection for production WordPress sites, with encrypted rotating tokens, a dedicated callback and disconnect control.
 * Existing API-key connections continue to work; Sandbox still uses an API key.
@@ -159,6 +162,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Requests to Assinafy now require TLS 1.2 or newer.
 
 = 1.1.0 =
 Connect your production workspace through Assinafy OAuth. Existing API-key connections remain usable.

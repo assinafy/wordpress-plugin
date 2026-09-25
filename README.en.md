@@ -175,6 +175,7 @@ not implement.
 | WordPress | **6.8** | The release that extended just-in-time translation loading to all plugins. Translations are served as wordpress.org language packs and load from `WP_LANG_DIR` without the plugin asking, so there is no `load_plugin_textdomain()` call and no compiled catalogue in the package. |
 | Tested to | 7.1 | |
 | Extensions | `sodium`, `mbstring` | Credential encryption and SDK Unicode handling; JSON is built into supported PHP versions. |
+| TLS | **1.2** | The plugin requires TLS 1.2 or newer on its own Assinafy requests (WordPress's cURL transport). Without cURL, the streams transport uses the server's PHP/OpenSSL defaults. |
 | WooCommerce (optional) | **10.2.2** | Tested with WooCommerce 10.2.2 and 11.1.0; core also boots without WooCommerce. |
 
 WooCommerce and WP-CLI are optional; each integration loads only when its host is present.
@@ -240,7 +241,7 @@ Going through `wp_remote_request()` also buys the site's configured proxy (`WP_P
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.1.0.zip
+# Built /path/to/dist/assinafy-1.1.1.zip
 ```
 
 `bin/build-zip.sh` applies `.distignore`, then refuses to produce a zip unless the plugin

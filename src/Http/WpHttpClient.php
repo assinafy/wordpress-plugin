@@ -357,7 +357,20 @@ final class WpHttpClient implements HttpClientInterface {
 	 * @throws NetworkException When the transport fails.
 	 */
 	private function dispatch( string $url, #[\SensitiveParameter] array $args, string $safe_request ): array {
-		$result = wp_remote_request( $url, $args );
+		// The HTTP API has no minimum-TLS argument, so require TLS 1.2+ on this request's cURL
+		// handle only, after every other hook. The streams transport keeps PHP's own defaults.
+		$require_tls12 = static function ( $handle, $parsed_args, $request_url ) use ( $url ): void {
+			if ( $request_url === $url ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt -- `http_api_curl` hands over the raw cURL handle; there is no WordPress wrapper.
+				curl_setopt( $handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2 );
+			}
+		};
+		add_action( 'http_api_curl', $require_tls12, PHP_INT_MAX, 3 );
+		try {
+			$result = wp_remote_request( $url, $args );
+		} finally {
+			remove_action( 'http_api_curl', $require_tls12, PHP_INT_MAX );
+		}
 
 		if ( is_wp_error( $result ) ) {
 			$this->logger->error(
