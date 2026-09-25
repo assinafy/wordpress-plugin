@@ -12,6 +12,7 @@ namespace Assinafy\WP\Tests\Integration;
 defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Capabilities;
+use Assinafy\WP\Credentials;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Log;
 use Assinafy\WP\Settings;
@@ -75,6 +76,75 @@ final class UninstallRegistryTest extends AssinafyTestCase {
 			get_option( self::FOREIGN_OPTION, self::ABSENT ),
 			'Uninstall deleted an option the plugin does not own.'
 		);
+	}
+
+	/**
+	 * An opted-in uninstall revokes the OAuth grant before deleting it: once the plugin is
+	 * gone, nothing is left that could end it.
+	 */
+	public function test_uninstall_revokes_the_oauth_connection_it_deletes(): void {
+		update_option( Settings::OPTION_DELETE_DATA, true );
+		( new Credentials() )->set_oauth_connection(
+			array(
+				'account_id'    => self::ACCOUNT_ID,
+				'access_token'  => 'synthetic-access',
+				'refresh_token' => 'synthetic-refresh',
+				'expires_at'    => time() + 3600,
+				'connected_at'  => time(),
+				'scope'         => 'account:read documents:read documents:write webhooks:write',
+			)
+		);
+		$this->fake_raw_response( '/oauth/revoke', 200, '' );
+
+		$this->run_uninstall();
+
+		$this->assertCount( 1, $this->requests );
+		$this->assertStringEndsWith( '/v1/oauth/revoke', $this->requests[0]['url'] );
+		$this->assertStringContainsString( 'token=synthetic-refresh', (string) $this->requests[0]['args']['body'] );
+		$this->assertSame( self::ABSENT, get_option( Settings::OPTION_OAUTH_CONNECTION, self::ABSENT ) );
+	}
+
+	/**
+	 * Uninstall cannot ask anyone to retry, so it waits for the refresh lock instead of deleting
+	 * a grant mid-rotation, then revokes the token the database holds, not a cached older one.
+	 */
+	public function test_uninstall_waits_for_the_refresh_lock_and_revokes_the_latest_token(): void {
+		update_option( Settings::OPTION_DELETE_DATA, true );
+		$credentials = new Credentials();
+		$connection  = array(
+			'account_id'    => self::ACCOUNT_ID,
+			'access_token'  => 'synthetic-access',
+			'refresh_token' => 'synthetic-refresh',
+			'expires_at'    => time() + 3600,
+			'connected_at'  => time(),
+			'scope'         => 'account:read documents:read documents:write webhooks:write',
+		);
+		$credentials->set_oauth_connection( $connection );
+		// Another request rotated the grant behind this request's cache and holds the lock until
+		// its lease ends at the next second.
+		$connection['refresh_token'] = 'synthetic-rotated-refresh';
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->options,
+			array( 'option_value' => $credentials->encrypt( (string) wp_json_encode( $connection ) ) ),
+			array( 'option_name' => Settings::OPTION_OAUTH_CONNECTION )
+		);
+		$wpdb->insert(
+			$wpdb->options,
+			array(
+				'option_name'  => Settings::OPTION_REFRESH_LOCK,
+				'option_value' => time() . ':refreshing-request',
+				'autoload'     => 'off',
+			)
+		);
+		$this->fake_raw_response( '/oauth/revoke', 200, '' );
+
+		$this->run_uninstall();
+
+		$this->assertCount( 1, $this->requests );
+		$this->assertStringContainsString( 'token=synthetic-rotated-refresh', (string) $this->requests[0]['args']['body'] );
+		$this->assertSame( self::ABSENT, get_option( Settings::OPTION_OAUTH_CONNECTION, self::ABSENT ) );
+		$this->assertSame( self::ABSENT, get_option( Settings::OPTION_REFRESH_LOCK, self::ABSENT ) );
 	}
 
 	/**

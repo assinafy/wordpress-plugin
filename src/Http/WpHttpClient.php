@@ -28,11 +28,12 @@ defined( 'ABSPATH' ) || exit;
  * `WP_HTTP_BLOCK_EXTERNAL` policy and TLS configuration, and are interceptable through the
  * `pre_http_request` / `http_request_args` filters.
  *
- * Three rules in here are security controls rather than tidiness:
+ * Four rules in here are security controls rather than tidiness:
  *
  * - a request URI must be relative, so a caller cannot point a credentialled request at
  *   another origin;
  * - redirects are refused, so `X-Api-Key` is never replayed to a redirect target;
+ * - without cURL, a request through a proxy is refused, because streams cannot tunnel TLS;
  * - signer-facing and public routes are sent with no credential at all.
  */
 // phpcs:disable WordPress.NamingConventions.ValidFunctionName -- Method names are fixed by HttpClientInterface.
@@ -71,10 +72,18 @@ final class WpHttpClient implements HttpClientInterface {
 	private LoggerInterface $logger;
 
 	/**
-	 * @param Configuration        $config Base URL, timeout and default headers.
-	 * @param LoggerInterface|null $logger Optional PSR-3 logger for structural diagnostics.
+	 * OAuth only: refreshes a rejected access token, returning the new one or why there is none.
+	 *
+	 * @var (\Closure(): (string|\WP_Error))|null
 	 */
-	public function __construct( #[\SensitiveParameter] Configuration $config, ?LoggerInterface $logger = null ) {
+	private ?\Closure $renew_token;
+
+	/**
+	 * @param Configuration        $config      Base URL, timeout and default headers.
+	 * @param LoggerInterface|null $logger      Optional PSR-3 logger for structural diagnostics.
+	 * @param \Closure|null        $renew_token OAuth: called when the API rejects the Bearer token.
+	 */
+	public function __construct( #[\SensitiveParameter] Configuration $config, ?LoggerInterface $logger = null, ?\Closure $renew_token = null ) {
 		$headers = $config->getHeaders();
 
 		$this->base_url             = rtrim( $config->getBaseUrl(), '/' ) . '/';
@@ -86,6 +95,7 @@ final class WpHttpClient implements HttpClientInterface {
 			$headers['User-Agent'] ?? 'Assinafy-PHP-SDK/v' . Configuration::SDK_VERSION
 		);
 		$this->responses            = new ResponseReader( $this->logger );
+		$this->renew_token          = $renew_token;
 	}
 
 	/**
@@ -338,8 +348,42 @@ final class WpHttpClient implements HttpClientInterface {
 			$url .= ( str_contains( $url, '?' ) ? '&' : '?' )
 				. http_build_query( $options['query'], '', '&', PHP_QUERY_RFC3986 );
 		}
+		// The URL WordPress itself decides the proxy for.
+		RequestFactory::assert_tunnelled( $url );
 
-		return $this->responses->read( $this->dispatch( $url, $args, $safe_request ), $safe_request );
+		return $this->responses->read( $this->renew_on_401( $this->dispatch( $url, $args, $safe_request ), $url, $args, $safe_request ), $safe_request );
+	}
+
+	/**
+	 * OAuth: when the API rejects the access token, refresh once and resend once. A failed
+	 * refresh has already dropped the connection, so its reason (reconnect) replaces the 401.
+	 * A 401 means the API processed nothing, so resending cannot duplicate an action.
+	 *
+	 * @param array<string, mixed> $result       Raw result of the first attempt.
+	 * @param string               $url          Absolute request URL.
+	 * @param array<string, mixed> $args         Transport arguments.
+	 * @param string               $safe_request Redacted method and path, for diagnostics.
+	 * @return array<string, mixed>
+	 *
+	 * @throws ApiException When the token could not be refreshed.
+	 */
+	private function renew_on_401( array $result, string $url, #[\SensitiveParameter] array $args, string $safe_request ): array {
+		$renew   = $this->renew_token;
+		$headers = $args['headers'] ?? null;
+		if ( null === $renew || 401 !== (int) wp_remote_retrieve_response_code( $result ) || ! is_array( $headers ) || ! Headers::has( $headers, 'Authorization' ) ) {
+			return $result;
+		}
+
+		$token = $renew();
+		if ( $token instanceof \WP_Error ) {
+			throw new ApiException( $token->get_error_message(), 401 ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- A translated plain-text message; display consumers escape it.
+		}
+		if ( '' === $token ) {
+			return $result;
+		}
+		$args['headers'] = array( 'Authorization' => 'Bearer ' . $token ) + Headers::without( $headers, 'Authorization' );
+
+		return $this->dispatch( $url, $args, $safe_request );
 	}
 
 	/**
@@ -358,18 +402,29 @@ final class WpHttpClient implements HttpClientInterface {
 	 */
 	private function dispatch( string $url, #[\SensitiveParameter] array $args, string $safe_request ): array {
 		// The HTTP API has no minimum-TLS argument, so require TLS 1.2+ on this request's cURL
-		// handle only, after every other hook. The streams transport keeps PHP's own defaults.
+		// handle only, after every other hook.
 		$require_tls12 = static function ( $handle, $parsed_args, $request_url ) use ( $url ): void {
 			if ( $request_url === $url ) {
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt -- `http_api_curl` hands over the raw cURL handle; there is no WordPress wrapper.
 				curl_setopt( $handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2 );
 			}
 		};
+		// Without cURL, the streams transport opens `ssl://host:port`, which PHP lets fall back
+		// to TLS 1.0. Its only hook is the socket URI, and `tlsv1.2://` is the strictest one.
+		// ponytail: pins exactly TLS 1.2 there (no 1.3); the context is unreachable for a range.
+		$socket_prefix        = 'ssl://' . wp_parse_url( $url, PHP_URL_HOST ) . ':';
+		$require_tls12_stream = static function ( &$remote_socket ) use ( $socket_prefix ): void {
+			if ( is_string( $remote_socket ) && str_starts_with( $remote_socket, $socket_prefix ) ) {
+				$remote_socket = 'tlsv1.2://' . substr( $remote_socket, strlen( 'ssl://' ) );
+			}
+		};
 		add_action( 'http_api_curl', $require_tls12, PHP_INT_MAX, 3 );
+		add_action( 'requests-fsockopen.remote_socket', $require_tls12_stream, PHP_INT_MAX );
 		try {
 			$result = wp_remote_request( $url, $args );
 		} finally {
 			remove_action( 'http_api_curl', $require_tls12, PHP_INT_MAX );
+			remove_action( 'requests-fsockopen.remote_socket', $require_tls12_stream, PHP_INT_MAX );
 		}
 
 		if ( is_wp_error( $result ) ) {

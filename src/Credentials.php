@@ -116,7 +116,7 @@ final class Credentials {
 	 *
 	 * @return array{connection: array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string}, ciphertext: string}|WP_Error|null
 	 */
-	public function oauth_connection_snapshot(): array|WP_Error|null {
+	private function oauth_connection_snapshot(): array|WP_Error|null {
 		$stored = (string) get_option( self::OPTION_OAUTH_CONNECTION, '' );
 		if ( '' === $stored ) {
 			return null;
@@ -137,6 +137,41 @@ final class Credentials {
 			'connection' => $value,
 			'ciphertext' => $stored,
 		);
+	}
+
+	/**
+	 * The connection as the database holds it. The object cache can still hold what this
+	 * request read before another one rotated the grant.
+	 *
+	 * @return array{connection: array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string}, ciphertext: string}|WP_Error|null
+	 */
+	public function fresh_oauth_connection_snapshot(): array|WP_Error|null {
+		wp_cache_delete( self::OPTION_OAUTH_CONNECTION, 'options' );
+
+		return $this->oauth_connection_snapshot();
+	}
+
+	/**
+	 * Store rotated tokens only while the grant they were refreshed from is still stored, so a
+	 * refresh cannot restore a grant removed or replaced meanwhile.
+	 *
+	 * @param string $expected   Encrypted connection read before the remote refresh.
+	 * @param array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string} $connection Rotated connection.
+	 */
+	public function replace_oauth_connection( string $expected, array $connection ): bool {
+		$json = wp_json_encode( $connection );
+		if ( false === $json ) {
+			throw new \RuntimeException( 'Assinafy OAuth connection could not be encoded' );
+		}
+
+		global $wpdb;
+		$changed = $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s", $this->encrypt( $json ), self::OPTION_OAUTH_CONNECTION, $expected ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Conditional write prevents refresh from restoring a replaced grant.
+		if ( false === $changed ) {
+			throw new \RuntimeException( 'Assinafy OAuth connection could not be stored' );
+		}
+		wp_cache_delete( self::OPTION_OAUTH_CONNECTION, 'options' );
+
+		return 1 === $changed;
 	}
 
 	/** @param array<string, mixed> $value Decrypted connection. */
@@ -169,12 +204,21 @@ final class Credentials {
 		}
 	}
 
-	/** Clear OAuth while keeping legacy credentials unused after disconnect. */
-	public function clear_oauth_connection(): bool {
+	/**
+	 * Clear OAuth while keeping legacy credentials unused after disconnect. Only the connection
+	 * read as `$expected` is deleted, never one that replaced it since.
+	 *
+	 * @param string $expected Encrypted connection as read from the database.
+	 * @return bool Whether no OAuth connection remains.
+	 */
+	public function clear_oauth_connection( string $expected ): bool {
 		if ( 'oauth' !== get_option( self::OPTION_AUTH_MODE ) && ! update_option( self::OPTION_AUTH_MODE, 'oauth', true ) ) {
 			return false;
 		}
-		delete_option( self::OPTION_OAUTH_CONNECTION );
+
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", self::OPTION_OAUTH_CONNECTION, $expected ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Conditional delete cannot erase a newer grant.
+		wp_cache_delete( self::OPTION_OAUTH_CONNECTION, 'options' );
 
 		return '' === (string) get_option( self::OPTION_OAUTH_CONNECTION, '' );
 	}

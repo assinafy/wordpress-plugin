@@ -80,7 +80,7 @@ final class ClientFactory {
 				? Configuration::forBearer( $credential, $account_id, $this->base_url(), 30, 10 )
 				: new Configuration( $credential, $account_id, $this->base_url(), 30, 10 );
 
-			$this->client = new AssinafyClient( $config, new WpHttpClient( $config ) );
+			$this->client = new AssinafyClient( $config, new WpHttpClient( $config, null, $oauth_mode ? $this->renewal( $credential ) : null ) );
 		} catch ( \Throwable $e ) {
 			$this->error = new WP_Error( 'assinafy_client_unavailable', $e->getMessage() );
 
@@ -105,6 +105,21 @@ final class ClientFactory {
 		}
 
 		return ( new OAuthTokens( $this->credentials ) )->access_token();
+	}
+
+	/**
+	 * OAuth: when the API answers 401, refresh once. Later calls in this request build a new
+	 * client with the result.
+	 *
+	 * @param string $rejected Access token this client sends.
+	 * @return \Closure(): (string|WP_Error)
+	 */
+	private function renewal( #[\SensitiveParameter] string $rejected ): \Closure {
+		return function () use ( $rejected ): string|WP_Error {
+			$this->reset();
+
+			return ( new OAuthTokens( $this->credentials ) )->access_token( $rejected );
+		};
 	}
 
 	/**

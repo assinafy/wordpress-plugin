@@ -293,33 +293,40 @@ $GLOBALS['assinafy_test_transients'] = array();
 $GLOBALS['assinafy_test_meta']       = array();
 $GLOBALS['assinafy_test_posts']      = array();
 
-/** Minimal conditional option write used by OAuth refresh tests. */
+/** Minimal option SQL used by OAuth: the refresh lock and conditional token writes. */
 $GLOBALS['wpdb'] = new class() {
 	public string $options = 'wp_options';
 
 	/** @param mixed ...$arguments Prepared values. */
 	public function prepare( string $query, mixed ...$arguments ): string {
-		return (string) json_encode( $arguments );
+		return (string) json_encode( array( strtok( $query, ' ' ), $arguments ) );
 	}
 
-	/** Return one affected row only when the expected encrypted value still exists. */
+	/** INSERT IGNORE adds a missing option; UPDATE and DELETE need the expected value to still exist. */
 	public function query( string $prepared ): int {
-		$values = json_decode( $prepared, true );
-		if ( ! is_array( $values ) || ! in_array( count( $values ), array( 2, 3 ), true ) ) {
-			return 0;
+		list( $verb, $values ) = json_decode( $prepared, true );
+		if ( 'INSERT' === $verb ) {
+			return add_option( $values[0], $values[1] ) ? 1 : 0;
 		}
-		$option   = 2 === count( $values ) ? $values[0] : $values[1];
-		$expected = 2 === count( $values ) ? $values[1] : $values[2];
+		$option   = 'UPDATE' === $verb ? $values[1] : $values[0];
+		$expected = 'UPDATE' === $verb ? $values[2] : $values[1];
 		if ( get_option( $option, '' ) !== $expected ) {
 			return 0;
 		}
-		if ( 2 === count( $values ) ) {
-			delete_option( $option );
-		} else {
+		if ( 'UPDATE' === $verb ) {
 			update_option( $option, $values[0] );
+		} else {
+			delete_option( $option );
 		}
 
 		return 1;
+	}
+
+	/** SELECT option_value by name. */
+	public function get_var( string $prepared ): ?string {
+		$option = json_decode( $prepared, true )[1][0];
+
+		return isset( $GLOBALS['assinafy_test_options'][ $option ] ) ? (string) $GLOBALS['assinafy_test_options'][ $option ] : null;
 	}
 };
 

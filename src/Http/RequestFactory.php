@@ -11,16 +11,20 @@ namespace Assinafy\WP\Http;
 
 defined( 'ABSPATH' ) || exit;
 
+use Assinafy\SDK\Exceptions\NetworkException;
+use WpOrg\Requests\Transport\Curl;
+
 /**
  * Assembles one outbound request, and decides what credential it may carry.
  *
- * Two of the three rules here are security controls rather than tidiness:
+ * Three of the four rules here are security controls rather than tidiness:
  *
  * - a request URI must be relative, so a caller cannot point a credentialled request at
  *   another origin;
+ * - a request a proxy would read in plain text is never sent;
  * - signer-facing and public routes are sent with no credential at all.
  *
- * The third is the body: the three shapes — JSON, raw string and multipart — stay mutually
+ * The fourth is the body: the three shapes — JSON, raw string and multipart — stay mutually
  * exclusive, and a multipart body is framed by a freshly generated boundary that no
  * caller-supplied `Content-Type` can displace.
  */
@@ -101,6 +105,37 @@ final class RequestFactory {
 		) {
 			throw new \InvalidArgumentException( 'Request URI must be relative to the configured API base URL' );
 		}
+	}
+
+	/**
+	 * Refuse a request that a proxy would read in plain text.
+	 *
+	 * WordPress's Requests tries cURL first, and cURL tunnels HTTPS through a proxy with
+	 * CONNECT. The streams transport it falls back to has no tunnel: it connects to the proxy
+	 * in plain TCP and writes the absolute URL, headers and body there, or with TLS verification
+	 * on, fails after connecting. Refusing first opens no socket, and a refresh token that never
+	 * left stays usable.
+	 *
+	 * @param string $url Absolute request URL.
+	 *
+	 * @throws NetworkException When a proxy applies and only the streams transport is available.
+	 */
+	public static function assert_tunnelled( string $url ): void {
+		$proxy = new \WP_HTTP_Proxy();
+		if ( ! $proxy->is_enabled() || ! $proxy->send_through_proxy( $url ) || Curl::test( array( 'ssl' => true ) ) ) {
+			return;
+		}
+
+		throw new NetworkException(
+			sprintf(
+				/* translators: %s: Assinafy API host, such as api.assinafy.com.br. */
+				__( 'Without the PHP cURL extension, WordPress cannot send Assinafy requests securely through the HTTP proxy configured for this site. Enable cURL, or add %s to WP_PROXY_BYPASS_HOSTS.', 'assinafy' ),
+				(string) wp_parse_url( $url, PHP_URL_HOST )
+			),
+			0,
+			null,
+			array( 'request_sent' => false )
+		);
 	}
 
 

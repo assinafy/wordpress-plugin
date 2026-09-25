@@ -25,6 +25,9 @@ final class OAuthConnection {
 
 	private const START_URI = 'https://integrations.assinafy.com.br/wordpress/oauth-start';
 
+	/** Public client, so there is no secret. Kept here so uninstall.php can revoke without assinafy.php. */
+	private const CLIENT_ID = 'uf60VDVAg9DKG43nwql7b712SuGb1F7hOUN9Swp_ReglF55C';
+
 	private const TRANSACTION_TTL = 600;
 
 	private const NOTICE = 'assinafy_oauth_notice_';
@@ -37,7 +40,7 @@ final class OAuthConnection {
 	public static function client_id(): string {
 		return defined( 'ASSINAFY_OAUTH_CLIENT_ID' ) && is_string( constant( 'ASSINAFY_OAUTH_CLIENT_ID' ) )
 			? (string) constant( 'ASSINAFY_OAUTH_CLIENT_ID' )
-			: '';
+			: self::CLIENT_ID;
 	}
 
 	/** Register admin-only start, completion, and disconnect handlers. */
@@ -179,36 +182,55 @@ final class OAuthConnection {
 	public function disconnect(): void {
 		$this->require_admin();
 		check_admin_referer( 'assinafy_oauth_disconnect' );
-		$result = $this->disconnect_current();
-		if ( 'local_failed' === $result ) {
-			$this->finish( 'error', __( 'Assinafy could not remove the connection from this site. Try again.', 'assinafy' ) );
-		}
-		$this->finish(
-			'success' === $result ? 'success' : 'error',
-			'success' === $result
-				? __( 'Assinafy has been disconnected.', 'assinafy' )
-				: __( 'This site is disconnected, but Assinafy could not confirm revocation. Revoke the app in Assinafy Connected Apps.', 'assinafy' )
+		$result   = $this->disconnect_current();
+		$messages = array(
+			'success'       => __( 'Assinafy has been disconnected.', 'assinafy' ),
+			'remote_failed' => __( 'This site is disconnected, but Assinafy could not confirm revocation. Revoke the app in Assinafy Connected Apps.', 'assinafy' ),
+			'local_failed'  => __( 'Assinafy could not remove the connection from this site. Try again.', 'assinafy' ),
+			'busy'          => __( 'Assinafy is renewing the connection. Try again shortly.', 'assinafy' ),
 		);
+		$this->finish( 'success' === $result ? 'success' : 'error', $messages[ $result ] );
 	}
 
-	/** Revoke remotely when possible, then remove the local grant even if revocation fails. */
-	private function disconnect_current(): string {
-		$connection = $this->credentials->oauth_connection();
-		$revoked    = null === $connection;
-		if ( is_array( $connection ) ) {
-			try {
-				( new OAuthTokens( $this->credentials ) )->oauth()->revoke( $connection['refresh_token'], OAuthResource::TOKEN_TYPE_HINT_REFRESH );
-				$revoked = true;
-			} catch ( \Throwable $e ) {
-				( new Log() )->add( 'oauth_disconnect_revoke_failed' );
+	/**
+	 * Revoke the latest grant when possible, then remove it from this site even if revocation
+	 * fails. Also run by uninstall.php.
+	 *
+	 * Holds the refresh lock and reads the database, so the token revoked is the latest one:
+	 * revoking a token a concurrent refresh had just retired would leave its replacement alive
+	 * with nothing on this site able to revoke it. Only the grant revoked is deleted; one a
+	 * reconnection saved meanwhile stays.
+	 *
+	 * @return string success, remote_failed, local_failed, or busy while a refresh holds the lock.
+	 */
+	public function disconnect_current(): string {
+		$lock    = new RefreshLock( $this->credentials );
+		$claimed = $lock->claim();
+		if ( true !== $claimed ) {
+			// An error means a refresh that may have spent the token already dropped the grant.
+			return $claimed instanceof WP_Error ? 'remote_failed' : 'busy';
+		}
+
+		try {
+			$snapshot = $this->credentials->fresh_oauth_connection_snapshot();
+			$stored   = (string) get_option( Credentials::OPTION_OAUTH_CONNECTION, '' );
+			$revoked  = '' === $stored;
+			if ( is_array( $snapshot ) ) {
+				try {
+					( new OAuthTokens( $this->credentials ) )->oauth()->revoke( $snapshot['connection']['refresh_token'], OAuthResource::TOKEN_TYPE_HINT_REFRESH );
+					$revoked = true;
+				} catch ( \Throwable $e ) {
+					( new Log() )->add( 'oauth_disconnect_revoke_failed' );
+				}
 			}
-		}
+			if ( ! $this->credentials->clear_oauth_connection( $stored ) ) {
+				return 'local_failed';
+			}
 
-		if ( ! $this->credentials->clear_oauth_connection() ) {
-			return 'local_failed';
+			return $revoked ? 'success' : 'remote_failed';
+		} finally {
+			$lock->release();
 		}
-
-		return $revoked ? 'success' : 'remote_failed';
 	}
 
 	/** Keep each admin's pending verifier separate on this WordPress site. */

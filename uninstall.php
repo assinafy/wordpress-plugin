@@ -33,6 +33,15 @@ if ( ! class_exists( \Assinafy\WP\Settings::class ) ) {
 			return;
 		}
 
+		// Revoke before the tokens are deleted: afterwards nothing can end the Assinafy grant.
+		// Nobody is left to retry, so wait out a refresh in progress, until any lease taken now
+		// has ended, rather than delete the token it is about to replace.
+		$assinafy_oauth = new \Assinafy\WP\OAuthConnection( new \Assinafy\WP\Credentials() );
+		$assinafy_until = time() + \Assinafy\WP\RefreshLock::LEASE_SECONDS + 1;
+		while ( 'busy' === $assinafy_oauth->disconnect_current() && time() <= $assinafy_until ) {
+			sleep( 1 );
+		}
+
 		// Use the registry so newly added settings cannot survive an opted-in uninstall.
 		foreach ( array_keys( \Assinafy\WP\Settings::OPTIONS ) as $assinafy_option ) {
 			delete_option( $assinafy_option );

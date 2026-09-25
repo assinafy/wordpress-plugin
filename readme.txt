@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -77,6 +77,7 @@ define( 'ASSINAFY_API_KEY', '...' );`
 
 Otherwise the API key is stored encrypted, and the settings field never renders it back to the browser. OAuth access and refresh tokens are also encrypted in WordPress; you can disconnect from the settings screen.
 New stored credentials require unique WordPress security keys and salts in `wp-config.php`, or a random `ASSINAFY_ENCRYPTION_KEY` constant. WordPress-generated database salts alone cannot protect credentials in a database backup. Existing credentials remain readable; if you add a new encryption key, reconnect Assinafy or re-enter the API key.
+If the site sends HTTP requests through a proxy (`WP_PROXY_HOST` in `wp-config.php`), Assinafy requests need the PHP cURL extension: without it, WordPress cannot carry HTTPS through the proxy securely, so the plugin refuses the request. Enable cURL, or add `api.assinafy.com.br` (and `sandbox.assinafy.com.br` for Sandbox) to `WP_PROXY_BYPASS_HOSTS`.
 
 == Frequently Asked Questions ==
 
@@ -125,10 +126,10 @@ API requests use one of two hosts, chosen by the Environment setting:
 * `api.assinafy.com.br` &mdash; Production. Real, legally effective signatures.
 * `sandbox.assinafy.com.br` &mdash; Sandbox. Test signatures with no legal effect.
 
-Production OAuth connection opens `auth.assinafy.com.br` for consent. A new tab first visits `integrations.assinafy.com.br/wordpress/oauth-start` with the public client ID, requested permissions, random state and PKCE challenge. Assinafy sends a short-lived authorization code to `integrations.assinafy.com.br/wordpress/oauth-callback`. That page validates the browser session, state and issuer, then shows the code for the admin to copy into the original WordPress settings tab. It does not forward the code to a site or receive the PKCE verifier, access token or refresh token. The plugin exchanges the code directly with `api.assinafy.com.br` using the verifier stored on this WordPress site. WordPress stores both tokens encrypted, renews them as needed, and asks you to reconnect after 30 days.
+Production OAuth connection opens `auth.assinafy.com.br` for consent. A new tab first visits `integrations.assinafy.com.br/wordpress/oauth-start` with the public client ID, requested permissions, random state and PKCE challenge. Assinafy sends a short-lived authorization code to `integrations.assinafy.com.br/wordpress/oauth-callback`. That page validates the browser session, state and issuer, then shows the code for the admin to copy into the original WordPress settings tab. It does not forward the code to a site or receive the PKCE verifier, access token or refresh token. The plugin exchanges the code directly with `api.assinafy.com.br` using the verifier stored on this WordPress site. WordPress stores both tokens encrypted and renews them as needed. Each renewal is valid for another 30 days, so you only reconnect after 30 days without one, when Assinafy rejects the connection, or when a renewal was interrupted after leaving the site: a refresh token Assinafy may have retired is never sent again.
 
 Production API requests use `Authorization: Bearer` after OAuth connection. Existing API-key connections and Sandbox requests use `X-Api-Key`. The signer-side token route needs neither credential.
-Disconnect removes this site's OAuth tokens even if remote revocation fails. In that case, revoke the app in Assinafy Connected Apps.
+Disconnect, and deleting the plugin with "Delete data on uninstall" enabled, revoke the connection at `api.assinafy.com.br` and remove this site's OAuth tokens even if remote revocation fails. In that case, revoke the app in Assinafy Connected Apps. Both wait for a renewal in progress, so the latest token is the one revoked; Disconnect asks you to try again shortly.
 
 What is sent, and when:
 
@@ -147,6 +148,13 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.2.0 =
+* OAuth connections stay active while they are used: every refresh returns a refresh token valid for another 30 days, so a connection ends only after 30 days without a refresh.
+* A refresh token that may already have been used is never sent again; the plugin asks you to reconnect instead. An API 401 refreshes once and resends the request.
+* Disconnect and uninstall revoke the latest token, and uninstall revokes the connection before deleting it.
+* Without cURL, requests to Assinafy use TLS 1.2 and are refused through an HTTP proxy that cannot tunnel HTTPS.
+* Assinafy PHP SDK 2.4.2.
+
 = 1.1.1 =
 * The plugin's own HTTPS requests to Assinafy now require TLS 1.2 or newer; TLS 1.0 and 1.1 connections are refused. Other HTTP requests on the site are unchanged.
 
@@ -162,6 +170,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+OAuth connections now renew with use instead of expiring 30 days after approval. Sites using a WordPress HTTP proxy without the PHP cURL extension must enable cURL or bypass the proxy for Assinafy.
 
 = 1.1.1 =
 Requests to Assinafy now require TLS 1.2 or newer.

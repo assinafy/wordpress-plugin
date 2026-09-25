@@ -7,6 +7,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-25
+
+### Fixed
+
+- OAuth connections no longer expire 30 days after approval. Every refresh returns a refresh token valid for another 30 days, so a connection ends only after 30 days without a refresh, or when Assinafy rejects it.
+- An API `401` now refreshes the OAuth token once and resends the request; if the refresh fails, the plugin asks you to reconnect.
+- The OAuth refresh lock is an atomic `INSERT IGNORE`, and the connection is re-read from the database after locking, so simultaneous requests can no longer send the same rotating refresh token twice and end the connection.
+- A refresh token that may already have been used is never sent again. The lock records which token a refresh is sending; when that refresh dies, or outlives the lock's 45 seconds, before saving the new token, the next request asks you to reconnect instead of retrying. Failures that provably happened before sending, such as DNS or a refused connection, still retry.
+- Deleting the plugin with "Delete data on uninstall" revokes the OAuth connection before removing it.
+- Disconnect and uninstall revoke the latest refresh token. They wait for a refresh in progress instead of revoking the token it is replacing (Disconnect asks you to try again shortly), read the token from the database rather than a cache, and remove only the connection they revoked.
+
+### Changed
+
+- Upgrade the Assinafy PHP SDK to 2.4.2.
+
+### Security
+
+- Without cURL, the plugin's own HTTPS requests to Assinafy are pinned to TLS 1.2 instead of PHP's defaults, so TLS 1.0 and 1.1 are refused on the streams transport too.
+- Without cURL, Assinafy requests are refused when a WordPress HTTP proxy (`WP_PROXY_*`) applies to them: the streams transport cannot tunnel HTTPS through a proxy, so tokens and documents could reach the proxy unencrypted. Enable cURL, which tunnels with `CONNECT`, or add the Assinafy API host to `WP_PROXY_BYPASS_HOSTS`.
+
 ## [1.1.1] - 2026-09-25
 
 ### Security
@@ -117,6 +137,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Webhook routes authenticate with a rotatable high-entropy token compared using
   `hash_equals()`, and deliveries are de-duplicated by delivery id.
 
+[1.2.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.2.0
 [1.1.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.1
 [1.1.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.0
 [1.0.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.0.1

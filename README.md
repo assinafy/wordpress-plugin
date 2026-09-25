@@ -181,7 +181,7 @@ implemente.
 | WordPress | **6.8** | A release que estendeu o carregamento just-in-time de traduções a todos os plugins. As traduções são distribuídas como language packs do wordpress.org e carregam a partir de `WP_LANG_DIR` sem o plugin pedir, portanto não há chamada a `load_plugin_textdomain()` nem catálogo compilado no pacote. |
 | Testado até | 7.1 | |
 | Extensões | `sodium`, `mbstring` | Criptografia das credenciais e tratamento de Unicode pelo SDK; JSON já vem embutido nas versões de PHP suportadas. |
-| TLS | **1.2** | O plugin exige TLS 1.2 ou superior nas próprias requisições à Assinafy (transporte cURL do WordPress). No transporte por streams, sem cURL, vale o padrão do PHP/OpenSSL do servidor. |
+| TLS | **1.2** | O plugin exige TLS 1.2 ou superior nas próprias requisições à Assinafy: 1.2 ou 1.3 pelo transporte cURL do WordPress, e exatamente 1.2 pelo transporte por streams usado sem cURL. Streams não criam túnel TLS através de um proxy, então, sem cURL, uma requisição por um proxy do WordPress (`WP_PROXY_*`) é recusada: ative o cURL ou adicione o host da API da Assinafy a `WP_PROXY_BYPASS_HOSTS`. |
 | WooCommerce (opcional) | **10.2.2** | Testado com WooCommerce 10.2.2 e 11.1.0; o core também inicia sem o WooCommerce. |
 
 WooCommerce e WP-CLI são opcionais; cada integração carrega apenas quando seu host está presente.
@@ -241,15 +241,16 @@ $client = new Assinafy\SDK\AssinafyClient( $config, new Assinafy\WP\Http\WpHttpC
 ```
 
 Passar por `wp_remote_request()` também entrega de graça o proxy configurado no site
-(`WP_PROXY_*`), o respeito a `WP_HTTP_BLOCK_EXTERNAL`, as configurações de SSL do próprio site e a
-superfície de filtros `http_request_*` já existente.
+(`WP_PROXY_*`, com túnel pelo cURL; sem cURL, a requisição por proxy é recusada), o respeito a
+`WP_HTTP_BLOCK_EXTERNAL`, as configurações de SSL do próprio site e a superfície de filtros
+`http_request_*` já existente.
 
 ### Gerando o zip de distribuição
 
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.1.1.zip
+# Built /path/to/dist/assinafy-1.2.0.zip
 ```
 
 O `bin/build-zip.sh` aplica o `.distignore` e depois se recusa a produzir um zip a menos que o
@@ -290,9 +291,16 @@ cole na aba de configurações do WordPress em até 60 segundos. A conta escolhi
 token aprovado; não é necessário copiar ID da conta nem chave de API.
 O fluxo usa Authorization Code com PKCE S256, cliente público e uma rota de callback dedicada.
 O serviço de callback valida estado e emissor e exibe o código somente nessa aba; o verificador PKCE e os tokens ficam
-no WordPress. Tokens de acesso e refresh são criptografados, o refresh é rotativo, e a conexão
-precisa ser refeita após 30 dias. **Desconectar** tenta revogar o refresh token e sempre remove a
-conexão local; se a revogação remota falhar, revogue o app em Assinafy Connected Apps.
+no WordPress. Tokens de acesso e refresh são criptografados e o refresh é rotativo: cada renovação
+devolve um refresh token novo, válido por mais 30 dias, e a conexão só expira após 30 dias sem
+renovação. O cron horário de reconciliação renova um site ocioso enquanto o WP-Cron roda. Um `401`
+da API provoca uma renovação e um reenvio; se a renovação falhar, o plugin pede para reconectar.
+Um refresh token nunca é enviado duas vezes: quando uma renovação pode ter saído do site sem que o
+token novo fosse salvo (um timeout, ou uma requisição que morreu ou passou dos 45 segundos da trava
+de renovação), o plugin também pede para reconectar. **Desconectar**, e desinstalar com **Apagar
+dados ao desinstalar**, tentam revogar o refresh token mais recente, esperando uma renovação em
+andamento (Desconectar pede para tentar de novo em instantes), e sempre removem a conexão local; se
+a revogação remota falhar, revogue o app em Assinafy Connected Apps.
 
 Para registrar o app público **Assinafy para WordPress**, use:
 

@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "assinafy/php-sdk",
-            "version": "v2.4.0",
+            "version": "v2.4.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/assinafy/php-sdk.git",
-                "reference": "7cd4b070586c28630762d7a87008abcbf5927ef5"
+                "reference": "c7f8ff6c1be0887c70f9f06e1663bb01961ceaf3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/assinafy/php-sdk/zipball/7cd4b070586c28630762d7a87008abcbf5927ef5",
-                "reference": "7cd4b070586c28630762d7a87008abcbf5927ef5",
+                "url": "https://api.github.com/repos/assinafy/php-sdk/zipball/c7f8ff6c1be0887c70f9f06e1663bb01961ceaf3",
+                "reference": "c7f8ff6c1be0887c70f9f06e1663bb01961ceaf3",
                 "shasum": ""
             },
             "require": {
@@ -60,9 +60,9 @@
             ],
             "support": {
                 "issues": "https://github.com/assinafy/php-sdk/issues",
-                "source": "https://github.com/assinafy/php-sdk/tree/v2.4.0"
+                "source": "https://github.com/assinafy/php-sdk/tree/v2.4.2"
             },
-            "time": "2026-09-23T23:47:15+00:00"
+            "time": "2026-09-25T18:26:31+00:00"
         },
         {
             "name": "psr/log",

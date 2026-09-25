@@ -30,123 +30,98 @@ final class OAuthTokens {
 	/**
 	 * A current Bearer token, refreshing under a database lock when needed.
 	 *
+	 * There is no local connection deadline: every refresh returns a refresh token valid for a
+	 * new 30 days, and Assinafy answers `invalid_grant` once one has gone unused for 30 days.
+	 *
+	 * @param string|null $rejected Access token the API just answered 401 for. It is refreshed
+	 *                              once, unless another request has already replaced it.
 	 * @return string|WP_Error Empty string when no OAuth connection exists.
 	 */
-	public function access_token(): string|WP_Error {
+	public function access_token( #[\SensitiveParameter] ?string $rejected = null ): string|WP_Error {
 		$connection = $this->credentials->oauth_connection();
 		if ( ! is_array( $connection ) ) {
 			return $connection ?? '';
 		}
-		if ( time() >= $connection['connected_at'] + 30 * 86400 ) {
-			return new WP_Error( 'assinafy_oauth_expired', __( 'Reconnect Assinafy to continue.', 'assinafy' ) );
-		}
-		if ( $connection['expires_at'] > time() + 120 ) {
+		$usable = $rejected !== $connection['access_token'];
+		if ( $usable && $connection['expires_at'] > time() + 120 ) {
 			return $connection['access_token'];
 		}
 
-		$owner = ( time() + 45 ) . ':' . bin2hex( random_bytes( 16 ) );
-		if ( ! $this->claim_lock( $owner ) ) {
-			return $connection['expires_at'] > time() + 15
-				? $connection['access_token']
-				: new WP_Error( 'assinafy_oauth_refresh_busy', __( 'Assinafy is renewing the connection. Try again shortly.', 'assinafy' ) );
+		$lock    = new RefreshLock( $this->credentials );
+		$claimed = $lock->claim();
+		if ( $claimed instanceof WP_Error ) {
+			return $claimed;
+		}
+		if ( ! $claimed ) {
+			return $usable && $connection['expires_at'] > time() + 15 ? $connection['access_token'] : self::busy();
 		}
 
 		try {
-			return $this->refresh_under_lock();
+			return $this->refresh_under_lock( $rejected, $lock );
 		} finally {
-			if ( $owner === get_option( self::OPTION_REFRESH_LOCK ) ) {
-				delete_option( self::OPTION_REFRESH_LOCK );
-			}
+			$lock->release();
 		}
 	}
 
-	/** Claim one site-wide refresh lock, recovering a crashed request's expired lock. */
-	private function claim_lock( string $owner ): bool {
-		if ( add_option( self::OPTION_REFRESH_LOCK, $owner, '', false ) ) {
-			return true;
-		}
-		$this->remove_stale_lock();
-
-		return add_option( self::OPTION_REFRESH_LOCK, $owner, '', false );
-	}
-
-	/** Re-read after locking so a concurrent request cannot reuse a rotated refresh token. */
-	private function refresh_under_lock(): string|WP_Error {
-		$snapshot = $this->credentials->oauth_connection_snapshot();
+	/**
+	 * Re-read after locking so a concurrent request cannot reuse a rotated refresh token.
+	 *
+	 * @param string|null $rejected Access token the API answered 401 for, if any.
+	 * @param RefreshLock $lock     The lock this request holds.
+	 */
+	private function refresh_under_lock( #[\SensitiveParameter] ?string $rejected, RefreshLock $lock ): string|WP_Error {
+		$snapshot = $this->credentials->fresh_oauth_connection_snapshot();
 		if ( ! is_array( $snapshot ) ) {
 			return $snapshot ?? '';
 		}
 		$latest = $snapshot['connection'];
-		if ( $latest['expires_at'] > time() + 120 ) {
+		if ( $rejected !== $latest['access_token'] && $latest['expires_at'] > time() + 120 ) {
 			return $latest['access_token'];
+		}
+		// Mark the lock before the token leaves: a request that finds it expired never resends it.
+		if ( ! $lock->mark( $latest['refresh_token'] ) ) {
+			return self::busy();
 		}
 
 		try {
 			$tokens  = $this->oauth()->refresh( $latest['refresh_token'] );
 			$updated = self::updated_tokens( $latest, $tokens );
-			if ( ! $this->replace_if_unchanged( $snapshot['ciphertext'], $updated ) ) {
+			if ( ! $this->credentials->replace_oauth_connection( $snapshot['ciphertext'], $updated ) ) {
 				return new WP_Error( 'assinafy_oauth_changed', __( 'Assinafy was reconnected during renewal. Try again.', 'assinafy' ) );
 			}
 
 			return $updated['access_token'];
 		} catch ( \Throwable $e ) {
-			if ( $e instanceof NetworkException && false === ( $e->getContext()['request_sent'] ?? null ) ) {
+			// Releasing the lock removes the mark, so a token that never left can be retried.
+			if ( self::never_sent( $e ) ) {
 				return new WP_Error( 'assinafy_oauth_retry', __( 'Assinafy could not be reached. Try again shortly.', 'assinafy' ) );
 			}
 
 			// A timed-out refresh may have rotated the token. Never replay the old one.
-			$this->discard_if_unchanged( $snapshot['ciphertext'] );
+			$lock->drop( $snapshot['ciphertext'] );
 
-			return new WP_Error( 'assinafy_oauth_reconnect', __( 'Assinafy needs to be reconnected.', 'assinafy' ) );
+			return self::reconnect();
 		}
 	}
 
 	/**
-	 * Persist rotated tokens only while the exact grant used to refresh still exists.
+	 * Only a failure proven to come before the request left, such as DNS, a refused connection
+	 * or a TLS handshake, keeps a refresh token that may be sent again.
 	 *
-	 * @param string $expected_ciphertext Encrypted connection read before the remote refresh.
-	 * @param array{account_id: string, access_token: string, refresh_token: string, expires_at: int, connected_at: int, scope: string} $connection Rotated connection.
+	 * @param \Throwable $e Refresh failure.
 	 */
-	private function replace_if_unchanged( string $expected_ciphertext, array $connection ): bool {
-		$json = wp_json_encode( $connection );
-		if ( false === $json ) {
-			throw new \RuntimeException( 'Assinafy OAuth connection could not be encoded' );
-		}
-
-		global $wpdb;
-		$changed = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Conditional write prevents refresh from restoring a replaced grant.
-			$wpdb->prepare(
-				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
-				$this->credentials->encrypt( $json ),
-				Credentials::OPTION_OAUTH_CONNECTION,
-				$expected_ciphertext
-			)
-		);
-		if ( false === $changed ) {
-			throw new \RuntimeException( 'Assinafy OAuth connection could not be stored' );
-		}
-		if ( 1 !== $changed ) {
-			return false;
-		}
-
-		wp_cache_delete( Credentials::OPTION_OAUTH_CONNECTION, 'options' );
-
-		return true;
+	private static function never_sent( \Throwable $e ): bool {
+		return $e instanceof NetworkException && false === ( $e->getContext()['request_sent'] ?? null );
 	}
 
-	/** Discard an uncertain refresh token without deleting a concurrent reconnection. */
-	private function discard_if_unchanged( string $expected_ciphertext ): void {
-		global $wpdb;
-		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Conditional delete cannot erase a new grant.
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
-				Credentials::OPTION_OAUTH_CONNECTION,
-				$expected_ciphertext
-			)
-		);
-		if ( 1 === $deleted ) {
-			wp_cache_delete( Credentials::OPTION_OAUTH_CONNECTION, 'options' );
-		}
+	/** Another request is refreshing or disconnecting. */
+	private static function busy(): WP_Error {
+		return new WP_Error( 'assinafy_oauth_refresh_busy', __( 'Assinafy is renewing the connection. Try again shortly.', 'assinafy' ) );
+	}
+
+	/** The refresh token may be spent, so only a new authorization can continue. */
+	private static function reconnect(): WP_Error {
+		return new WP_Error( 'assinafy_oauth_reconnect', __( 'Assinafy needs to be reconnected.', 'assinafy' ) );
 	}
 
 	/** @return OAuthResource The SDK flow using WordPress HTTP, never Guzzle. */
@@ -233,17 +208,5 @@ final class OAuthTokens {
 		if ( array_diff( $required, explode( ' ', trim( $scope ) ) ) ) {
 			throw new \RuntimeException( 'Assinafy did not grant all WordPress permissions' );
 		}
-	}
-
-	/** Remove a crashed request's lock only if its stored value still matches. */
-	private function remove_stale_lock(): void {
-		$stored = get_option( self::OPTION_REFRESH_LOCK );
-		if ( ! is_string( $stored ) || (int) strtok( $stored, ':' ) >= time() ) {
-			return;
-		}
-
-		global $wpdb;
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", self::OPTION_REFRESH_LOCK, $stored ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Compare-and-delete is required for a rotating-token lock.
-		wp_cache_delete( self::OPTION_REFRESH_LOCK, 'options' );
 	}
 }
