@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -148,6 +148,11 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.1.3 =
+* Fixes OAuth token requests, document sending, and signer validation.
+* Includes complete SDK and API references.
+* Live sandbox tests run locally; GitHub Actions does not access the sandbox.
+
 = 1.1.2 =
 * OAuth connections stay active while they are used: every refresh returns a refresh token valid for another 30 days, so a connection ends only after 30 days without a refresh.
 * A refresh token that may already have been used is never sent again; the plugin asks you to reconnect instead. An API 401 refreshes once and resends the request.
@@ -170,6 +175,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.1.3 =
+Improves OAuth token requests, document sending, and signer validation.
 
 = 1.1.2 =
 OAuth connections now renew with use instead of expiring 30 days after approval. Sites using a WordPress HTTP proxy without the PHP cURL extension must enable cURL or bypass the proxy for Assinafy.

@@ -241,7 +241,7 @@ site's own SSL settings, and the existing `http_request_*` filter surface.
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.1.2.zip
+# Built /path/to/dist/assinafy-1.1.3.zip
 ```
 
 `bin/build-zip.sh` applies `.distignore`, then refuses to produce a zip unless the plugin
@@ -1573,15 +1573,12 @@ GitHub Actions holds everything: the merge gates and the release plumbing.
 | `ci.yml` → `browser` | same | Chromium against wp-env: PDF chooser, signer validation and native document action forms |
 | `ci.yml` → `runtime-smoke` | same | Builds the `--no-dev` tree and asserts `class_exists( 'GuzzleHttp\Client' ) === false` and that the transport was injected |
 | `ci.yml` → `build-zip` | same | `bin/build-zip.sh`, uploaded as artifact `assinafy-dist-<sha>` |
-| `sandbox.yml` | manual only | Live sandbox upload, retrieval, download and verification pricing using protected environment credentials. |
 | `plugin-check.yml` | PR, push to `main`, manual, called by Release | Official wordpress.org Plugin Check against the packaged runtime tree |
 | `release.yml` | `v*` tag push or manual dispatch | Waits for CI and Plugin Check and validates the package; only tag references publish a GitHub release, with attestations only for public repositories |
 | `wp-org-deploy.yml` | called after Release; manual dry run | SVN deploy gated on the validated release and `DEPLOY_TO_WPORG`; manual runs cannot publish |
 | `dependabot.yml` | weekly | GitHub Actions updates, grouped |
 
-The sandbox workflow is `workflow_dispatch` only. It is never attached to a push or a pull
-request, so a fork PR cannot reach the credentials, and its concurrency group is not
-`cancel-in-progress` because a half-finished run leaves orphaned documents in a shared account.
+Live sandbox tests run locally using `phpunit-sandbox.xml.dist`. GitHub Actions does not access the sandbox.
 
 Third-party actions are pinned to full-length commit SHAs with version comments. Manual
 Release execution on a valid tag can publish a GitHub release; only manual SVN deployment

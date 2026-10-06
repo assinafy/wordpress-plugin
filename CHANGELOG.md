@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-10-05
+
+### Fixed
+
+- OAuth token requests use form encoding without API authorization headers.
+- Document sending rejects unsupported signer verification methods and returns the local document ID when the cost check refuses sending.
+- CLI requests without an explicit key use the shared content and options digest for idempotency.
+
+### Added
+
+- Complete SDK method and HTTP API payload references.
+
+### Changed
+
+- Live sandbox tests run locally; GitHub Actions runs the isolated WordPress checks.
+
 ## [1.1.2] - 2026-09-25
 
 ### Fixed
@@ -137,6 +153,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Webhook routes authenticate with a rotatable high-entropy token compared using
   `hash_equals()`, and deliveries are de-duplicated by delivery id.
 
+[1.1.3]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.3
 [1.1.2]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.2
 [1.1.1]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.1
 [1.1.0]: https://github.com/assinafy/wordpress-plugin/releases/tag/v1.1.0

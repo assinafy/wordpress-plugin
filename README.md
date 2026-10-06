@@ -250,7 +250,7 @@ Passar por `wp_remote_request()` também entrega de graça o proxy configurado n
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.1.2.zip
+# Built /path/to/dist/assinafy-1.1.3.zip
 ```
 
 O `bin/build-zip.sh` aplica o `.distignore` e depois se recusa a produzir um zip a menos que o
@@ -1613,16 +1613,12 @@ O GitHub Actions concentra tudo: as travas de merge e o encanamento de release.
 | `ci.yml` → `browser` | o mesmo | Chromium contra o wp-env: seletor de PDF, validação de signatários e formulários nativos de ação em documentos |
 | `ci.yml` → `runtime-smoke` | o mesmo | Constrói a árvore `--no-dev` e verifica `class_exists( 'GuzzleHttp\Client' ) === false` e que o transporte foi injetado |
 | `ci.yml` → `build-zip` | o mesmo | `bin/build-zip.sh`, publicado como artefato `assinafy-dist-<sha>` |
-| `sandbox.yml` | apenas manual | Upload, consulta, download e precificação de verificação no sandbox com credenciais protegidas do ambiente. |
 | `plugin-check.yml` | PR, push para `main`, manual, chamado pelo Release | Plugin Check oficial do wordpress.org contra a árvore de runtime empacotada |
 | `release.yml` | push de tag `v*` ou dispatch manual | Espera a CI e o Plugin Check e valida o pacote; só referências de tag publicam um release no GitHub, com attestations apenas em repositórios públicos |
 | `wp-org-deploy.yml` | chamado depois do Release; dry run manual | Deploy SVN condicionado ao release validado e a `DEPLOY_TO_WPORG`; execuções manuais não podem publicar |
 | `dependabot.yml` | semanal | Atualizações do GitHub Actions, agrupadas |
 
-O workflow de sandbox é apenas `workflow_dispatch`. Ele nunca é ligado a um push ou a um pull
-request, então um PR de fork não alcança as credenciais, e seu grupo de concorrência não é
-`cancel-in-progress` porque uma execução pela metade deixa documentos órfãos em uma conta
-compartilhada.
+Os testes ao vivo do sandbox são executados localmente com a configuração `phpunit-sandbox.xml.dist`. O GitHub Actions não acessa o sandbox.
 
 Actions de terceiros são fixadas em SHAs de commit completos, com comentários de versão. A execução
 manual do Release em uma tag válida pode publicar um release no GitHub; apenas o deploy SVN manual é
