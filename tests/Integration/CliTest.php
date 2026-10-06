@@ -311,6 +311,21 @@ final class CliTest extends AssinafyTestCase {
 		);
 	}
 
+	/** A changed message creates a new request unless an explicit key is supplied. */
+	public function test_changed_message_is_not_deduplicated_by_filename(): void {
+		$this->fake_successful_send();
+		$args = array(
+			'file'    => $this->fixture(),
+			'signers' => 'jane@example.com',
+			'message' => 'First message',
+		);
+		$this->run_command( 'send', array(), $args );
+		$count           = count( $this->requests );
+		$args['message'] = 'Second message';
+		$this->run_command( 'send', array(), $args );
+		$this->assertGreaterThan( $count, count( $this->requests ) );
+	}
+
 	/**
 	 * `--porcelain` prints the post id and nothing else, so a shell script can capture it.
 	 */

@@ -131,9 +131,14 @@ final class OAuthTokens {
 		}
 
 		$config = Configuration::forPublic();
-		$client = new AssinafyClient( $config, new WpHttpClient( $config ) );
-
-		return $client->oauth( OAuthConnection::client_id() );
+		return new OAuthResource(
+			new WpHttpClient( $config ),
+			$config,
+			null,
+			OAuthConnection::client_id(),
+			null,
+			static fn( string $origin ): WpHttpClient => new WpHttpClient( Configuration::forPublic( $origin ) )
+		);
 	}
 
 	/** @param array<string, mixed> $tokens Validated exchange result. */

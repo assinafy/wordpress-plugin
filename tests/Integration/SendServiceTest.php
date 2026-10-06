@@ -503,6 +503,25 @@ final class SendServiceTest extends AssinafyTestCase {
 		$this->assertSame( array(), $this->requests );
 	}
 
+	/** An unsupported verification method must never become Email verification. */
+	public function test_unknown_verification_method_is_rejected_before_upload(): void {
+		$result = $this->service->send(
+			$this->args(
+				array(
+					'signers' => array(
+						array(
+							'name'                => 'Jane Example',
+							'email'               => 'jane@example.com',
+							'verification_method' => 'DigitalCertificat',
+						),
+					),
+				)
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( array(), $this->requests );
+	}
+
 	/**
 	 * An existing signer id without contact overrides inherits the SDK's email default.
 	 */
@@ -730,6 +749,7 @@ final class SendServiceTest extends AssinafyTestCase {
 		$post_id = ( new DocumentIndex() )->find_by_document_id( self::DOCUMENT_ID );
 
 		$this->assertGreaterThan( 0, $post_id );
+		$this->assertSame( array( 'post_id' => $post_id ), $result->get_error_data() );
 		$this->assertSame( '', $this->records->assignment_id( $post_id ), 'Nothing was assigned, so nothing was charged.' );
 		$this->assertSame(
 			'The Assinafy account has no document allowance left on its plan.',

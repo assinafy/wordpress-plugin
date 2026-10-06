@@ -5,7 +5,7 @@
 #
 # Configure ASSINAFY_SANDBOX_API_KEY and ASSINAFY_SANDBOX_ACCOUNT_ID as secrets on the `sandbox`
 # environment, and protect that environment with required reviewers. Never place their values in
-# this file. Tests that reach the live API carry @group sandbox and must not require WordPress.
+# this file. Live checks use the isolated WordPress test environment and never send invitations.
 name: Sandbox integration
 
 on:
@@ -36,7 +36,7 @@ jobs:
 
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
-          php-version: '8.2'
+          php-version: '8.5'
           extensions: json, mbstring, sodium
           coverage: none
           tools: composer:v2
@@ -52,10 +52,18 @@ jobs:
           test -n "${ASSINAFY_ACCOUNT_ID}" || { echo "ASSINAFY_SANDBOX_ACCOUNT_ID is not set" >&2; exit 1; }
           php -r '$url = (string) getenv("ASSINAFY_BASE_URL"); if (parse_url($url, PHP_URL_HOST) !== "sandbox.assinafy.com.br") { fwrite(STDERR, "Refusing to run integration tests outside the sandbox.\n"); exit(1); }'
 
+      - name: Start isolated WordPress
+        run: |
+          npm ci
+          npm run start
+
       - name: Sandbox suite
         env:
           ASSINAFY_API_KEY: ${{ secrets.ASSINAFY_SANDBOX_API_KEY }}
           ASSINAFY_ACCOUNT_ID: ${{ secrets.ASSINAFY_SANDBOX_ACCOUNT_ID }}
         run: |
-          vendor/bin/phpunit --group sandbox --log-junit sandbox-results.xml
-          php -r '$r = simplexml_load_file("sandbox-results.xml"); if (!$r || (int) $r->testsuite["tests"] === 0) { fwrite(STDERR, "No sandbox tests were executed. Live API coverage is not implemented.\n"); exit(1); }'
+          docker_id="$(docker ps --filter name=tests-cli --format '{{.ID}}')"
+          test -n "${docker_id}"
+          docker exec -e ASSINAFY_API_KEY -e ASSINAFY_ACCOUNT_ID \
+            -w /var/www/html/wp-content/plugins/assinafy "${docker_id}" \
+            vendor/bin/phpunit -c phpunit-sandbox.xml.dist

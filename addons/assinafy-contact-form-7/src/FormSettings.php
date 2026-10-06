@@ -94,7 +94,7 @@ final class FormSettings {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize() whitelists text fields, applies absint to the PDF ID, and strictly normalizes enabled before storage.
 		$settings = $this->sanitize( wp_unslash( $_POST['assinafy_cf7'] ) );
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
-		$valid = $this->valid_settings( $form, $settings );
+		$valid = $this->valid_settings( $form, $settings ) && current_user_can( 'read_post', $settings['attachment_id'] );
 		if ( ! $valid ) {
 			$settings['enabled'] = false;
 		}

@@ -306,9 +306,11 @@ final class Cli {
 		}
 
 		$send_args = array(
-			'signers'         => $signers,
-			'idempotency_key' => (string) ( $assoc_args['key'] ?? 'cli-' . md5( $file . $attachment . wp_json_encode( $signers ) ) ),
+			'signers' => $signers,
 		);
+		if ( isset( $assoc_args['key'] ) ) {
+			$send_args['idempotency_key'] = (string) $assoc_args['key'];
+		}
 
 		// Exactly one of the two sources is set; the other was refused above.
 		$send_args += '' !== $file

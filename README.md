@@ -24,9 +24,9 @@ tempos e recursos disponíveis na conta devem ser lidos da conta configurada.
 
 ---
 
-Os resultados detalhados da verificação, as correções e os limites de cobertura estão em `AUDIT.md`
-no checkout do código-fonte. Esse relatório interno de auditoria é excluído dos ZIPs de release.
 O contrato entre core e adaptadores e o rollout das integrações estão em [docs/integrations.md](docs/integrations.md).
+
+Referência completa: [métodos do SDK](docs/sdk-reference.md) e [payloads REST](docs/api-payloads.md).
 
 ## 1. O que este plugin faz
 
@@ -74,7 +74,7 @@ avisos e a validação em host licenciado continuam sendo travas de release.
 
 ### O modelo de domínio
 
-A Assinafy **não tem envelope**. O grafo de objetos é plano, e entender seus cinco substantivos é
+A Assinafy **não tem uma entidade envelope separada**. Respostas REST normalmente usam `status`, `message`, `data`; respostas de token e revogação OAuth usam seu próprio JSON plano. O grafo de objetos é plano, e entender seus cinco substantivos é
 quase tudo de que você precisa:
 
 | Entidade | Escopo | Identidade | O que é |
@@ -302,7 +302,7 @@ dados ao desinstalar**, tentam revogar o refresh token mais recente, esperando u
 andamento (Desconectar pede para tentar de novo em instantes), e sempre removem a conexão local; se
 a revogação remota falhar, revogue o app em Assinafy Connected Apps.
 
-Para registrar o app público **Assinafy para WordPress**, use:
+O plugin usa o app público **Assinafy para WordPress**, já registrado:
 
 - Callback: `https://integrations.assinafy.com.br/wordpress/oauth-callback`
 - Ícone SVG: `https://integrations.assinafy.com.br/wordpress/wordpress-icon.svg`
@@ -1554,8 +1554,11 @@ PHPUnit 10, então mudar o major do PHPUnit exige atualizar e verificar todo o a
 duramente sem ele.
 
 O `forceCoversAnnotation="true"` está ligado: uma classe ou método de teste sem `@covers` é marcado
-como arriscado. O workflow manual de sandbox é reservado para testes marcados com `@group sandbox`.
-Ainda não existem testes ao vivo desse tipo; uma execução de sandbox vazia falha explicitamente.
+como arriscado. Os testes ao vivo usam a configuração separada `phpunit-sandbox.xml.dist`
+e o bootstrap de testes do WordPress. Passe `ASSINAFY_API_KEY` e `ASSINAFY_ACCOUNT_ID` pelo
+ambiente. A suíte cria e exclui um PDF sem atribuição, verifica consulta e download, e estima
+custos de Email, WhatsApp e DigitalCertificate sem enviar convites. Todos os recursos de
+precificação precisam estar habilitados na conta de sandbox.
 
 ### Lint e análise estática
 
@@ -1610,7 +1613,7 @@ O GitHub Actions concentra tudo: as travas de merge e o encanamento de release.
 | `ci.yml` → `browser` | o mesmo | Chromium contra o wp-env: seletor de PDF, validação de signatários e formulários nativos de ação em documentos |
 | `ci.yml` → `runtime-smoke` | o mesmo | Constrói a árvore `--no-dev` e verifica `class_exists( 'GuzzleHttp\Client' ) === false` e que o transporte foi injetado |
 | `ci.yml` → `build-zip` | o mesmo | `bin/build-zip.sh`, publicado como artefato `assinafy-dist-<sha>` |
-| `sandbox.yml` | apenas manual | Reservado para testes na API ao vivo; atualmente não existem testes de sandbox, e uma execução vazia falha explicitamente. |
+| `sandbox.yml` | apenas manual | Upload, consulta, download e precificação de verificação no sandbox com credenciais protegidas do ambiente. |
 | `plugin-check.yml` | PR, push para `main`, manual, chamado pelo Release | Plugin Check oficial do wordpress.org contra a árvore de runtime empacotada |
 | `release.yml` | push de tag `v*` ou dispatch manual | Espera a CI e o Plugin Check e valida o pacote; só referências de tag publicam um release no GitHub, com attestations apenas em repositórios públicos |
 | `wp-org-deploy.yml` | chamado depois do Release; dry run manual | Deploy SVN condicionado ao release validado e a `DEPLOY_TO_WPORG`; execuções manuais não podem publicar |

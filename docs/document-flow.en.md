@@ -103,7 +103,7 @@ X-Api-Key: {API_KEY}
 `search` is a **substring** match over `full_name` OR `email`, so it happily returns
 `jane@example.com.test` for `jane@example.com`. The SDK's `signers()->findByEmail()` runs the
 paged, case-insensitive exact scan this needs; the plugin uses it rather than re-implementing
-the comparison.
+exact email matching.
 
 On a miss:
 
@@ -393,7 +393,7 @@ One call recovers everything about a signature request. There is no assignment-d
 endpoint, and `?expand=assignment` is a no-op — `assignment` and `pages` are always embedded.
 
 The document edit screen also renders the per-document activity feed, straight from the API,
-which is why the plugin keeps no local audit table:
+which is why the plugin keeps no local activity table:
 
 ```http
 GET /v1/documents/104618b275d321f5de22240ebfda/activities

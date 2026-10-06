@@ -34,6 +34,7 @@ phpstan.neon.dist
 phpmd.xml.dist
 phpunit.xml.dist
 phpunit-integration.xml.dist
+phpunit-sandbox.xml.dist
 phpcs.xml
 phpstan.neon
 phpunit.xml
@@ -55,8 +56,7 @@ composer.phar
 
 .DS_Store
 
-# Audit and browser test output
-/AUDIT.md
+# Browser test output
 /test-results
 /playwright-report
 
@@ -74,3 +74,7 @@ composer.phar
 # ships. The pt_BR files stay in the repository as what gets uploaded to translate.wordpress.org.
 /languages/assinafy-pt_BR.po
 /languages/assinafy-pt_BR.mo
+
+# Local development instructions
+/AGENTS.md
+/CLAUDE.md

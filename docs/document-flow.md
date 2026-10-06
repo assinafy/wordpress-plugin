@@ -108,7 +108,7 @@ X-Api-Key: {API_KEY}
 O `search` é uma correspondência por **substring** sobre `full_name` OU `email`, então ele
 alegremente retorna `jane@example.com.test` para `jane@example.com`. O `signers()->findByEmail()`
 do SDK faz a varredura paginada, exata e sem diferenciar maiúsculas de que isso precisa; o plugin
-usa esse método em vez de reimplementar a comparação.
+usa esse método em vez de reimplementar a busca exata.
 
 Quando não encontra:
 
@@ -405,7 +405,7 @@ detalhe do assignment, e `?expand=assignment` não faz nada — `assignment` e `
 embutidos.
 
 A tela de edição do documento também renderiza o feed de atividades daquele documento, direto da
-API, e é por isso que o plugin não mantém tabela de auditoria local:
+API, e é por isso que o plugin não mantém tabela local de atividades:
 
 ```http
 GET /v1/documents/104618b275d321f5de22240ebfda/activities

@@ -24,9 +24,9 @@ timings and available account features must be read from the configured account.
 
 ---
 
-Detailed verification results, fixes and coverage limits are in `AUDIT.md` in the source
-checkout. That internal audit report is excluded from release ZIPs.
 The core/adapter contract and integration rollout are in [docs/integrations.en.md](docs/integrations.en.md).
+
+Complete reference: [SDK methods](docs/sdk-reference.md) and [REST payloads](docs/api-payloads.md).
 
 ## 1. What this plugin does
 
@@ -70,7 +70,7 @@ remain release gates.
 
 ### The domain model
 
-Assinafy has **no envelope**. The object graph is flat, and understanding its five nouns is
+Assinafy has **no separate envelope entity**. REST responses normally use a `status`, `message`, `data` wrapper; OAuth token and revocation responses use their own flat JSON format. The object graph is flat, and understanding its five nouns is
 most of what you need:
 
 | Entity | Scope | Identity | What it is |
@@ -291,7 +291,7 @@ refresh lock), the plugin also asks you to reconnect. **Disconnect**, and uninst
 progress (Disconnect asks you to try again shortly), and always remove the local connection; if
 remote revocation fails, revoke the app in Assinafy Connected Apps.
 
-Register a Public app named **Assinafy para WordPress** with:
+The plugin uses the already registered public app **Assinafy para WordPress**:
 
 - Callback: `https://integrations.assinafy.com.br/wordpress/oauth-callback`
 - SVG icon: `https://integrations.assinafy.com.br/wordpress/wordpress-icon.svg`
@@ -810,7 +810,7 @@ security model is:
 1. **An unguessable endpoint.** The REST route is
    `POST /wp-json/assinafy/v1/webhook/(?P<token>[A-Za-z0-9]{32})`. The token is generated at
    activation into an `autoload => false` option.
-2. **`permission_callback` does the check**, comparing with `hash_equals()`. It is never
+2. **`permission_callback` does the check**, using `hash_equals()`. It is never
    `__return_true`. A mismatch, or a site with no token yet, returns a `WP_Error` with status
    403. Switching webhook acceptance off does **not** refuse the delivery: the subscription is
    account-wide, so a 403 would pause deliveries for every site sharing the account. The
@@ -1514,8 +1514,11 @@ in PHPUnit 10, so changing the PHPUnit major requires updating and verifying the
 hard-fails without it.
 
 `forceCoversAnnotation="true"` is on: a test class or method with no `@covers` is marked
-risky. The manual sandbox workflow is reserved for tests marked `@group sandbox`. No such live
-tests exist yet; empty sandbox execution fails explicitly.
+risky. Live sandbox checks use the separate `phpunit-sandbox.xml.dist` configuration and
+WordPress test bootstrap. Supply `ASSINAFY_API_KEY` and `ASSINAFY_ACCOUNT_ID` through the
+environment. The suite creates and deletes one unassigned PDF, checks retrieval and download,
+and estimates Email, WhatsApp and DigitalCertificate costs without sending invitations.
+All pricing features must be enabled on the sandbox account.
 
 ### Linting and static analysis
 
@@ -1570,7 +1573,7 @@ GitHub Actions holds everything: the merge gates and the release plumbing.
 | `ci.yml` → `browser` | same | Chromium against wp-env: PDF chooser, signer validation and native document action forms |
 | `ci.yml` → `runtime-smoke` | same | Builds the `--no-dev` tree and asserts `class_exists( 'GuzzleHttp\Client' ) === false` and that the transport was injected |
 | `ci.yml` → `build-zip` | same | `bin/build-zip.sh`, uploaded as artifact `assinafy-dist-<sha>` |
-| `sandbox.yml` | manual only | Reserved for live API tests; currently no sandbox tests exist, and an empty run fails explicitly. |
+| `sandbox.yml` | manual only | Live sandbox upload, retrieval, download and verification pricing using protected environment credentials. |
 | `plugin-check.yml` | PR, push to `main`, manual, called by Release | Official wordpress.org Plugin Check against the packaged runtime tree |
 | `release.yml` | `v*` tag push or manual dispatch | Waits for CI and Plugin Check and validates the package; only tag references publish a GitHub release, with attestations only for public repositories |
 | `wp-org-deploy.yml` | called after Release; manual dry run | SVN deploy gated on the validated release and `DEPLOY_TO_WPORG`; manual runs cannot publish |

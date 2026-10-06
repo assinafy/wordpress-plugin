@@ -226,7 +226,7 @@ final class SendScreen {
 				</table>
 
 				<p class="description">
-					<?php esc_html_e( 'Sending consumes one document from your Assinafy balance. Email invitations cost no credits. If the balance is short, the request is refused before anything is uploaded.', 'assinafy' ); ?>
+					<?php esc_html_e( 'Sending consumes one document from your Assinafy balance. Email invitations cost no credits. If the balance is short, the uploaded document remains available for recovery and no signature request is created.', 'assinafy' ); ?>
 				</p>
 
 				<?php submit_button( __( 'Send for signature', 'assinafy' ) ); ?>

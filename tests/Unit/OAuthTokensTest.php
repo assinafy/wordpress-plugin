@@ -39,6 +39,16 @@ final class OAuthTokensTest extends TestCase {
 	}
 
 	/** OAuth takes precedence over an old API key and stores tokens encrypted. */
+	/** Discovery uses WordPress HTTP at the origin, with no workspace credentials. */
+	public function test_discovery_uses_credential_free_native_transport(): void {
+		FakeHttp::queue( 200, '{"resource":"https://api.assinafy.com.br","authorization_servers":["https://auth.assinafy.com.br"]}', array( 'Content-Type' => 'application/json' ) );
+		$metadata = ( new OAuthTokens( new Credentials() ) )->oauth()->protectedResourceMetadata();
+		$this->assertSame( 'https://api.assinafy.com.br', $metadata['resource'] );
+		$this->assertSame( 'https://api.assinafy.com.br/.well-known/oauth-protected-resource', FakeHttp::last()['url'] );
+		$this->assertArrayNotHasKey( 'authorization', FakeHttp::last_headers() );
+		$this->assertArrayNotHasKey( 'x-api-key', FakeHttp::last_headers() );
+	}
+
 	public function test_a_connection_uses_bearer_authentication(): void {
 		$credentials = new Credentials();
 		$credentials->set_api_key( 'old-static-key' );

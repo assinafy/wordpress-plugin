@@ -38,3 +38,7 @@ Thumbs.db
 # Browser test output
 /test-results/
 /playwright-report/
+
+# Local development instructions
+/AGENTS.md
+/CLAUDE.md

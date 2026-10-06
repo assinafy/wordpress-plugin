@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T21:20:57+00:00\n"
+"POT-Creation-Date: 2026-10-06T00:13:41+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: assinafy\n"
@@ -334,7 +334,7 @@ msgid "Signers can no longer sign after the end of this day (UTC). Leave the fie
 msgstr ""
 
 #: src/Admin/SendScreen.php:229
-msgid "Sending consumes one document from your Assinafy balance. Email invitations cost no credits. If the balance is short, the request is refused before anything is uploaded."
+msgid "Sending consumes one document from your Assinafy balance. Email invitations cost no credits. If the balance is short, the uploaded document remains available for recovery and no signature request is created."
 msgstr ""
 
 #: src/Admin/SendScreen.php:253
@@ -674,47 +674,47 @@ msgstr ""
 msgid "Not found"
 msgstr ""
 
-#: src/Documents/SendAttempt.php:120
+#: src/Documents/SendAttempt.php:121
 msgid "Signers must be unique, and their signing steps must start at 1 without gaps."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:125
+#: src/Documents/SendAttempt.php:126
 msgid "A digital certificate signer must have a signing step of their own."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:154
+#: src/Documents/SendAttempt.php:155
 msgid "The uploaded document id could not be saved. Check the Assinafy account before retrying."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:178
+#: src/Documents/SendAttempt.php:179
 msgid "Assinafy returned no assignment id. Retry to check whether signatures were requested."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:211
+#: src/Documents/SendAttempt.php:212
 msgid "Assinafy returned no valid signer id."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:230
+#: src/Documents/SendAttempt.php:231
 msgid "The previous upload outcome is unknown. Check the Assinafy account before starting a new send with a new idempotency key."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:250
+#: src/Documents/SendAttempt.php:251
 msgid "This record already mirrors a document. Start a new send without post_id to keep its signature history."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:264
+#: src/Documents/SendAttempt.php:265
 msgid "The local document record could not be created. Nothing was uploaded."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:270
+#: src/Documents/SendAttempt.php:271
 msgid "The integration source could not be saved. Nothing was uploaded."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:275
+#: src/Documents/SendAttempt.php:276
 msgid "The send reservation could not be saved. Nothing was uploaded."
 msgstr ""
 
-#: src/Documents/SendAttempt.php:289
+#: src/Documents/SendAttempt.php:290
 msgid "Upload returned no valid document id. Check the Assinafy account before retrying."
 msgstr ""
 
@@ -782,6 +782,10 @@ msgstr ""
 msgid "The signer notification channel must match its verification method; digital certificates support Email or Whatsapp."
 msgstr ""
 
+#: src/Documents/Signers.php:262
+msgid "Choose a supported signer verification method: Email, Whatsapp or DigitalCertificate."
+msgstr ""
+
 #: src/Documents/SourceReference.php:45
 msgid "The integration source must contain a valid integration slug and record id."
 msgstr ""
@@ -799,7 +803,7 @@ msgid "Assinafy returned an invalid or mismatched document."
 msgstr ""
 
 #. translators: %s: Assinafy API host, such as api.assinafy.com.br.
-#: src/Http/RequestFactory.php:132
+#: src/Http/RequestFactory.php:133
 #, php-format
 msgid "Without the PHP cURL extension, WordPress cannot send Assinafy requests securely through the HTTP proxy configured for this site. Enable cURL, or add %s to WP_PROXY_BYPASS_HOSTS."
 msgstr ""

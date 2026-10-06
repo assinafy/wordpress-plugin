@@ -8,7 +8,7 @@
         "assinafy/php-sdk": "^2.4.0"
     },
     "replace": {
-        "guzzlehttp/guzzle": "*",
+        "guzzlehttp/guzzle": "^7.0",
         "guzzlehttp/promises": "*",
         "guzzlehttp/psr7": "*",
         "psr/http-client": "*",

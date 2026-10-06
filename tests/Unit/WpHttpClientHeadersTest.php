@@ -98,6 +98,8 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 	 */
 	public static function credentialless_routes(): array {
 		return array(
+			'oauth token'            => array( 'POST', 'oauth/token' ),
+			'oauth revocation'       => array( 'POST', 'oauth/revoke' ),
 			'login'                  => array( 'POST', 'login' ),
 			'social login'           => array( 'POST', 'authentication/social-login' ),
 			'password reset'         => array( 'PUT', 'authentication/reset-password' ),

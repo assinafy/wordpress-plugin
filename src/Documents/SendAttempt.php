@@ -71,6 +71,7 @@ final class SendAttempt {
 				$refusal = $this->cost->refusal( $prepared['signers'], (string) $document['id'] );
 				if ( null !== $refusal ) {
 					$this->records->set_last_error( $post_id, $refusal->get_error_message() );
+					$refusal->add_data( array( 'post_id' => $post_id ) );
 					return $refusal;
 				}
 				$signers              ??= $this->resolve_signers( $client, $prepared['signers'] );

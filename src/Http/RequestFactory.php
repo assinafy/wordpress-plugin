@@ -36,6 +36,8 @@ final class RequestFactory {
 	 * @var list<string>
 	 */
 	private const CREDENTIALLESS_ROUTES = array(
+		'POST oauth/token',
+		'POST oauth/revoke',
 		'POST login',
 		'POST authentication/social-login',
 		'PUT authentication/request-password-reset',

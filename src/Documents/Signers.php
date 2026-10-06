@@ -257,6 +257,10 @@ final class Signers {
 		if ( in_array( $requested, AssignmentResource::VERIFICATION_METHODS, true ) ) {
 			return $requested;
 		}
+		if ( '' !== $requested ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Consumers escape the translated error when displaying HTML.
+			throw new \InvalidArgumentException( __( 'Choose a supported signer verification method: Email, Whatsapp or DigitalCertificate.', 'assinafy' ) );
+		}
 
 		return $has_email
 			? AssignmentResource::VERIFICATION_EMAIL
