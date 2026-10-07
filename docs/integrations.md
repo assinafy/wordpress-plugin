@@ -192,8 +192,8 @@ reportar as falhas ali.
 
 ### Mantenha os webhooks brutos da Assinafy no core
 
-Os adapters não implementam `handle_webhook()` para as entregas da Assinafy. Essas entregas não são
-assinadas, então o core confere o token do endpoint e a conta, identifica um documento local
+Os adapters não implementam `handle_webhook()` para as entregas da Assinafy. O core não verifica
+assinaturas de entrega: ele confere o token do endpoint e a conta, identifica um documento local
 conhecido e reconsulta o estado autoritativo antes de alterá-lo. Encaminhar payloads brutos para os
 adapters duplicaria essa fronteira e permitiria decisões de confiança diferentes para a mesma
 entrega.

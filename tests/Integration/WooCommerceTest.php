@@ -138,7 +138,7 @@ final class WooCommerceTest extends AssinafyTestCase {
 	public function test_the_sent_map_is_read_and_written_through_the_order_object(): void {
 		$body = $this->method_body( 'send_for_order' );
 
-		$this->assertStringContainsString( 'wc_get_order( $order_id )', $body );
+		$this->assertStringContainsString( 'wc_get_order( $order_id )', $this->method_body( 'sendable_order' ) );
 		$this->assertStringContainsString( '$order->get_meta( self::ORDER_SENT )', $body );
 		$this->assertStringContainsString( '$order->update_meta_data( self::ORDER_SENT, $sent )', $body );
 		$this->assertStringContainsString( '$order->save()', $body );
@@ -450,6 +450,23 @@ final class WooCommerceTest extends AssinafyTestCase {
 			'no usable billing email address',
 			$this->latest_note( $order->get_id() )
 		);
+		$this->assertSame( array(), $this->requests );
+		$this->assertSame( array(), $this->sent_map( $order->get_id() ) );
+	}
+
+	/**
+	 * An order whose personal data was erased is never sent to its placeholder address.
+	 */
+	public function test_an_anonymized_order_is_not_sent(): void {
+		$this->require_woocommerce();
+
+		$attachment_id = $this->create_pdf_attachment();
+		$order         = $this->create_order( $attachment_id, 'deleted@site.invalid' );
+		$order->update_meta_data( '_anonymized', 'yes' );
+		$order->save();
+
+		$this->complete( $order );
+
 		$this->assertSame( array(), $this->requests );
 		$this->assertSame( array(), $this->sent_map( $order->get_id() ) );
 	}

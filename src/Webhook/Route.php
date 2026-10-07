@@ -22,16 +22,16 @@ use WP_REST_Server;
  * the token that makes it unguessable, the rotation of that token, and the account-side
  * subscription that tells Assinafy to deliver to it.
  *
- * Assinafy deliveries are unsigned. `PUT /accounts/{id}/webhooks/subscriptions` accepts
- * exactly `events`, `is_active`, `url` and `email` — there is no secret to register, no
- * signature header to verify, and the plugin must never claim otherwise. The endpoint's
- * secrecy is the whole of its authentication, which is why `permission_callback` compares
+ * `PUT /accounts/{id}/webhooks/subscriptions` accepts exactly `events`, `is_active`, `url`
+ * and `email` and does not enable delivery signing, so the plugin verifies no signature
+ * header and must never claim otherwise. The endpoint's secrecy is the whole of its
+ * authentication, which is why `permission_callback` compares
  * the URL token with `hash_equals()` and is never `__return_true`, and why the delivery body
  * is treated as a hint rather than as truth (see {@see Handler}).
  *
- * The subscription is account-wide and singular: one URL per Assinafy account, not one per
- * integration. `register()` is a wholesale upsert of all four fields, so pointing it at this
- * site replaces whatever endpoint the account already uses. {@see self::subscribe()}
+ * An account has one endpoint, or up to three on paid plans, and the subscription routes act
+ * on the oldest one. `register()` is a wholesale upsert of all four fields, so pointing it at
+ * this site replaces the oldest endpoint wherever it currently delivers. {@see self::subscribe()}
  * therefore reads the current subscription first and refuses to take over a foreign URL
  * without an explicit confirmation.
  */
@@ -228,7 +228,7 @@ final class Route {
 	 *
 	 * @param array<string, mixed>|null $subscription Subscription as returned by the API.
 	 */
-	private static function is_ours( ?array $subscription ): bool {
+	public static function is_ours( ?array $subscription ): bool {
 		$url = is_array( $subscription ) && is_string( $subscription['url'] ?? null )
 			? untrailingslashit( $subscription['url'] )
 			: '';

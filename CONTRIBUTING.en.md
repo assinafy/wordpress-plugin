@@ -97,7 +97,8 @@ that touches it:
 - **A `200` response can still be an error.** The body carries its own `status`, and a `200`
   wrapping `{"status": 422}` is a failure. `WpHttpClient` raises on it; do not add a code path
   that trusts the HTTP status alone.
-- **Webhook deliveries are unsigned.** There is no HMAC and no shared secret. A delivery is a
+- **Webhook deliveries are authenticated by the URL token only.** The plugin does not verify
+  delivery signatures. A delivery is a
   hint that something changed, never a source of truth — re-fetch the document and write from
   the response.
 

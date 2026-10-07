@@ -34,11 +34,10 @@ final class WebhookCli {
 	/**
 	 * Inspect or change the account's webhook subscription.
 	 *
-	 * An Assinafy account has exactly one webhook subscription, shared by every integration
-	 * on that account — there is no per-site subscription and no DELETE route. Registering
-	 * from here therefore takes the subscription over from whatever it pointed at, which is
-	 * why replacing a foreign URL asks for confirmation. `off` stops delivery without losing
-	 * the configuration.
+	 * The subscription routes act on the account's oldest webhook endpoint, which another
+	 * integration may own. Registering from here takes that endpoint over, and `off` stops
+	 * its deliveries without losing the configuration, so both ask for confirmation when it
+	 * points somewhere else.
 	 *
 	 * Webhooks are optional: the reconcile pass keeps a site correct without them.
 	 *
@@ -57,7 +56,7 @@ final class WebhookCli {
 	 * : Address Assinafy alerts when a delivery fails. Defaults to the site admin email.
 	 *
 	 * [--yes]
-	 * : Answer the take-over prompt without asking.
+	 * : Answer the take-over or switch-off prompt without asking.
 	 *
 	 * ## EXAMPLES
 	 *
@@ -101,7 +100,7 @@ final class WebhookCli {
 		}
 
 		if ( 'off' === $action ) {
-			$this->stop( $client );
+			$this->stop( $client, $assoc_args );
 
 			return;
 		}
@@ -129,10 +128,21 @@ final class WebhookCli {
 	 * switch deliveries off, and the URL, email and event list stay on file so the same
 	 * subscription can be switched back on.
 	 *
-	 * @param AssinafyClient $client Connected client.
+	 * @param AssinafyClient        $client     Connected client.
+	 * @param array<string, string> $assoc_args Associative arguments; `--yes` answers the prompt.
 	 */
-	private function stop( AssinafyClient $client ): void {
+	private function stop( AssinafyClient $client, array $assoc_args ): void {
 		try {
+			$subscription = $client->webhooks()->get();
+			if ( null !== $subscription && ! Route::is_ours( $subscription ) ) {
+				WP_CLI::confirm(
+					sprintf(
+						'This account delivers to %s, not this site. Stop those deliveries?',
+						is_string( $subscription['url'] ?? null ) ? $subscription['url'] : ''
+					),
+					$assoc_args
+				);
+			}
 			$client->webhooks()->deactivate();
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );

@@ -10,6 +10,7 @@
 /.distignore
 /.agents
 /.codex
+/.claude
 
 # wordpress.org listing assets live at SVN root, not in trunk/
 /.wordpress-org

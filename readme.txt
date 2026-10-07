@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.1.3
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,7 +99,7 @@ No. An hourly job re-checks every open document. The webhook only makes the upda
 
 = Is the webhook endpoint secure? =
 
-The endpoint carries a 32-character secret token generated for this site, compared in constant time. A delivery never writes anything from its body: the plugin re-fetches the document from the API and writes that. Assinafy does not sign its deliveries, so the plugin does not claim to verify a signature.
+The endpoint carries a 32-character secret token generated for this site, compared in constant time. A delivery never writes anything from its body: the plugin re-fetches the document from the API and writes that. The plugin does not verify delivery signatures; the token authenticates each delivery.
 
 = Does it need WooCommerce? =
 
@@ -148,10 +148,16 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.2.0 =
+* After a document is sent, the confirmation appears on its document screen.
+* `wp assinafy webhook off` asks before stopping deliveries to an endpoint that belongs to another site or integration; `--yes` answers the prompt.
+* WooCommerce orders whose personal data was erased are not sent for signature.
+* Starting or completing an OAuth connection reports the specific reason OAuth is unavailable.
+* Webhook documentation describes accounts with up to three endpoints on paid plans; the plugin manages the account's oldest endpoint.
+
 = 1.1.3 =
 * Fixes OAuth token requests, document sending, and signer validation.
 * Includes complete SDK and API references.
-* Live sandbox tests run locally; GitHub Actions does not access the sandbox.
 
 = 1.1.2 =
 * OAuth connections stay active while they are used: every refresh returns a refresh token valid for another 30 days, so a connection ends only after 30 days without a refresh.
@@ -175,6 +181,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Shows the send confirmation on the document screen, protects other webhook endpoints from `webhook off`, and skips erased WooCommerce orders.
 
 = 1.1.3 =
 Improves OAuth token requests, document sending, and signer validation.

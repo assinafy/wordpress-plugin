@@ -26,15 +26,6 @@ defined( 'ABSPATH' ) || exit;
 final class DocumentIndex {
 
 	/**
-	 * `DocumentRecord` is a stateless accessor over post meta, so the default lets callers
-	 * construct this with nothing.
-	 *
-	 * @param DocumentRecord $records Typed access to the records found.
-	 */
-	public function __construct( private readonly DocumentRecord $records = new DocumentRecord() ) {
-	}
-
-	/**
 	 * Find the local post mirroring a remote document, or 0.
 	 *
 	 * @param string $document_id Remote document id, 26-28 opaque hex characters.
@@ -91,34 +82,6 @@ final class DocumentIndex {
 		);
 
 		return isset( $posts[0] ) ? (int) $posts[0] : 0;
-	}
-
-
-	/**
-	 * The most recent remote document id this site knows about, or an empty string.
-	 *
-	 * Newest mirror first, by post id. It is not a stand-in for a particular document:
-	 * `POST /documents/{id}/assignments/estimate-cost` refuses an already-assigned document,
-	 * so a send prices the one it has just uploaded rather than whatever came last.
-	 */
-	public function latest_document_id(): string {
-		$posts = get_posts(
-			array(
-				'post_type'              => DocumentPostType::POST_TYPE,
-				'post_status'            => 'any',
-				'numberposts'            => 1,
-				'fields'                 => 'ids',
-				'orderby'                => 'ID',
-				'order'                  => 'DESC',
-				'no_found_rows'          => true,
-				'update_post_term_cache' => false,
-				'ignore_sticky_posts'    => true,
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Restricts the scan to rows that actually mirror a remote document.
-				'meta_key'               => DocumentRecord::META_DOCUMENT_ID,
-			)
-		);
-
-		return isset( $posts[0] ) ? $this->records->document_id( (int) $posts[0] ) : '';
 	}
 
 

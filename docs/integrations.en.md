@@ -186,8 +186,8 @@ that work through its host's supported mechanism and report failures there.
 
 ### Keep raw Assinafy webhooks in core
 
-Adapters do not implement `handle_webhook()` for Assinafy deliveries. Those deliveries are
-unsigned, so core checks the endpoint token and account, identifies a known local document,
+Adapters do not implement `handle_webhook()` for Assinafy deliveries. Core does not verify
+delivery signatures: it checks the endpoint token and account, identifies a known local document,
 and re-fetches authoritative state before changing it. Forwarding raw payloads to adapters
 would duplicate this boundary and permit different trust decisions for the same delivery.
 

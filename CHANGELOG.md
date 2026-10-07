@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-07
+
+### Fixed
+
+- After a document is sent from the compose screen, the confirmation appears on the document screen it opens.
+- WooCommerce orders whose personal data was erased are not sent to their placeholder billing address.
+
+### Changed
+
+- `wp assinafy webhook off` asks before stopping deliveries to an endpoint that belongs to another site or integration. `--yes` answers the prompt.
+- Starting or completing an OAuth connection reports the specific reason OAuth is unavailable: sandbox environment, unregistered app, missing HTTPS or missing encryption material.
+- Webhook documentation describes accounts with one endpoint, or up to three on paid plans. The plugin manages the account's oldest endpoint and authenticates deliveries with its URL token.
+
 ## [1.1.3] - 2026-10-05
 
 ### Fixed
@@ -18,10 +31,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Complete SDK method and HTTP API payload references.
-
-### Changed
-
-- Live sandbox tests run locally; GitHub Actions runs the isolated WordPress checks.
 
 ## [1.1.2] - 2026-09-25
 

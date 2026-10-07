@@ -11,6 +11,7 @@ namespace Assinafy\WP\Tests\Integration;
 
 defined( 'ABSPATH' ) || exit;
 
+use Assinafy\WP\Admin\DocumentActions;
 use Assinafy\WP\Admin\SendScreen;
 use Assinafy\WP\ClientFactory;
 use Assinafy\WP\Credentials;
@@ -126,6 +127,89 @@ final class SendScreenTest extends AssinafyTestCase {
 		$this->assertSame( 'assinafy_document', get_post_type( (int) $query['post'] ) );
 		$this->assertSame( '', ( new DocumentRecord() )->document_id( (int) $query['post'] ) );
 		$this->assertSame( 'Upload response unavailable.', ( new DocumentRecord() )->last_error( (int) $query['post'] ) );
+	}
+
+	/**
+	 * A completed send confirms itself on the document screen it redirects to.
+	 */
+	public function test_successful_send_confirms_on_the_document_screen(): void {
+		$this->configure_plugin();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$attachment           = self::factory()->attachment->create_upload_object( dirname( __DIR__ ) . '/fixtures/sample.pdf' );
+		$_POST                = array(
+			'assinafy_attachment_id' => $attachment,
+			'assinafy_signers'       => array(
+				array(
+					'name'  => 'Jane Example',
+					'email' => 'jane@example.com',
+				),
+			),
+		);
+		$_REQUEST['_wpnonce'] = wp_create_nonce( SendScreen::ACTION );
+		$this->fake_response(
+			'/signers?',
+			200,
+			array(
+				'status' => 200,
+				'data'   => array(
+					array(
+						'id'    => '19e6b92e7895332ed9708535d8c',
+						'email' => 'jane@example.com',
+					),
+				),
+			)
+		);
+		$this->fake_response(
+			'/documents',
+			200,
+			array(
+				'status' => 200,
+				'data'   => array(
+					'id'     => '104618d0d63884bc446c534e5ff5',
+					'name'   => 'sample.pdf',
+					'status' => 'uploaded',
+				),
+			)
+		);
+		$this->fake_response(
+			'/assignments',
+			200,
+			array(
+				'status' => 200,
+				'data'   => array(
+					'id'      => '1a09c15990f0144256b98ff38aa',
+					'method'  => 'virtual',
+					'signers' => array(
+						array(
+							'id'    => '19e6b92e7895332ed9708535d8c',
+							'email' => 'jane@example.com',
+						),
+					),
+				),
+			)
+		);
+		$screen   = new SendScreen( new SendService( new ClientFactory( new Credentials(), new Log() ), new DocumentRecord(), new Log() ) );
+		$redirect = '';
+		$stop     = static function ( string $location ) use ( &$redirect ): never {
+			$redirect = $location;
+			throw new \RuntimeException( 'redirect' );
+		};
+		add_filter( 'wp_redirect', $stop );
+		try {
+			$screen->handle_send();
+			$this->fail( 'A completed send must redirect.' );
+		} catch ( \RuntimeException $error ) {
+			$this->assertSame( 'redirect', $error->getMessage() );
+		} finally {
+			remove_filter( 'wp_redirect', $stop );
+			$_POST    = array();
+			$_REQUEST = array();
+		}
+		parse_str( (string) wp_parse_url( $redirect, PHP_URL_QUERY ), $query );
+		$this->assertSame( 'assinafy_document', get_post_type( (int) $query['post'] ) );
+		$notice = get_transient( DocumentActions::FLASH_PREFIX . get_current_user_id() );
+		$this->assertSame( 'Sent. Signers have been invited by email.', $notice['message'] );
+		$this->assertFalse( get_transient( 'assinafy_send_notice_' . get_current_user_id() ) );
 	}
 
 	/**

@@ -528,6 +528,23 @@ final class CliTest extends AssinafyTestCase {
 	}
 
 	/**
+	 * Switching off another integration's endpoint is asked about first.
+	 */
+	public function test_webhook_off_asks_before_stopping_another_endpoint(): void {
+		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
+		$this->fake_subscription( self::FOREIGN_ENDPOINT );
+
+		$this->assertCommandStops(
+			'This account delivers to ' . self::FOREIGN_ENDPOINT . ', not this site. Stop those deliveries?',
+			'webhook',
+			array( 'off' )
+		);
+
+		$this->assertTrue( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
+		$this->assertSame( array(), array_filter( $this->requests, static fn( $request ): bool => str_contains( (string) ( $request['url'] ?? '' ), 'inactivate' ) ) );
+	}
+
+	/**
 	 * Registering on an account with no subscription needs no confirmation: nothing is being
 	 * taken over.
 	 */
@@ -557,7 +574,7 @@ final class CliTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * An account has exactly one subscription and no DELETE route, so registering over
+	 * The subscription routes act on the account's oldest endpoint, so registering over
 	 * somebody else's endpoint takes it away from them. That is asked about first.
 	 */
 	public function test_webhook_register_asks_before_taking_over_another_endpoint(): void {

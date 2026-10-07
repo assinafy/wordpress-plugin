@@ -6,10 +6,10 @@ SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/assinafy-build-test.XXXXXX")"
 trap 'rm -rf "$FIXTURE"' EXIT
 
-mkdir -p "$FIXTURE/bin" "$FIXTURE/vendor-prefixed" "$FIXTURE/.cache" "$FIXTURE/.agents" "$FIXTURE/addons/assinafy-example/tests"
+mkdir -p "$FIXTURE/bin" "$FIXTURE/vendor-prefixed" "$FIXTURE/.cache" "$FIXTURE/.agents" "$FIXTURE/.claude" "$FIXTURE/docs" "$FIXTURE/tests" "$FIXTURE/addons/assinafy-example/tests"
 cp "$SOURCE/bin/build-zip.sh" "$FIXTURE/bin/build-zip.sh"
 cp "$SOURCE/.distignore" "$FIXTURE/.distignore"
-touch "$FIXTURE/addons/assinafy-example/assinafy-example.php" "$FIXTURE/vendor-prefixed/autoload.php" "$FIXTURE/.cache/private" "$FIXTURE/.agents/private" "$FIXTURE/phpstan.neon"
+touch "$FIXTURE/addons/assinafy-example/assinafy-example.php" "$FIXTURE/vendor-prefixed/autoload.php" "$FIXTURE/.cache/private" "$FIXTURE/.agents/private" "$FIXTURE/.claude/private" "$FIXTURE/docs/private.md" "$FIXTURE/tests/private.php" "$FIXTURE/AGENTS.md" "$FIXTURE/CLAUDE.md" "$FIXTURE/phpstan.neon"
 cat > "$FIXTURE/assinafy.php" <<'PHP'
 <?php
 /**
@@ -34,6 +34,9 @@ test -f "$FIXTURE/dist/assinafy-1.0.0.zip"
 test -f "$FIXTURE/dist/assinafy/vendor-prefixed/autoload.php"
 test ! -e "$FIXTURE/dist/assinafy/.cache"
 test ! -e "$FIXTURE/dist/assinafy/.agents"
+for excluded in .claude docs tests AGENTS.md CLAUDE.md; do
+	test ! -e "$FIXTURE/dist/assinafy/$excluded"
+done
 test ! -e "$FIXTURE/dist/assinafy/addons"
 test ! -e "$FIXTURE/dist/assinafy/phpstan.neon"
 printf 'Build version and exclusion checks passed.\n'

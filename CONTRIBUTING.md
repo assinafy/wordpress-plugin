@@ -98,7 +98,8 @@ que as toque:
 - **Uma resposta `200` ainda pode ser um erro.** O corpo carrega o próprio `status`, e um `200`
   envolvendo `{"status": 422}` é uma falha. O `WpHttpClient` lança exceção nesse caso; não crie um
   caminho de código que confie apenas no status HTTP.
-- **As entregas de webhook não são assinadas.** Não há HMAC nem segredo compartilhado. Uma entrega
+- **As entregas de webhook são autenticadas apenas pelo token da URL.** O plugin não verifica
+  assinaturas de entrega. Uma entrega
   é um indício de que algo mudou, nunca uma fonte de verdade — busque o documento de novo e grave a
   partir da resposta.
 

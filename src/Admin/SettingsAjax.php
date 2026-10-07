@@ -110,8 +110,8 @@ final class SettingsAjax {
 	/**
 	 * Point the account's webhook subscription at this site.
 	 *
-	 * The subscription is account-wide and singular, so registering from here replaces
-	 * whatever is on file. An existing subscription pointing somewhere else is reported
+	 * The subscription routes act on the account's oldest endpoint, so registering from here
+	 * replaces that endpoint. An existing subscription pointing somewhere else is reported
 	 * back and only replaced when the request repeats with an explicit confirmation.
 	 */
 	public function ajax_register_webhook(): void {
@@ -156,8 +156,8 @@ final class SettingsAjax {
 	 *
 	 * A takeover is not logged as a failure: it is the API reporting that the account already
 	 * delivers somewhere else, and the screen answers it by asking for a second click. The
-	 * subscription is account-wide and singular — one URL for the whole Assinafy account, not
-	 * one per integration — so taking it over silently would stop deliveries to whatever else
+	 * subscription routes act on the account's oldest endpoint, which may belong to another
+	 * integration, so taking it over silently would stop deliveries to whatever else
 	 * the customer runs.
 	 *
 	 * Never returns: `wp_send_json_error()` ends the request through `wp_die()`, which either

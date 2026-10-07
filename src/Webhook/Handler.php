@@ -24,7 +24,7 @@ use WP_REST_Response;
 /**
  * Turns an authenticated delivery into a re-fetch.
  *
- * Deliveries are unsigned: the token in the URL proves the sender knows this site's secret
+ * The plugin verifies no delivery signature: the token in the URL proves the sender knows this site's secret
  * endpoint, and nothing proves the body was written by Assinafy. So the body is read only
  * far enough to answer three questions — is this a replay, is it about the configured
  * account, and which document does it concern — and every byte of local state that changes

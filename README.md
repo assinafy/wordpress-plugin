@@ -250,7 +250,7 @@ Passar por `wp_remote_request()` também entrega de graça o proxy configurado n
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.1.3.zip
+# Built /path/to/dist/assinafy-1.2.0.zip
 ```
 
 O `bin/build-zip.sh` aplica o `.distignore` e depois se recusa a produzir um zip a menos que o
@@ -819,14 +819,13 @@ Webhooks são **opt-in e opcionais**. Eles podem reduzir a latência das atualiz
 reconciliação periódica tenta novamente os documentos espelhados que ainda estão abertos; o tempo
 depende da execução do cron, do tamanho da fila e da disponibilidade da API.
 
-### As entregas não são assinadas
+### Autenticação das entregas
 
-`PUT /accounts/{accountId}/webhooks/subscriptions` aceita exatamente quatro chaves — `events`,
-`is_active`, `url`, `email`. Não há campo de segredo, nem cabeçalho HMAC, nem assinatura de
-qualquer tipo no contrato de API suportado pelo SDK embutido.
-
-**Este plugin nunca alega ter webhooks verificados por HMAC e nunca confia no corpo de uma
-entrega.** O modelo de segurança é:
+O plugin registra seu endpoint com `PUT /accounts/{accountId}/webhooks/subscriptions`, que aceita
+exatamente quatro chaves — `events`, `is_active`, `url`, `email` — e não ativa a assinatura das
+entregas. O plugin não verifica o cabeçalho `webhook-signature` do Standard Webhooks que a
+Assinafy envia quando a assinatura está ativada em um endpoint. Ele autentica cada entrega pelo
+token secreto da URL e **nunca confia no corpo de uma entrega.** O modelo de segurança é:
 
 1. **Um endpoint impossível de adivinhar.** A rota REST é
    `POST /wp-json/assinafy/v1/webhook/(?P<token>[A-Za-z0-9]{32})`. O token é gerado na ativação em
@@ -919,11 +918,13 @@ O plugin se inscreve em sete por padrão: `document_metadata_ready`, `document_r
 `user_rejected_document` e `document_processing_failed`. A reconciliação pode recuperar o estado
 mais recente do documento, mas não um histórico completo de eventos intermediários.
 
-### A inscrição vale para a conta inteira e é única
+### O plugin gerencia o endpoint mais antigo da conta
 
-**Uma URL por conta Assinafy, não uma por integração.** O `register()` é um upsert integral dos
-quatro campos — uma atualização parcial é impossível — então registrar a partir do WordPress
-**sobrescreve qualquer endpoint que a conta já use.**
+Uma conta Assinafy tem um endpoint de webhook, ou até três nos planos pagos. As rotas de inscrição
+usadas pelo plugin atuam sobre o endpoint **mais antigo** da conta, e o `register()` é um upsert
+integral dos quatro campos — uma atualização parcial é impossível — então registrar a partir do
+WordPress **sobrescreve o endpoint mais antigo quando ele aponta para outro lugar.** Os demais
+endpoints não são alterados.
 
 O plugin lida com isso lendo primeiro a inscrição atual. Registrar pela tela de configurações contra
 uma conta que aponta para outro lugar retorna `requiresConfirmation: true` com a URL atual, e a tela
@@ -1304,8 +1305,7 @@ X-Api-Key: {API_KEY}
   "updated_at":"2026-08-27T17:55:12Z"}}
 ```
 
-Note o que está ausente: nenhum segredo, nenhuma chave HMAC, nenhum algoritmo de assinatura. Esse é
-o payload inteiro.
+A resposta da inscrição não traz segredo de assinatura.
 
 ### `webhooks()->register( string $url, string $email, array $events = [], bool $isActive = true )`
 

@@ -35,7 +35,7 @@ final class ConnectionSettings {
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Assinafy OAuth', 'assinafy' ); ?></th>
 				<td>
-					<?php $this->render_oauth_controls( $connection, $environment ); ?>
+					<?php $this->render_oauth_controls( $connection ); ?>
 				</td>
 			</tr>
 			<tr>
@@ -83,8 +83,8 @@ final class ConnectionSettings {
 	}
 
 	/** @param array<string, mixed>|WP_Error|null $connection Current OAuth connection. */
-	private function render_oauth_controls( array|WP_Error|null $connection, string $environment ): void {
-		$unavailable = $this->oauth_unavailable_message( $environment );
+	private function render_oauth_controls( array|WP_Error|null $connection ): void {
+		$unavailable = OAuthConnection::unavailable_reason( $this->credentials );
 		if ( $connection instanceof WP_Error ) {
 			echo '<p class="description">' . esc_html( $connection->get_error_message() ) . '</p>';
 		}
@@ -108,24 +108,6 @@ final class ConnectionSettings {
 		if ( is_array( $connection ) || $connection instanceof WP_Error ) {
 			echo '<button type="submit" form="assinafy-oauth-disconnect" class="button">' . esc_html__( 'Disconnect', 'assinafy' ) . '</button>';
 		}
-	}
-
-	/** Why the connect button cannot be used yet. */
-	private function oauth_unavailable_message( string $environment ): string {
-		if ( 'sandbox' === $environment ) {
-			return __( 'OAuth is available in Production. Sandbox still uses an API key.', 'assinafy' );
-		}
-		if ( '' === OAuthConnection::client_id() ) {
-			return __( 'The Assinafy WordPress OAuth app is awaiting registration.', 'assinafy' );
-		}
-		if ( ! is_ssl() ) {
-			return __( 'Connect from an HTTPS WordPress admin page.', 'assinafy' );
-		}
-		if ( ! $this->credentials->has_server_key_material() ) {
-			return Credentials::missing_key_material_message();
-		}
-
-		return '';
 	}
 
 	/** Keep the form and Settings API registration in step for legacy credentials. */

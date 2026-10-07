@@ -323,7 +323,7 @@ final class SendScreen {
 			);
 		}
 
-		Notice::set( self::FLASH_PREFIX, 'success', __( 'Sent. Signers have been invited by email.', 'assinafy' ) );
+		Notice::set( DocumentActions::FLASH_PREFIX, 'success', __( 'Sent. Signers have been invited by email.', 'assinafy' ) );
 
 		wp_safe_redirect( get_edit_post_link( $post_id, 'raw' ) ?? admin_url( 'admin.php?page=' . self::PAGE ) );
 		exit;

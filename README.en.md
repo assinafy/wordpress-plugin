@@ -241,7 +241,7 @@ site's own SSL settings, and the existing `http_request_*` filter surface.
 ```bash
 composer install  # Includes Strauss, the development tool that builds vendor-prefixed/.
 bin/build-zip.sh
-# Built /path/to/dist/assinafy-1.1.3.zip
+# Built /path/to/dist/assinafy-1.2.0.zip
 ```
 
 `bin/build-zip.sh` applies `.distignore`, then refuses to produce a zip unless the plugin
@@ -798,14 +798,13 @@ Webhooks are **opt-in and optional**. They can reduce update latency. Periodic r
 retries open mirrored documents; timing depends on cron execution, queue size and API
 availability.
 
-### Deliveries are unsigned
+### Delivery authentication
 
-`PUT /accounts/{accountId}/webhooks/subscriptions` accepts exactly four keys — `events`,
-`is_active`, `url`, `email`. There is no secret field, no HMAC header, and no signature of any
-kind in the API contract supported by the bundled SDK.
-
-**This plugin never claims HMAC-verified webhooks and never trusts a delivery body.** The
-security model is:
+The plugin registers its endpoint with `PUT /accounts/{accountId}/webhooks/subscriptions`, which
+accepts exactly four keys — `events`, `is_active`, `url`, `email` — and does not enable
+delivery signing. The plugin does not verify the Standard Webhooks `webhook-signature` header
+that Assinafy adds when signing is enabled on an endpoint. It authenticates each delivery by
+its secret URL token and **never trusts a delivery body.** The security model is:
 
 1. **An unguessable endpoint.** The REST route is
    `POST /wp-json/assinafy/v1/webhook/(?P<token>[A-Za-z0-9]{32})`. The token is generated at
@@ -896,11 +895,13 @@ The plugin subscribes to seven by default: `document_metadata_ready`, `document_
 `user_rejected_document` and `document_processing_failed`. Reconciliation can recover the
 latest document state, but not a complete history of intermediate events.
 
-### The subscription is account-wide and singular
+### The plugin manages the account's oldest endpoint
 
-**One URL per Assinafy account, not one per integration.** `register()` is a wholesale upsert
-of all four fields — a partial update is impossible — so registering from WordPress
-**overwrites whatever endpoint the account already uses.**
+An Assinafy account has one webhook endpoint, or up to three on paid plans. The subscription
+routes the plugin uses act on the account's **oldest** endpoint, and `register()` is a
+wholesale upsert of all four fields — a partial update is impossible — so registering from
+WordPress **overwrites the oldest endpoint when it points elsewhere.** Other endpoints are not
+changed.
 
 The plugin handles this by reading the current subscription first. Registering from the
 settings screen against an account that points elsewhere returns
@@ -1270,7 +1271,7 @@ X-Api-Key: {API_KEY}
   "updated_at":"2026-08-27T17:55:12Z"}}
 ```
 
-Note what is absent: no secret, no HMAC key, no signing algorithm. That is the whole payload.
+The subscription response carries no signing secret.
 
 ### `webhooks()->register( string $url, string $email, array $events = [], bool $isActive = true )`
 

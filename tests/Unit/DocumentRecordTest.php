@@ -173,7 +173,6 @@ final class DocumentRecordTest extends TestCase {
 		$this->assertTrue( DocumentRecord::is_valid_id( $document_id ) );
 		$this->assertSame( $document_id, $this->records->document_id( 11 ) );
 		$this->assertSame( 11, $this->index->find_by_document_id( $document_id ) );
-		$this->assertSame( $document_id, $this->index->latest_document_id() );
 	}
 
 	/**

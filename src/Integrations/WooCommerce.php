@@ -105,15 +105,29 @@ final class WooCommerce {
 	}
 
 	/**
+	 * The order to send for, or null when it is missing or its personal data was erased.
+	 *
+	 * WooCommerce's personal-data eraser leaves a placeholder address on the order.
+	 *
+	 * @param int   $order_id Order id.
+	 * @param mixed $order    Order instance supplied by WooCommerce, if available.
+	 */
+	private static function sendable_order( int $order_id, mixed $order ): ?WC_Order {
+		$order ??= wc_get_order( $order_id );
+
+		return $order instanceof WC_Order && 'yes' !== $order->get_meta( '_anonymized' ) ? $order : null;
+	}
+
+	/**
 	 * Send every configured document on a completed order.
 	 *
 	 * @param int   $order_id Order that reached `completed`.
 	 * @param mixed $order    Order instance supplied by WooCommerce, if available.
 	 */
 	public function send_for_order( int $order_id, mixed $order = null ): void {
-		$order ??= wc_get_order( $order_id );
+		$order = self::sendable_order( $order_id, $order );
 
-		if ( ! $order instanceof WC_Order ) {
+		if ( null === $order ) {
 			return;
 		}
 

@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Assinafy 1.1.3\n"
+"Project-Id-Version: Assinafy 1.2.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/assinafy\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-06T00:13:41+00:00\n"
+"POT-Creation-Date: 2026-10-07T22:16:34+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: assinafy\n"
@@ -484,39 +484,27 @@ msgstr ""
 msgid "Disconnect"
 msgstr ""
 
-#: src/ConnectionSettings.php:116
-msgid "OAuth is available in Production. Sandbox still uses an API key."
-msgstr ""
-
-#: src/ConnectionSettings.php:119
-msgid "The Assinafy WordPress OAuth app is awaiting registration."
-msgstr ""
-
-#: src/ConnectionSettings.php:122
-msgid "Connect from an HTTPS WordPress admin page."
-msgstr ""
-
-#: src/ConnectionSettings.php:151
+#: src/ConnectionSettings.php:133
 msgid "Defined by ASSINAFY_ACCOUNT_ID in wp-config.php."
 msgstr ""
 
-#: src/ConnectionSettings.php:175
+#: src/ConnectionSettings.php:157
 msgid "Defined in wp-config.php"
 msgstr ""
 
-#: src/ConnectionSettings.php:176
+#: src/ConnectionSettings.php:158
 msgid "Defined by ASSINAFY_API_KEY in wp-config.php."
 msgstr ""
 
-#: src/ConnectionSettings.php:184
+#: src/ConnectionSettings.php:166
 msgid "Saved — leave blank to keep it"
 msgstr ""
 
-#: src/ConnectionSettings.php:184
+#: src/ConnectionSettings.php:166
 msgid "Paste your API key"
 msgstr ""
 
-#: src/ConnectionSettings.php:185
+#: src/ConnectionSettings.php:167
 msgid "Stored encrypted. Leave the field blank to keep the current key."
 msgstr ""
 
@@ -860,23 +848,23 @@ msgstr ""
 msgid "assinafy_send_document needs at least one signer."
 msgstr ""
 
-#: src/Integrations/WooCommerce.php:135
+#: src/Integrations/WooCommerce.php:136
 msgid "Assinafy: no signature request sent — the order has no usable billing email address."
 msgstr ""
 
-#: src/Integrations/WooCommerce.php:207
-#: src/Integrations/WooCommerce.php:217
+#: src/Integrations/WooCommerce.php:208
+#: src/Integrations/WooCommerce.php:218
 msgid "Documents to sign"
 msgstr ""
 
 #. translators: 1: document name, 2: signer email address.
-#: src/Integrations/WooCommerce.php:269
+#: src/Integrations/WooCommerce.php:270
 #, php-format
 msgid "Assinafy: signature request for \"%1$s\" sent to %2$s."
 msgstr ""
 
 #. translators: 1: document name, 2: error message from Assinafy.
-#: src/Integrations/WooCommerce.php:294
+#: src/Integrations/WooCommerce.php:295
 #, php-format
 msgid "Assinafy: signature request for \"%1$s\" failed — %2$s. Re-completing the order will try again."
 msgstr ""
@@ -905,55 +893,62 @@ msgstr ""
 msgid "— Select a PDF —"
 msgstr ""
 
-#: src/OAuthConnection.php:59
-#: src/OAuthConnection.php:112
-msgid "OAuth requires a registered WordPress app and an HTTPS production site."
-msgstr ""
-
-#: src/OAuthConnection.php:87
+#: src/OAuthConnection.php:82
 msgid "Could not start the Assinafy connection. Try again."
 msgstr ""
 
-#: src/OAuthConnection.php:129
+#: src/OAuthConnection.php:118
 msgid "Assinafy could not complete the connection. Try again."
 msgstr ""
 
-#: src/OAuthConnection.php:135
+#: src/OAuthConnection.php:124
 msgid "Assinafy is connected with OAuth."
 msgstr ""
 
-#: src/OAuthConnection.php:136
+#: src/OAuthConnection.php:125
 msgid "Assinafy is connected, but the previous workspace could not be revoked. Revoke it in Assinafy Connected Apps."
 msgstr ""
 
-#: src/OAuthConnection.php:163
+#: src/OAuthConnection.php:152
 msgid "The Assinafy connection expired or was invalid. Try again."
 msgstr ""
 
-#: src/OAuthConnection.php:175
+#: src/OAuthConnection.php:164
 msgid "The Assinafy connection code was invalid. Try again."
 msgstr ""
 
-#: src/OAuthConnection.php:187
+#: src/OAuthConnection.php:176
 msgid "Assinafy has been disconnected."
 msgstr ""
 
-#: src/OAuthConnection.php:188
+#: src/OAuthConnection.php:177
 msgid "This site is disconnected, but Assinafy could not confirm revocation. Revoke the app in Assinafy Connected Apps."
 msgstr ""
 
-#: src/OAuthConnection.php:189
+#: src/OAuthConnection.php:178
 msgid "Assinafy could not remove the connection from this site. Try again."
 msgstr ""
 
-#: src/OAuthConnection.php:190
+#: src/OAuthConnection.php:179
 #: src/OAuthTokens.php:119
 msgid "Assinafy is renewing the connection. Try again shortly."
 msgstr ""
 
-#: src/OAuthConnection.php:244
+#: src/OAuthConnection.php:233
 #: src/Settings.php:355
 msgid "You are not allowed to manage Assinafy settings."
+msgstr ""
+
+#: src/OAuthConnection.php:241
+msgid "OAuth is available in Production. Sandbox still uses an API key."
+msgstr ""
+
+#: src/OAuthConnection.php:244
+msgid "The Assinafy WordPress OAuth app is awaiting registration."
+msgstr ""
+
+#: src/OAuthConnection.php:247
+msgid "Connect from an HTTPS WordPress admin page."
 msgstr ""
 
 #: src/OAuthTokens.php:90

@@ -55,12 +55,7 @@ final class OAuthConnection {
 		$this->require_admin();
 		check_admin_referer( 'assinafy_oauth_start' );
 
-		if ( '' === self::client_id() || 'production' !== Settings::get( Settings::OPTION_ENVIRONMENT ) || ! is_ssl() ) {
-			$this->finish( 'error', __( 'OAuth requires a registered WordPress app and an HTTPS production site.', 'assinafy' ) );
-		}
-		if ( ! $this->credentials->has_server_key_material() ) {
-			$this->finish( 'error', Credentials::missing_key_material_message() );
-		}
+		$this->require_available();
 
 		try {
 			$transaction = ( new OAuthTokens( $this->credentials ) )->oauth()->startAuthorization(
@@ -108,12 +103,7 @@ final class OAuthConnection {
 	public function complete(): void {
 		$this->require_admin();
 		check_admin_referer( 'assinafy_oauth_complete' );
-		if ( 'production' !== Settings::get( Settings::OPTION_ENVIRONMENT ) || ! is_ssl() ) {
-			$this->finish( 'error', __( 'OAuth requires a registered WordPress app and an HTTPS production site.', 'assinafy' ) );
-		}
-		if ( ! $this->credentials->has_server_key_material() ) {
-			$this->finish( 'error', Credentials::missing_key_material_message() );
-		}
+		$this->require_available();
 		$code        = $this->posted_code();
 		$transaction = $this->consume_transaction();
 
@@ -124,7 +114,6 @@ final class OAuthConnection {
 			$previous      = $this->credentials->oauth_connection();
 			$token_manager->save_tokens( $tokens );
 			$old_revoked = $this->revoke_old_workspace_if_switched( $oauth, $previous );
-			update_option( Settings::OPTION_ENVIRONMENT, 'production' );
 		} catch ( \Throwable $e ) {
 			$this->finish( 'error', __( 'Assinafy could not complete the connection. Try again.', 'assinafy' ) );
 		}
@@ -246,6 +235,32 @@ final class OAuthConnection {
 	}
 
 	/** @param string $type success or error. @param string $message Translated notice. */
+	/** Why this site cannot use OAuth yet, or an empty string when it can. */
+	public static function unavailable_reason( Credentials $credentials ): string {
+		if ( 'production' !== Settings::get( Settings::OPTION_ENVIRONMENT ) ) {
+			return __( 'OAuth is available in Production. Sandbox still uses an API key.', 'assinafy' );
+		}
+		if ( '' === self::client_id() ) {
+			return __( 'The Assinafy WordPress OAuth app is awaiting registration.', 'assinafy' );
+		}
+		if ( ! is_ssl() ) {
+			return __( 'Connect from an HTTPS WordPress admin page.', 'assinafy' );
+		}
+		if ( ! $credentials->has_server_key_material() ) {
+			return Credentials::missing_key_material_message();
+		}
+
+		return '';
+	}
+
+	/** Stop with the reason when OAuth is unavailable. */
+	private function require_available(): void {
+		$reason = self::unavailable_reason( $this->credentials );
+		if ( '' !== $reason ) {
+			$this->finish( 'error', $reason );
+		}
+	}
+
 	private function finish( string $type, string $message ): never {
 		Notice::set( self::NOTICE, $type, $message );
 		wp_safe_redirect( admin_url( 'admin.php?page=' . Settings::PAGE ) );

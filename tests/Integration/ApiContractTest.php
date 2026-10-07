@@ -516,8 +516,8 @@ final class ApiContractTest extends AssinafyTestCase {
 	/**
 	 * `GET /accounts/{accountId}/webhooks/subscriptions` — read the current subscription.
 	 *
-	 * The subscription is account-wide and singular, and the response carries no secret of
-	 * any kind: deliveries are unsigned.
+	 * The subscription routes act on the account's oldest endpoint, and the response carries
+	 * no signing secret.
 	 */
 	public function test_webhooks_get(): void {
 		$this->fake_response(
