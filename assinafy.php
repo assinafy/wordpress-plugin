@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Assinafy
- * Plugin URI:        https://github.com/assinafy/wordpress-plugin
+ * Plugin URI:        https://www.assinafy.com.br/
  * Description:       Send WordPress documents for electronic signature with Assinafy and track them to completion.
  * Version:           1.2.0
  * Requires at least: 6.8
