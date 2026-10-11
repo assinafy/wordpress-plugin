@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-11
+
+### Security
+
+- Update development dependencies to fix the proxy-addr advisory.
+
 ## [1.2.0] - 2026-10-07
 
 ### Fixed

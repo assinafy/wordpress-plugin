@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -148,6 +148,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.2.1 =
+* Security: updates development dependencies to fix the proxy-addr advisory.
+
 = 1.2.0 =
 * After a document is sent, the confirmation appears on its document screen.
 * `wp assinafy webhook off` asks before stopping deliveries to an endpoint that belongs to another site or integration; `--yes` answers the prompt.
@@ -181,6 +184,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Maintenance release with dependency security updates.
 
 = 1.2.0 =
 Shows the send confirmation on the document screen, protects other webhook endpoints from `webhook off`, and skips erased WooCommerce orders.
