@@ -6,7 +6,7 @@ Each operation includes its full published parameter, body, success and error sc
 
 Every `$ref` points to a complete shared definition in the [component dictionary](#component-dictionary). Keeping shared shapes together avoids inconsistent copies. For SDK signatures, examples and unwrapped return values, see [SDK reference](sdk-reference.md). Runtime account entitlements determine feature availability.
 
-Root security: `[]`. Operation security overrides this setting; an empty list denotes a public operation.
+The OpenAPI document declares no top-level `security` key: every operation declares its own. An empty list denotes a public operation.
 
 ## `GET /v1/accounts/{accountId}`
 
@@ -747,7 +747,7 @@ For **virtual**, the document may be in `uploaded`, `metadata_processing` or `me
                     "example": "615605f50e968054a5b7c9b8"
                   },
                   "verification_method": {
-                    "description": "How the signer's identity is verified before signing. `Email` (default) sends a one-time code to the signer's email; `Whatsapp` sends the code over WhatsApp — the verification itself is not billed, but it requires the WhatsApp notification channel, so the signer costs 0.45 credits (available only on paid subscriptions); `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate (A1/A3) — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id`, must be alone in its signing step, and is charged 2 credits per signer. A CPF requires that person's certificate (an e-CPF, or an e-CNPJ naming them as legal representative); a CNPJ requires an e-CNPJ for that company, from any of its representatives. Omit to default to `Email`.",
+                    "description": "How the signer's identity is verified before signing. `Email` (default) sends a one-time code to the signer's email; `Whatsapp` sends the code over WhatsApp — the verification itself is not billed, but it requires the WhatsApp notification channel, so the signer costs 0.45 credits (available only on paid subscriptions); `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate (A1/A3) — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id`, must be alone in its signing step, and is charged 0.5 credits per signer. A CPF requires that person's certificate (an e-CPF, or an e-CNPJ naming them as legal representative); a CNPJ requires an e-CNPJ for that company, from any of its representatives. Omit to default to `Email`.",
                     "type": "string",
                     "enum": [
                       "Email",
@@ -903,7 +903,7 @@ Per-unit costs (in credits) used to build the estimate:
 | Extra document | 1 credit |
 | Email notification | 0 credits |
 | WhatsApp notification | 0.45 credits |
-| Digital certificate signature (per signer) | 2 credits |
+| Digital certificate signature (per signer) | 0.5 credits |
 
 Verification methods are not priced separately — every line in the `breakdown` is a notification or a signature. A `Whatsapp`-verified signer therefore shows up as a WhatsApp notification, because that channel is mandatory for that verification method. A `DigitalCertificate` signer adds the digital-certificate signature cost **on top of** its notification cost; it appears in the `breakdown` under the `SignatureDigitalCertificate` code.
 
@@ -1564,6 +1564,77 @@ Change the authenticated user's password.
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/authentication/mfa/verify`
+
+Complete a two-factor login
+
+Exchanges the `mfa_token` returned by login for an access token. `code` is either the 6-digit code from the authenticator app or one of the recovery codes issued at enrollment. The challenge is single-use and expires 5 minutes after login.
+
+```json
+{
+  "security": [],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "required": [
+            "mfa_token",
+            "code"
+          ],
+          "properties": {
+            "mfa_token": {
+              "description": "The token returned by the login response.",
+              "type": "string"
+            },
+            "code": {
+              "description": "A 6-digit authenticator code, or a recovery code such as ABCD-EFGH-JKMN.",
+              "type": "string",
+              "example": "123456"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Access token, user and accounts",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/AuthSession"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "401": {
+      "description": "The challenge expired, was already used, or too many codes were tried"
     },
     "500": {
       "$ref": "#/components/responses/ServerError"
@@ -3141,6 +3212,446 @@ List the possible field types. `cpf` expects 11 digits; `cnpj` accepts 14-char v
 }
 ```
 
+## `GET /v1/users/self/mfa`
+
+List two-factor methods
+
+The authenticated user's enrolled two-factor methods and how many recovery codes remain unused.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "Enrolled methods",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "methods": {
+                        "type": "array",
+                        "items": {
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "example": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+                            },
+                            "type": {
+                              "type": "string",
+                              "example": "Totp"
+                            },
+                            "label": {
+                              "type": "string",
+                              "example": "My phone"
+                            },
+                            "confirmed_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "example": "2026-09-09T14:21:03Z"
+                            },
+                            "last_used_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "example": "2026-09-09T18:02:44Z"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "recovery_codes_remaining": {
+                        "type": "integer",
+                        "example": 8
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/users/self/mfa/totp`
+
+Start authenticator enrollment
+
+Creates an unconfirmed authenticator method and returns the shared secret. The secret is returned only by this call and cannot be retrieved again. Two-factor authentication is not active until the enrollment is confirmed.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "properties": {
+            "label": {
+              "type": "string",
+              "example": "My phone"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Enrollment started",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+                      },
+                      "secret": {
+                        "type": "string",
+                        "example": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+                      },
+                      "provisioning_uri": {
+                        "type": "string",
+                        "example": "otpauth://totp/user%40example.com?issuer=Assinafy&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `PUT /v1/users/self/mfa/totp/confirm`
+
+Confirm authenticator enrollment
+
+Activates the method by proving one live code from the NEW device (`code`). Returns the recovery codes, which are shown only once and cannot be retrieved again. From this point every login requires a second factor. If the user already has a confirmed method of the same type, confirming REPLACES it — the old one is soft-deleted and recovery codes are reissued — so this call additionally requires re-authentication via `password` or `reauth_code` (a live code from the CURRENT device, or one of the existing recovery codes), exactly like disabling a method. First-time enrollment needs neither.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "required": [
+            "id",
+            "code"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+            },
+            "code": {
+              "description": "Live code from the NEW device being confirmed.",
+              "type": "string",
+              "example": "123456"
+            },
+            "password": {
+              "description": "Re-authentication proof, required only when replacing an existing confirmed method.",
+              "type": "string",
+              "format": "password"
+            },
+            "reauth_code": {
+              "description": "Re-authentication proof alternative to password: a live code from the CURRENT device, or a recovery code. Required only when replacing an existing confirmed method.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Two-factor enabled",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "recovery_codes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "example": "ABCD-EFGH-JKMN"
+                        }
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/users/self/mfa/recovery-codes`
+
+Regenerate recovery codes
+
+Issues a fresh set of ten recovery codes and invalidates the previous set. Requires the current password, a live authenticator code, or one of the existing recovery codes (which is then consumed).
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "properties": {
+            "password": {
+              "type": "string",
+              "format": "password"
+            },
+            "code": {
+              "description": "A live 6-digit authenticator code, or one of the existing recovery codes.",
+              "type": "string",
+              "example": "123456"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "New recovery codes",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "recovery_codes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "example": "ABCD-EFGH-JKMN"
+                        }
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `DELETE /v1/users/self/mfa/{customId}`
+
+Remove a two-factor method
+
+Removes an enrolled method. Requires the current password, a live authenticator code, or one of the existing recovery codes (which is then consumed), so that a stolen session cannot silently disable two-factor authentication. Removing the last method also discards the recovery codes.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "name": "customId",
+      "in": "path",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "properties": {
+            "password": {
+              "type": "string",
+              "format": "password"
+            },
+            "code": {
+              "description": "A live 6-digit authenticator code, or one of the existing recovery codes.",
+              "type": "string",
+              "example": "123456"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Method removed",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "is_mfa_enabled": {
+                        "type": "boolean",
+                        "example": false
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
 ## `GET /v1/users/self/notification-preferences`
 
 Get my notification preferences
@@ -3382,6 +3893,9 @@ Implements the RFC 6749 §5.1/§5.2 token-endpoint body contract in
           }
         }
       }
+    },
+    "429": {
+      "description": "Rate limit exceeded; wait the `Retry-After` seconds. Limited per caller IP."
     },
     "500": {
       "$ref": "#/components/responses/ServerError"
@@ -3664,7 +4178,7 @@ Retrieve a publicly shared document by ID. Public endpoint.
 
 Send access token for public document
 
-Send a one-time access token (email/WhatsApp) to view a public document. Public endpoint.
+Send a one-time access token to a signer of a public document, so they can view it. The document must be pending signature, and `recipient` must belong to a signer of the document who has not signed yet. Only the `email` channel is supported. Public endpoint.
 
 ```json
 {
@@ -3681,13 +4195,27 @@ Send a one-time access token (email/WhatsApp) to view a public document. Public 
     }
   ],
   "requestBody": {
+    "required": true,
     "content": {
       "application/json": {
         "schema": {
+          "required": [
+            "channel",
+            "recipient"
+          ],
           "properties": {
-            "email": {
+            "channel": {
+              "description": "Where to send the token. Only `email` is supported.",
               "type": "string",
-              "format": "email"
+              "enum": [
+                "email"
+              ],
+              "example": "email"
+            },
+            "recipient": {
+              "description": "The signer's address on that channel — for `email`, the signer's email address.",
+              "type": "string",
+              "example": "person@example.com"
             }
           },
           "type": "object"
@@ -3701,10 +4229,64 @@ Send a one-time access token (email/WhatsApp) to view a public document. Public 
       "content": {
         "application/json": {
           "schema": {
-            "$ref": "#/components/schemas/Envelope"
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "document": {
+                        "properties": {
+                          "resource": {
+                            "type": "string",
+                            "example": "document"
+                          },
+                          "id": {
+                            "type": "string",
+                            "example": "a1b2c3d4e5f6a7b8c9d0"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Contract.pdf"
+                          },
+                          "page_count": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "created_by": {
+                            "type": "string",
+                            "example": "Jane Doe"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "channel": {
+                        "type": "string",
+                        "example": "email"
+                      },
+                      "recipient": {
+                        "type": "string",
+                        "example": "person@example.com"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
           }
         }
       }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
     },
     "500": {
       "$ref": "#/components/responses/ServerError"
@@ -3828,6 +4410,11 @@ Create a signer in the workspace.
               "description": "E.164; normalized on save.",
               "type": "string",
               "example": "+5548999990000"
+            },
+            "government_id": {
+              "description": "Signer's CPF (11 digits) or CNPJ (14 characters; may be alphanumeric). Formatting is accepted and the value is normalized on save.",
+              "type": "string",
+              "example": "390.533.447-05"
             }
           },
           "type": "object"
@@ -4913,13 +5500,19 @@ Download the signer's stored signature/initials image. Uses the signer access co
 
 List signer's documents
 
-List the documents a signer is party to. Uses the signer access code.
+List the documents a signer is party to. Accepts either the signer access code or the account's own credentials (API key or bearer token) — with account credentials, the signer must belong to that account's workspace.
 
 ```json
 {
   "security": [
     {
       "signerAccessCode": []
+    },
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
     }
   ],
   "parameters": [
@@ -4980,13 +5573,19 @@ List the documents a signer is party to. Uses the signer access code.
 
 Search signer's documents
 
-Search the documents a signer is party to (compact representation). Uses the signer access code.
+Search the documents a signer is party to (compact representation). Accepts either the signer access code or the account's own credentials (API key or bearer token) — with account credentials, the signer must belong to that account's workspace.
 
 ```json
 {
   "security": [
     {
       "signerAccessCode": []
+    },
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
     }
   ],
   "parameters": [
@@ -5882,7 +6481,7 @@ Generate a new document from a template, creating its assignment in the same cal
                     "example": "fa8c140cb49b79f940aab95fddd"
                   },
                   "verification_method": {
-                    "description": "Verification method for this signer. If provided without notification_methods, the notification method is inferred. Defaults to Email. `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id` (a CPF requires that person's certificate; a CNPJ requires an e-CNPJ for that company), must be alone in its signing step, and is charged 2 credits per signer. Only applies to signers (not copy receivers).",
+                    "description": "Verification method for this signer. If provided without notification_methods, the notification method is inferred. Defaults to Email. `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id` (a CPF requires that person's certificate; a CNPJ requires an e-CNPJ for that company), must be alone in its signing step, and is charged 0.5 credits per signer. Only applies to signers (not copy receivers).",
                     "type": "string",
                     "enum": [
                       "Email",
@@ -6052,7 +6651,7 @@ Estimate the cost of creating a document from a template without creating it. Co
                     "example": "fa8c14f32d732271e071998246e"
                   },
                   "verification_method": {
-                    "description": "Verification method. If provided without notification_methods, the notification method is inferred. Defaults to Email. Verification is never billed on its own — the cost comes from the notification it is paired with, so `Whatsapp` verification requires the WhatsApp notification and costs 0.45 credits per signer. `DigitalCertificate` adds the per-signer signature cost (2 credits) on top of the notification cost.",
+                    "description": "Verification method. If provided without notification_methods, the notification method is inferred. Defaults to Email. Verification is never billed on its own — the cost comes from the notification it is paired with, so `Whatsapp` verification requires the WhatsApp notification and costs 0.45 credits per signer. `DigitalCertificate` adds the per-signer signature cost (0.5 credits) on top of the notification cost.",
                     "type": "string",
                     "enum": [
                       "Email",
@@ -6342,7 +6941,7 @@ Delete the existing API key.
 
 Get webhook subscription
 
-Retrieve the current webhook subscription for the account — which events it is subscribed to and the delivery configuration. Requires the `account:read` OAuth scope.
+Retrieve the account's oldest webhook endpoint — which events it is subscribed to and the delivery configuration. Accounts with several endpoints should use **List webhook endpoints**. Requires the `account:read` OAuth scope.
 
 ```json
 {
@@ -6397,7 +6996,7 @@ Retrieve the current webhook subscription for the account — which events it is
 
 Update webhook subscription
 
-Update the webhook subscription settings for the account — which events are monitored, whether delivery is enabled, and the delivery/contact details. Requires the `webhooks:write` OAuth scope.
+Update the account's oldest webhook endpoint (creating it if the account has none) — which events are monitored, whether delivery is enabled, and the delivery/contact details. Accounts with several endpoints should use **Update webhook endpoint**. Requires the `webhooks:write` OAuth scope.
 
 ```json
 {
@@ -6501,7 +7100,7 @@ Update the webhook subscription settings for the account — which events are mo
 
 Inactivate webhook subscription
 
-Deactivate the webhook integration for the account. While inactive, no events are sent to the configured endpoint. Requires the `webhooks:write` OAuth scope.
+Deactivate the account's oldest webhook endpoint. While inactive, no events are sent to it; other endpoints are unaffected. Requires the `webhooks:write` OAuth scope.
 
 ```json
 {
@@ -6609,7 +7208,7 @@ List all available event types that can be subscribed to via webhooks. Requires 
 
 List webhook deliveries
 
-Retrieve the delivery history for webhooks sent to the account's configured endpoint — use it to monitor status, debug failures, and verify payloads. Pagination is returned in the `X-Pagination-*` response headers. Requires the `documents:read` OAuth scope.
+Retrieve the delivery history for webhooks sent to the account's endpoints — use it to monitor status, debug failures, and verify payloads. Pagination is returned in the `X-Pagination-*` response headers. Requires the `documents:read` OAuth scope.
 
 ```json
 {
@@ -6624,6 +7223,14 @@ Retrieve the delivery history for webhooks sent to the account's configured endp
   "parameters": [
     {
       "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "endpoint_id",
+      "in": "query",
+      "description": "Only deliveries to this webhook endpoint.",
+      "schema": {
+        "type": "string"
+      }
     },
     {
       "name": "event",
@@ -6762,6 +7369,569 @@ Manually retry a webhook delivery for a specific entry, without waiting for auto
                 "properties": {
                   "data": {
                     "$ref": "#/components/schemas/WebhookDispatch"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `GET /v1/accounts/{accountId}/webhooks/endpoints`
+
+List webhook endpoints
+
+List the account's webhook endpoints, oldest first. Requires the `account:read` OAuth scope.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "The endpoints",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/WebhookEndpoint"
+                    }
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/accounts/{accountId}/webhooks/endpoints`
+
+Create webhook endpoint
+
+Register a URL to receive the account's webhook events. An account can have 1 endpoint, or up to 3 on paid plans; creating one past the limit returns `403`. Each endpoint of a workspace must have a different `url` (`400` otherwise). When `signing_enabled` is `true`, a signing secret is generated: read it with **Get webhook endpoint signing secret**. Requires the `webhooks:write` OAuth scope.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "required": [
+            "url",
+            "email",
+            "events"
+          ],
+          "properties": {
+            "url": {
+              "description": "URL that receives the events (http or https).",
+              "type": "string",
+              "format": "uri",
+              "example": "https://example.com/webhooks/assinafy"
+            },
+            "email": {
+              "description": "Contact email for delivery-failure notices.",
+              "type": "string",
+              "format": "email",
+              "example": "ops@example.com"
+            },
+            "events": {
+              "description": "Event types to deliver (see `GET /v1/webhooks/event-types`).",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "example": [
+                "document_ready",
+                "signer_signed_document"
+              ]
+            },
+            "name": {
+              "description": "Label to tell endpoints apart.",
+              "type": "string",
+              "example": "ERP"
+            },
+            "is_active": {
+              "description": "Whether events are delivered. Defaults to `true`.",
+              "type": "boolean",
+              "example": true
+            },
+            "signing_enabled": {
+              "description": "Sign deliveries with a Standard Webhooks signature. Defaults to `false`.",
+              "type": "boolean",
+              "example": true
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "The created endpoint",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/WebhookEndpoint"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "403": {
+      "$ref": "#/components/responses/Forbidden"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `GET /v1/accounts/{accountId}/webhooks/endpoints/{endpointId}`
+
+Get webhook endpoint
+
+Retrieve one webhook endpoint. Requires the `account:read` OAuth scope.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "endpointId",
+      "in": "path",
+      "description": "The webhook endpoint ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "The endpoint",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/WebhookEndpoint"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `PUT /v1/accounts/{accountId}/webhooks/endpoints/{endpointId}`
+
+Update webhook endpoint
+
+Change a webhook endpoint. Only the fields sent are updated; `url` cannot be one another endpoint of the workspace already uses (`400`). Setting `signing_enabled` to `true` generates a secret if the endpoint has none and keeps the current one otherwise; setting it to `false` discards the secret. Requires the `webhooks:write` OAuth scope.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "endpointId",
+      "in": "path",
+      "description": "The webhook endpoint ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "example": "https://example.com/webhooks/assinafy"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "example": "ops@example.com"
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "example": [
+                "document_ready"
+              ]
+            },
+            "name": {
+              "type": "string",
+              "example": "ERP"
+            },
+            "is_active": {
+              "type": "boolean",
+              "example": false
+            },
+            "signing_enabled": {
+              "type": "boolean",
+              "example": true
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "The updated endpoint",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/WebhookEndpoint"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `DELETE /v1/accounts/{accountId}/webhooks/endpoints/{endpointId}`
+
+Delete webhook endpoint
+
+Stop delivering events to an endpoint and free its slot. Requires the `webhooks:write` OAuth scope.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "endpointId",
+      "in": "path",
+      "description": "The webhook endpoint ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "Endpoint deleted",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": [],
+                    "example": []
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `GET /v1/accounts/{accountId}/webhooks/endpoints/{endpointId}/secret`
+
+Get webhook endpoint signing secret
+
+Return the secret used to sign deliveries to this endpoint (see **Webhook Payloads → Verifying signatures**). Returns `400` when signing is disabled. Not available to OAuth applications.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "endpointId",
+      "in": "path",
+      "description": "The webhook endpoint ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "The secret",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/WebhookEndpointSecret"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/accounts/{accountId}/webhooks/endpoints/{endpointId}/secret/rotate`
+
+Rotate webhook endpoint signing secret
+
+Replace the endpoint's signing secret and return the new one. The old secret stops working immediately, so update your receiver right away. Returns `400` when signing is disabled. Not available to OAuth applications.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "endpointId",
+      "in": "path",
+      "description": "The webhook endpoint ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "The new secret",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/WebhookEndpointSecret"
                   }
                 },
                 "type": "object"
@@ -7072,6 +8242,12 @@ References use the original OpenAPI `#/components/...` names.
             "description": "E.164 format; normalized on save.",
             "type": "string",
             "example": "+5548999990000",
+            "nullable": true
+          },
+          "government_id": {
+            "description": "Signer's normalized CPF (11 digits) or CNPJ (14 characters; may be alphanumeric).",
+            "type": "string",
+            "example": "39053344705",
             "nullable": true
           },
           "has_accepted_terms": {
@@ -7943,6 +9119,77 @@ References use the original OpenAPI `#/components/...` names.
         },
         "type": "object"
       },
+      "WebhookEndpoint": {
+        "description": "A URL that receives the account's webhook events. Every active endpoint subscribed to an event receives it.",
+        "properties": {
+          "id": {
+            "description": "Endpoint ID.",
+            "type": "string",
+            "example": "65f1c2a9b3e4d5f60718293a4b5c6d7e"
+          },
+          "name": {
+            "description": "Label to tell endpoints apart.",
+            "type": "string",
+            "example": "ERP",
+            "nullable": true
+          },
+          "url": {
+            "description": "URL that receives the events (http or https).",
+            "type": "string",
+            "format": "uri",
+            "example": "https://example.com/webhooks/assinafy"
+          },
+          "email": {
+            "description": "Contact email for delivery-failure notices.",
+            "type": "string",
+            "format": "email",
+            "example": "ops@example.com"
+          },
+          "events": {
+            "description": "Event types delivered to this endpoint (see **List webhook event types**).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "document_ready",
+              "signer_signed_document"
+            ]
+          },
+          "is_active": {
+            "description": "Whether events are delivered to this endpoint.",
+            "type": "boolean",
+            "example": true
+          },
+          "signing_enabled": {
+            "description": "Whether deliveries carry a `webhook-signature` header (see **Webhook Payloads → Verifying signatures**).",
+            "type": "boolean",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-01T12:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-01T12:00:00Z"
+          }
+        },
+        "type": "object"
+      },
+      "WebhookEndpointSecret": {
+        "description": "An endpoint's signing secret.",
+        "properties": {
+          "secret": {
+            "description": "Standard Webhooks secret: `whsec_` followed by the base64-encoded key.",
+            "type": "string",
+            "example": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+          }
+        },
+        "type": "object"
+      },
       "WebhookDispatch": {
         "description": "A single webhook delivery-history entry.",
         "properties": {
@@ -7965,6 +9212,12 @@ References use the original OpenAPI `#/components/...` names.
             "description": "Internal activity ID associated with the dispatch.",
             "type": "integer",
             "example": 456
+          },
+          "endpoint_id": {
+            "description": "ID of the webhook endpoint the delivery was sent to (`null` once that endpoint is deleted).",
+            "type": "string",
+            "example": "65f1c2a9b3e4d5f60718293a4b5c6d7e",
+            "nullable": true
           },
           "endpoint": {
             "description": "URL that received the request.",
@@ -8009,6 +9262,76 @@ References use the original OpenAPI `#/components/...` names.
             "type": "string",
             "format": "date-time",
             "example": "2024-01-15T10:30:00Z"
+          }
+        },
+        "type": "object"
+      },
+      "WebhookEvent": {
+        "description": "Body of every webhook delivery. Timestamps in the body (`created_at`, and the `*_at` fields of `subject`/`object`) are Unix timestamps in seconds, not the ISO strings the REST responses use. `subject` and `object` are serialized from their current state when the delivery is sent.",
+        "required": [
+          "id",
+          "event",
+          "created_at",
+          "subject",
+          "object",
+          "account_id"
+        ],
+        "properties": {
+          "id": {
+            "description": "ID of the activity that produced the event.",
+            "type": "integer",
+            "example": 184467
+          },
+          "event": {
+            "description": "Event type. See **List webhook event types**.",
+            "type": "string",
+            "example": "signer_viewed_document"
+          },
+          "message": {
+            "description": "Reserved; currently always `null`.",
+            "type": "string",
+            "example": null,
+            "nullable": true
+          },
+          "payload": {
+            "description": "Event-specific parameters; keys vary per event.",
+            "type": "object",
+            "nullable": true
+          },
+          "origin": {
+            "description": "Where the action came from, when it was triggered by a request.",
+            "properties": {
+              "ip": {
+                "type": "string",
+                "example": "203.0.113.7"
+              },
+              "user-agent": {
+                "type": "string",
+                "example": "Mozilla/5.0"
+              }
+            },
+            "type": "object",
+            "nullable": true
+          },
+          "created_at": {
+            "description": "When the event was recorded (Unix timestamp, seconds).",
+            "type": "integer",
+            "example": 1790000000
+          },
+          "subject": {
+            "description": "Who performed the action: a `User`, `Signer` or `Account`, plus a `type` property naming it.",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "object": {
+            "description": "What the action was performed on: a `Document`, `Signer` or `Template` with its relations expanded, plus a `type` property naming it.",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "account_id": {
+            "description": "ID of the account that owns the event.",
+            "type": "string",
+            "example": "65f1c2a9b3e4d5f6"
           }
         },
         "type": "object"

@@ -108,11 +108,11 @@ final class SettingsAjax {
 	}
 
 	/**
-	 * Point the account's webhook subscription at this site.
+	 * Register or update this site's own webhook endpoint on the account.
 	 *
-	 * The subscription routes act on the account's oldest endpoint, so registering from here
-	 * replaces that endpoint. An existing subscription pointing somewhere else is reported
-	 * back and only replaced when the request repeats with an explicit confirmation.
+	 * Endpoints belonging to other integrations coexist with this site's, so there is no
+	 * takeover to confirm: the failures worth surfacing are a full plan and a request the
+	 * API refused.
 	 */
 	public function ajax_register_webhook(): void {
 		check_ajax_referer( 'assinafy_admin', 'nonce' );
@@ -127,16 +127,12 @@ final class SettingsAjax {
 			wp_send_json_error( array( 'message' => esc_html__( 'Connect the plugin to Assinafy before registering the webhook.', 'assinafy' ) ) );
 		}
 
-		$confirmed = isset( $_POST['confirm'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['confirm'] ) );
-
-		// `Route` owns the whole upsert: it reads the account's current subscription and keeps
-		// the events already on it. Doing any of that here as well would give the screen and
-		// WP-CLI two answers to the same question. The pair differs only in what happens to a
-		// foreign URL — `subscribe()` reports it, `take_over()` replaces it.
+		// `Route` owns the whole flow: it finds this site's endpoint among the account's,
+		// keeps the events already on it, and stores the endpoint id and signing secret.
+		// Doing any of that here as well would give the screen and WP-CLI two answers to the
+		// same question.
 		$email  = (string) get_option( 'admin_email' );
-		$result = $confirmed
-			? Route::take_over( $client, $email, Route::DEFAULT_EVENTS )
-			: Route::subscribe( $client, $email, Route::DEFAULT_EVENTS );
+		$result = Route::subscribe( $client, $email, Route::DEFAULT_EVENTS );
 
 		if ( $result instanceof WP_Error ) {
 			$this->fail_webhook_registration( $result );
@@ -154,35 +150,12 @@ final class SettingsAjax {
 	/**
 	 * Answer a failed webhook registration.
 	 *
-	 * A takeover is not logged as a failure: it is the API reporting that the account already
-	 * delivers somewhere else, and the screen answers it by asking for a second click. The
-	 * subscription routes act on the account's oldest endpoint, which may belong to another
-	 * integration, so taking it over silently would stop deliveries to whatever else
-	 * the customer runs.
-	 *
 	 * Never returns: `wp_send_json_error()` ends the request through `wp_die()`, which either
 	 * halts or — under a `wp_die` handler that raises, as the test suite installs — throws.
 	 *
 	 * @param WP_Error $error What went wrong.
 	 */
 	private function fail_webhook_registration( WP_Error $error ): never {
-		if ( 'assinafy_webhook_takeover' === $error->get_error_code() ) {
-			$data = $error->get_error_data();
-
-			wp_send_json_error(
-				array(
-					'message'              => esc_html(
-						sprintf(
-							/* translators: %s: currently registered webhook URL. */
-							__( 'This Assinafy account already delivers webhooks to %s. Registering this site replaces that subscription.', 'assinafy' ),
-							is_array( $data ) && is_string( $data['url'] ?? null ) ? $data['url'] : ''
-						)
-					),
-					'requiresConfirmation' => true,
-				)
-			);
-		}
-
 		$this->log->add(
 			'webhook_registration_failed',
 			array(

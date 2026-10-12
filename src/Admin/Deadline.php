@@ -23,9 +23,9 @@ final class Deadline {
 	/**
 	 * The end of the named day in UTC.
 	 *
-	 * A date is usable only when it parses, names a real calendar day, and is still in the
-	 * future; anything else is refused, including today, because a deadline that has already
-	 * passed would be accepted by the API and expire the request immediately.
+	 * A date is usable only when it parses, names a real calendar day, and its last second is
+	 * still at least an hour away; anything else is refused because the API rejects an expiry
+	 * less than one hour in the future.
 	 *
 	 * The instant is the last second of the day rather than midnight: a signer given until
 	 * the 31st has the whole of the 31st.
@@ -45,7 +45,7 @@ final class Deadline {
 
 		$end_of_day = strtotime( $expires_on . ' 23:59:59 UTC' );
 
-		if ( false === $end_of_day || $end_of_day <= time() ) {
+		if ( false === $end_of_day || $end_of_day <= time() + HOUR_IN_SECONDS ) {
 			return '';
 		}
 

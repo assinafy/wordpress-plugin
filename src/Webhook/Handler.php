@@ -24,32 +24,35 @@ use WP_REST_Response;
 /**
  * Turns an authenticated delivery into a re-fetch.
  *
- * The plugin verifies no delivery signature: the token in the URL proves the sender knows this site's secret
- * endpoint, and nothing proves the body was written by Assinafy. So the body is read only
- * far enough to answer three questions — is this a replay, is it about the configured
- * account, and which document does it concern — and every byte of local state that changes
- * afterwards comes from {@see StatusSync::sync_one()}, which re-reads the document through
- * the authenticated API. A forged body can at most cause a wasted GET of a document this
- * site already owns.
+ * Authentication happens in {@see Route::check_token()} before this handler runs: the URL
+ * token always, and the Standard Webhooks signature as well when a `whsec_` secret is
+ * configured. Even a verified body is read only far enough to answer three questions — is
+ * this a replay, is it about the configured account, and which document does it concern —
+ * and every byte of local state that changes afterwards comes from
+ * {@see StatusSync::sync_one()}, which re-reads the document through the authenticated API.
+ * A forged body can at most cause a wasted GET of a document this site already owns.
  *
  * Two consequences of the delivery contract shape the responses:
  *
- * - An authenticated delivery is always answered 2xx. Assinafy attempts a delivery twice,
- *   three seconds apart, and pauses the account's deliveries after ten consecutive failures
- *   until a probe succeeds. Answering 500 because one document could not be re-read would
- *   spend that budget on a condition the hourly reconcile run fixes by itself. The outcome
- *   goes in the response body instead, where the first 2000 characters are kept in the
- *   account's delivery history.
+ * - An authenticated delivery is answered 2xx even when it does no work. Assinafy attempts a
+ *   delivery twice, three seconds apart, and pauses the account's deliveries after ten
+ *   consecutive failures until a probe succeeds. Answering 500 because one document could not
+ *   be re-read would spend that budget on a condition the hourly reconcile run fixes by
+ *   itself. The outcome goes in the response body instead, where the first 2000 characters
+ *   are kept in the account's delivery history. The exception is a body that is not a
+ *   delivery envelope at all — malformed JSON or a missing delivery id — which is refused
+ *   with a 400 rather than acknowledged.
  * - `assignment_created` and `document_metadata_ready` have no guaranteed ordering relative
  *   to each other, and a virtual assignment created before metadata finishes can deliver
  *   them backwards. Re-fetching makes the handler order-independent at no extra cost.
  *
  * The envelope has no `data` key. The entity is under `object`, the event-specific detail
- * under `payload` (which is `null`, an object, or an empty array), and `created_at` is a
- * Unix timestamp integer:
+ * under `payload` (which is `null`, an object, or an empty array), `created_at` is a
+ * Unix timestamp integer, and `message` is reserved by the platform and currently always
+ * `null`:
  *
  * ```
- * {"id": 30022, "event": "signer_signed_document", "message": "…",
+ * {"id": 30022, "event": "signer_signed_document", "message": null,
  *  "payload": {"signer_full_name": "Jane Doe"},
  *  "origin": {"ip": "203.0.113.10", "user-agent": "…"},
  *  "created_at": 1789668256,
@@ -80,14 +83,16 @@ final class Handler {
 	public const DEDUPE_TTL = 604800;
 
 	/**
-	 * @param StatusSync    $sync  Re-fetches a document and writes the local record.
-	 * @param Log           $log   Plugin event log.
-	 * @param DocumentIndex $index Finds the mirror a delivery names.
+	 * @param StatusSync    $sync        Re-fetches a document and writes the local record.
+	 * @param Log           $log         Plugin event log.
+	 * @param DocumentIndex $index       Finds the mirror a delivery names.
+	 * @param Credentials   $credentials Resolves the configured account a delivery must name.
 	 */
 	public function __construct(
 		private readonly StatusSync $sync,
 		private readonly Log $log,
-		private readonly DocumentIndex $index = new DocumentIndex()
+		private readonly DocumentIndex $index = new DocumentIndex(),
+		private readonly Credentials $credentials = new Credentials()
 	) {
 	}
 
@@ -103,7 +108,7 @@ final class Handler {
 
 		if ( ! Settings::get( Settings::OPTION_WEBHOOK_ENABLED ) ) {
 			// Unticking the box stops this site from acting on deliveries; it does not
-			// deactivate the account's subscription, which only `wp assinafy webhook off`
+			// deactivate the account's endpoint, which only `wp assinafy webhook off`
 			// does. Refusing the delivery would pause it for every site on the account.
 			return $this->outcome( false, 'disabled', '' );
 		}
@@ -163,7 +168,7 @@ final class Handler {
 		array $envelope,
 		string $event
 	): string|WP_REST_Response {
-		$account = ( new Credentials() )->account_id();
+		$account = $this->credentials->account_id();
 
 		if ( '' === $account || $parser->getAccountId( $envelope ) !== $account ) {
 			// One Assinafy account can serve several sites. A delivery for a different

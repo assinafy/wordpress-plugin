@@ -124,4 +124,26 @@ final class OAuthConnectionTest extends TestCase {
 		$this->assertNull( $credentials->oauth_connection() );
 		$this->assertSame( array(), FakeHttp::$requests );
 	}
+
+	/** A grant a crashed refresh already dropped has nothing left to revoke or remove. */
+	public function test_disconnecting_a_connection_dropped_by_a_crashed_refresh_says_so(): void {
+		$credentials = new Credentials();
+		$credentials->set_oauth_connection(
+			array(
+				'account_id'    => 'workspace-1',
+				'access_token'  => 'old-access',
+				'refresh_token' => 'old-refresh',
+				'expires_at'    => time() + 3600,
+				'connected_at'  => time(),
+				'scope'         => 'account:read documents:read documents:write webhooks:write',
+			)
+		);
+		update_option( OAuthTokens::OPTION_REFRESH_LOCK, ( time() - 1 ) . ':crashed-request:' . hash( 'sha256', 'old-refresh' ) );
+
+		$method = new ReflectionMethod( OAuthConnection::class, 'disconnect_current' );
+		$this->assertSame( 'already_disconnected', $method->invoke( new OAuthConnection( $credentials ) ) );
+		$this->assertNull( $credentials->oauth_connection() );
+		$this->assertSame( array(), FakeHttp::$requests );
+		$this->assertFalse( get_option( OAuthTokens::OPTION_REFRESH_LOCK ) );
+	}
 }

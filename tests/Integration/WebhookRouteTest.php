@@ -133,8 +133,8 @@ final class WebhookRouteTest extends AssinafyTestCase {
 	 * The delivery body is a hint, never a source of truth.
 	 *
 	 * The envelope claims the document is `certificated`; the API says `metadata_ready`.
-	 * Deliveries are unsigned, so the API has to win — otherwise anyone who learns the
-	 * endpoint URL can dictate what this site believes about a document.
+	 * No signature secret is configured here, so the API has to win — otherwise anyone who
+	 * learns the endpoint URL can dictate what this site believes about a document.
 	 */
 	public function test_the_delivery_body_never_writes_state_by_itself(): void {
 		$post_id = $this->create_document( self::DOCUMENT_ID, 'pending_signature' );

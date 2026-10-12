@@ -38,9 +38,7 @@ final class DocumentMetaBox {
 	 * @var array<int, string>
 	 */
 	private const RENAMEABLE_STATUSES = array(
-		'uploading',
 		'uploaded',
-		'metadata_processing',
 		'metadata_ready',
 	);
 
@@ -516,7 +514,7 @@ final class DocumentMetaBox {
 			 * shaped object.
 			 */
 			$payload = is_array( $activity['payload'] ?? null ) ? $activity['payload'] : array();
-			$who     = (string) ( $payload['signer_name'] ?? $payload['signer_email'] ?? $payload['user_name'] ?? '' );
+			$who     = (string) ( $payload['signer_full_name'] ?? $payload['signer_email'] ?? $payload['user_name'] ?? '' );
 
 			echo '<tr>';
 			echo '<td>' . esc_html( $this->format_time( (string) ( $activity['created_at'] ?? '' ) ) ) . '</td>';

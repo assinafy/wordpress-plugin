@@ -14,8 +14,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * What the API last said about the rate-limit window.
  *
- * The budget is 120 requests a minute per key on a rolling window and a single upload spends
- * three to four of it, so a batch job needs to know where it stands before it starts. No SDK
+ * The API limits requests per minute — per user when authenticated, per IP address otherwise —
+ * and a single upload spends three to four of them, so a batch job needs to know where it
+ * stands before it starts. No SDK
  * resource method hands back a `Response`, which makes the transport the only place these
  * headers can be seen, and this transient the only place the answer survives the request that
  * learned it.

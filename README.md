@@ -274,6 +274,8 @@ As configurações ficam em **Assinafy → Configurações** (capability `manage
 | Modo de autenticação | `assinafy_auth_mode` | `''` (legado até conectar) |
 | Aceitar entregas de webhook | `assinafy_webhook_enabled` | `false` |
 | Token do endpoint de webhook | `assinafy_webhook_token` | gerado na ativação |
+| Endpoint de webhook registrado | `assinafy_webhook_endpoint_id` | `''` (gravado pelo registro) |
+| Segredo de assinatura do webhook | `assinafy_webhook_secret_enc` | `''` (armazenado criptografado; campo apenas em sites OAuth) |
 | Prazo para assinatura (dias) | `assinafy_default_expiry_days` | `30` |
 | Mensagem aos signatários | `assinafy_default_message` | `''` |
 | Capability exigida para enviar | `assinafy_sender_cap` | `assinafy_send` |
@@ -784,32 +786,43 @@ os eventos vencidos:
 ```
 $ wp assinafy webhook status
 This site endpoint: https://example.com/wp-json/assinafy/v1/webhook/<token>
-Registered URL:    https://other-site.example.com/hooks/assinafy
-Delivering:        no
-Failure alerts to: ops@example.com
-Events:            document_ready, signer_signed_document, signer_rejected_document
-Last changed:      2026-08-27T17:55:12Z
-Warning: The account delivers somewhere else. This site will not receive webhooks until it is registered.
+Endpoint 9f2c4a7bd1… (this site):
+  URL:      https://example.com/wp-json/assinafy/v1/webhook/<token>
+  Active:   yes
+  Signing:  enabled
+  Events:   document_metadata_ready, document_ready, signer_signed_document
+Endpoint 8b1e05c93f…:
+  URL:      https://other-site.example.com/hooks/assinafy
+  Active:   yes
+  Signing:  disabled
+  Events:   document_ready, signer_signed_document
 
 $ wp assinafy webhook register
-This account delivers to https://other-site.example.com/hooks/assinafy. Replace it with this site? [y/n] y
 Success: Assinafy now delivers to https://example.com/wp-json/assinafy/v1/webhook/<token>
 
 $ wp assinafy webhook off
-Success: Deliveries stopped. The subscription stays on file and can be registered again.
+Success: Deliveries stopped. The endpoint stays on file and can be registered again.
 ```
+
+O `status` lista todos os endpoints da conta, marca o deste site com `(this site)` e mostra o
+estado de assinatura de cada endpoint. Quando este site não tem endpoint ele avisa; uma conta
+sem endpoints diz isso.
 
 | Opção | Observações |
 |---|---|
 | `--email=<address>` | Endereço que a Assinafy alerta quando uma entrega falha. Usa por padrão o e-mail do administrador do site. |
-| `--yes` | Responde ao prompt de tomada de controle sem perguntar. Use em uma migração não assistida. |
 
-O `register` inscreve nos eventos `document_metadata_ready`, `document_ready`,
-`signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
-`user_rejected_document` e `document_processing_failed`, e define `assinafy_webhook_enabled` para
-que a rota passe a aceitar entregas. O `off` chama a rota de inativação e limpa essa option — não
-existe rota DELETE para uma inscrição. Essa operação desativa a inscrição de toda a conta,
-inclusive uma que aponte atualmente para outra aplicação.
+O `register` adiciona ou atualiza o endpoint próprio deste site — localizado entre os endpoints
+da conta por correspondência de prefixo da URL, criado quando ausente — inscrevendo-o em
+`document_metadata_ready`, `document_ready`, `signer_signed_document`, `signer_viewed_document`,
+`signer_rejected_document`, `user_rejected_document` e `document_processing_failed` (mesclados
+com os eventos que o endpoint já tiver) com a assinatura das entregas ativada, e define
+`assinafy_webhook_enabled` para que a rota passe a aceitar entregas. Ele nunca toca no endpoint
+de outra integração; quando o limite de endpoints do plano já foi atingido, ele falha pedindo
+que você remova um endpoint no painel da Assinafy antes. O `off` define `is_active=false` apenas
+no endpoint próprio deste site — pelo id de endpoint armazenado, com fallback para a
+correspondência de URL — e limpa essa option; ele falha quando este site não tem endpoint. Os
+endpoints de outras integrações nunca são tocados.
 
 ---
 
@@ -821,20 +834,25 @@ depende da execução do cron, do tamanho da fila e da disponibilidade da API.
 
 ### Autenticação das entregas
 
-O plugin registra seu endpoint com `PUT /accounts/{accountId}/webhooks/subscriptions`, que aceita
-exatamente quatro chaves — `events`, `is_active`, `url`, `email` — e não ativa a assinatura das
-entregas. O plugin não verifica o cabeçalho `webhook-signature` do Standard Webhooks que a
-Assinafy envia quando a assinatura está ativada em um endpoint. Ele autentica cada entrega pelo
-token secreto da URL e **nunca confia no corpo de uma entrega.** O modelo de segurança é:
+O plugin registra o endpoint deste site pelas rotas `/webhooks/endpoints` com
+`signing_enabled: true`, então as entregas carregam os cabeçalhos do Standard Webhooks —
+`webhook-id`, `webhook-timestamp` e `webhook-signature`, um HMAC-SHA256 sobre
+`id.timestamp.raw_body` assinado com o segredo `whsec_` do endpoint. A autenticação das entregas
+tem duas camadas: o token secreto da URL é a base e, quando um segredo de assinatura está
+configurado, a assinatura é verificada por cima dele. O plugin **nunca confia no corpo de uma
+entrega** de qualquer forma. O modelo de segurança é:
 
 1. **Um endpoint impossível de adivinhar.** A rota REST é
    `POST /wp-json/assinafy/v1/webhook/(?P<token>[A-Za-z0-9]{32})`. O token é gerado na ativação em
    uma option com `autoload => false`.
 2. **O `permission_callback` faz a checagem**, comparando com `hash_equals()`. Ele nunca é
    `__return_true`. Uma divergência, ou um site que ainda não tem token, retorna um `WP_Error` com
-   status 403. Desligar a aceitação de webhooks **não** recusa a entrega: a inscrição vale para toda
-   a conta, então um 403 pausaria as entregas para todos os sites que compartilham a conta. O
-   handler reconhece esse tipo de entrega com 200 e `reason: disabled`, sem gravar nada.
+   status 403. Com um segredo de assinatura configurado, uma entrega sem assinatura, mal assinada
+   ou velha — um `webhook-timestamp` a mais de 300 segundos do relógio local — retorna 401. Sem
+   segredo configurado, o token sozinho autentica, como antes. Desligar a aceitação de webhooks
+   **não** recusa a entrega: o endpoint vive na conta Assinafy, não nesta chave, então uma entrega
+   autenticada ainda precisa ser respondida. O handler reconhece esse tipo de entrega com 200 e
+   `reason: disabled`, sem gravar nada.
 3. **Suprimir retentativas sequenciais.** Depois das checagens de conta/evento/documento, IDs de
    atividade elegíveis (inteiro positivo ou string de dígitos) são lembrados por sete dias antes de
    uma nova releitura. Essa proteção por transient não é atômica; cópias simultâneas podem disparar
@@ -851,8 +869,9 @@ token secreto da URL e **nunca confia no corpo de uma entrega.** O modelo de seg
 ### Reconhecendo entregas válidas
 
 Envelopes autenticados e válidos recebem 200 com o resultado no corpo. JSON inválido ou um ID de
-atividade ausente/inválido retorna 400. Um token incorreto ou ausente retorna 403; um site com a
-aceitação de webhooks desligada responde 200 com `reason: disabled`:
+atividade ausente/inválido retorna 400. Um token incorreto ou ausente retorna 403; com um segredo
+de assinatura configurado, uma entrega sem assinatura, mal assinada ou velha retorna 401; um site
+com a aceitação de webhooks desligada responde 200 com `reason: disabled`:
 
 ```json
 {"handled": true, "reason": "synced", "event": "signer_signed_document"}
@@ -911,36 +930,37 @@ signer_rejected_document   user_rejected_document     document_processing_failed
 
 A lista de permitidos do plugin contém esses quinze eventos. As constantes de eventos de template
 do SDK, incluindo `template_created`, `template_processed` e `template_processing_failed`, não
-estão nessa lista e são filtradas das requisições de inscrição.
+estão nessa lista e são filtradas das requisições de registro.
 
 O plugin se inscreve em sete por padrão: `document_metadata_ready`, `document_ready`,
 `signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
 `user_rejected_document` e `document_processing_failed`. A reconciliação pode recuperar o estado
 mais recente do documento, mas não um histórico completo de eventos intermediários.
 
-### O plugin gerencia o endpoint mais antigo da conta
+### O endpoint próprio deste site
 
-Uma conta Assinafy tem um endpoint de webhook, ou até três nos planos pagos. As rotas de inscrição
-usadas pelo plugin atuam sobre o endpoint **mais antigo** da conta, e o `register()` é um upsert
-integral dos quatro campos — uma atualização parcial é impossível — então registrar a partir do
-WordPress **sobrescreve o endpoint mais antigo quando ele aponta para outro lugar.** Os demais
-endpoints não são alterados.
+Uma conta Assinafy tem um endpoint de webhook, ou até três nos planos pagos, e todo endpoint ativo
+inscrito em um evento o recebe. Registrar — pela tela de configurações ou pelo WP-CLI — gerencia
+**o endpoint próprio deste site**: ele é localizado entre os endpoints da conta por
+correspondência de prefixo da URL, atualizado no lugar quando encontrado e criado quando ausente.
+Endpoints de outras integrações coexistem e nunca são substituídos. Quando o limite de endpoints
+do plano já foi atingido, o registro falha com um erro pedindo que você remova um endpoint no
+painel da Assinafy antes.
 
-O plugin lida com isso lendo primeiro a inscrição atual. Registrar pela tela de configurações contra
-uma conta que aponta para outro lugar retorna `requiresConfirmation: true` com a URL atual, e a tela
-pergunta antes de repetir a chamada com `confirm=1`. O WP-CLI faz a mesma pergunta no prompt, ou
-aceita `--yes`.
-
-Se outra integração for dona da inscrição da conta e você não puder assumi-la, não faça nada: deixe
-`assinafy_webhook_enabled` desligado e deixe o cron horário de reconciliação fazer o trabalho. É
-exatamente para isso que ele existe.
+Os endpoints são registrados com `signing_enabled: true`. Em sites com chave de API, o registro
+também lê o segredo `whsec_` do endpoint na API e o armazena criptografado com a mesma cifra da
+chave de API — a tela de configurações mostra essa linha como gerenciada automaticamente. As rotas
+de segredo não estão disponíveis para aplicações OAuth, então um site OAuth cola o valor `whsec_`
+que o painel da Assinafy mostra para o endpoint no campo **Segredo de assinatura**; ele é
+armazenado criptografado e o campo mantém o valor gravado quando enviado em branco. Sem segredo
+configurado, o token da URL sozinho autentica as entregas, como antes.
 
 ### API programática de webhook
 
-A [`Route`](src/Webhook/Route.php) expõe o ciclo de vida da inscrição como métodos estáticos para
+A [`Route`](src/Webhook/Route.php) expõe o ciclo de vida do endpoint como métodos estáticos para
 código que precise disso — um script de migração, uma rotina de provisionamento em multisite, uma
-tela de configurações própria. A tela de configurações e o WP-CLI usam esses mesmos métodos para a
-proteção contra tomada de controle e para a mesclagem dos eventos suportados.
+tela de configurações própria. A tela de configurações e o WP-CLI usam esses mesmos métodos para
+localizar o endpoint deste site e para a mesclagem dos eventos suportados.
 
 ```php
 use Assinafy\WP\Settings;
@@ -960,8 +980,8 @@ if ( null !== $client ) {
 	if ( ! is_wp_error( $result ) ) {
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
 	}
-	// Handle WP_Error before reporting success. A takeover conflict requires an
-	// explicit operator decision before separately calling Route::take_over().
+	// Handle WP_Error before reporting success. A full plan returns
+	// assinafy_webhook_limit — remove an endpoint in the Assinafy dashboard first.
 }
 ```
 
@@ -979,11 +999,10 @@ armazenada na conta Assinafy.
 | `Route::token()` | O token do endpoint armazenado, `''` antes de existir um. |
 | `Route::url()` | O endpoint completo deste site, `''` quando não há token. |
 | `Route::rotate_token()` | Um novo token, já armazenado. |
-| `Route::subscribe( AssinafyClient $client, string $email, array $events = array() )` | `array\|WP_Error`. Recusa uma inscrição apontando para outro endpoint com `assinafy_webhook_takeover`. |
-| `Route::take_over( AssinafyClient $client, string $email, array $events = array() )` | `array\|WP_Error`. A mesma chamada com essa objeção respondida. |
+| `Route::subscribe( AssinafyClient $client, string $email, array $events = array() )` | `array\|WP_Error`. Adiciona ou atualiza o endpoint próprio deste site; um plano cheio falha com `assinafy_webhook_limit`. |
 
-Códigos de `WP_Error`: `assinafy_webhook_forbidden` (403), `assinafy_webhook_no_token`,
-`assinafy_webhook_takeover` (409, os dados carregam `url`),
+Códigos de `WP_Error`: `assinafy_webhook_forbidden` (403), `assinafy_webhook_bad_signature` (401),
+`assinafy_webhook_no_token`, `assinafy_webhook_limit` (403),
 `assinafy_webhook_request_failed` (os dados carregam `type` e `status`),
 `assinafy_webhook_bad_body` (400) e `assinafy_webhook_bad_id` (400).
 
@@ -1450,12 +1469,13 @@ O agendamento padrão do WP-Cron depende de requisições chegarem ao site. Um t
 rodar `wp cron event run --due-now`, para que envios enfileirados e outros jobs do WordPress também
 executem; veja a [§6](#6-wp-cli). O `wp assinafy sync` atualiza apenas o status dos documentos.
 
-Se você registrou um webhook e mesmo assim não vê nada, o `wp assinafy webhook status` diz se a
-conta está entregando aqui ou em outro lugar. Causas comuns:
+Se você registrou um webhook e mesmo assim não vê nada, o `wp assinafy webhook status` lista os
+endpoints da conta e marca o deste site. Causas comuns:
 
 - `assinafy_webhook_enabled` está desligado, então a rota reconhece toda entrega com
   `reason: disabled` e não grava nada.
-- Outra integração na mesma conta Assinafy registrou a inscrição de novo e tomou a URL de volta.
+- O endpoint deste site está ausente ou inativo na conta; `wp assinafy webhook register` o
+  restaura.
 - Falhas de entrega ou de API estão impedindo as atualizações; inspecione a conta e o log de eventos
   local.
 

@@ -24,6 +24,10 @@ defined( 'ABSPATH' ) || define( 'ABSPATH', dirname( __DIR__ ) . '/' );
 defined( 'LOGGED_IN_KEY' ) || define( 'LOGGED_IN_KEY', 'unit-test-logged-in-key' );
 defined( 'LOGGED_IN_SALT' ) || define( 'LOGGED_IN_SALT', 'unit-test-logged-in-salt' );
 
+defined( 'MINUTE_IN_SECONDS' ) || define( 'MINUTE_IN_SECONDS', 60 );
+defined( 'HOUR_IN_SECONDS' ) || define( 'HOUR_IN_SECONDS', 3600 );
+defined( 'DAY_IN_SECONDS' ) || define( 'DAY_IN_SECONDS', 86400 );
+
 /**
  * The unit suite uses configured salts; core's generated-salt fallback is integration-tested.
  *
@@ -47,6 +51,50 @@ function wp_unslash( mixed $value ): mixed {
 		return array_map( 'wp_unslash', $value );
 	}
 	return is_string( $value ) ? stripslashes( $value ) : $value;
+}
+
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	/**
+	 * Single-line text sanitising, reduced to what the unit tests exercise.
+	 *
+	 * @param string $str Raw text.
+	 */
+	function sanitize_text_field( string $str ): string {
+		return trim( strip_tags( str_replace( array( "\r", "\n", "\t" ), ' ', $str ) ) );
+	}
+}
+
+if ( ! function_exists( 'sanitize_email' ) ) {
+	/**
+	 * @param string $email Raw email address.
+	 */
+	function sanitize_email( string $email ): string {
+		return trim( $email );
+	}
+}
+
+if ( ! function_exists( 'is_email' ) ) {
+	/**
+	 * @param string $email Email address to validate.
+	 * @return string|false The address when valid.
+	 */
+	function is_email( string $email ): string|false {
+		$valid = filter_var( $email, FILTER_VALIDATE_EMAIL );
+
+		return false === $valid ? false : $email;
+	}
+}
+
+if ( ! function_exists( 'wp_checkdate' ) ) {
+	/**
+	 * @param int    $month       Month number.
+	 * @param int    $day         Day of month.
+	 * @param int    $year        Four-digit year.
+	 * @param string $source_date The date string, for filter parity with core.
+	 */
+	function wp_checkdate( int $month, int $day, int $year, string $source_date ): bool {
+		return checkdate( $month, $day, $year );
+	}
 }
 
 if ( ! class_exists( 'WP_Error' ) ) {
@@ -174,6 +222,85 @@ if ( ! function_exists( 'add_query_arg' ) ) {
 		$separator = str_contains( $url, '?' ) ? '&' : '?';
 
 		return $url . $separator . http_build_query( $args );
+	}
+}
+
+if ( ! function_exists( 'untrailingslashit' ) ) {
+	/**
+	 * @param string $value Path or URL.
+	 */
+	function untrailingslashit( string $value ): string {
+		return rtrim( $value, '/' );
+	}
+}
+
+if ( ! function_exists( 'rest_url' ) ) {
+	/**
+	 * The unit suite has no site URL setting; the webhook prefix-matching tests only need a
+	 * stable, well-formed base.
+	 *
+	 * @param string $path Path relative to the REST root.
+	 */
+	function rest_url( string $path = '' ): string {
+		return 'https://example.test/wp-json/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'add_settings_error' ) ) {
+	/**
+	 * Settings errors the code under test raised, oldest first.
+	 *
+	 * @var array<int, array{setting: string, code: string, message: string}>
+	 */
+	$GLOBALS['assinafy_test_settings_errors'] = array();
+
+	/**
+	 * @param string $setting Setting slug.
+	 * @param string $code    Error code.
+	 * @param string $message Message.
+	 * @param string $type    Severity.
+	 */
+	function add_settings_error( string $setting, string $code, string $message, string $type = 'error' ): void {
+		$GLOBALS['assinafy_test_settings_errors'][] = array(
+			'setting' => $setting,
+			'code'    => $code,
+			'message' => $message,
+		);
+	}
+}
+
+if ( ! class_exists( 'WP_REST_Request' ) ) {
+	/**
+	 * Just enough of the REST request for the webhook gate: the URL match, the raw body and
+	 * the headers. `Route::check_token()` reads nothing else.
+	 */
+	class WP_REST_Request { // phpcs:ignore
+
+		/**
+		 * @param array<string, mixed>              $url_params Parameters the route pattern captured.
+		 * @param string                            $body       Raw request body.
+		 * @param array<string, array<int, string>> $headers    Request headers, name => values.
+		 */
+		public function __construct(
+			private readonly array $url_params = array(),
+			private readonly string $body = '',
+			private readonly array $headers = array()
+		) {
+		}
+
+		/** @return array<string, mixed> */
+		public function get_url_params(): array {
+			return $this->url_params;
+		}
+
+		public function get_body(): string {
+			return $this->body;
+		}
+
+		/** @return array<string, array<int, string>> */
+		public function get_headers(): array {
+			return $this->headers;
+		}
 	}
 }
 

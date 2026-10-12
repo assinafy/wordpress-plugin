@@ -264,6 +264,8 @@ Settings live under **Assinafy → Settings** (capability `manage_options`).
 | Authentication mode | `assinafy_auth_mode` | `''` (legacy until connected) |
 | Accept webhook deliveries | `assinafy_webhook_enabled` | `false` |
 | Webhook endpoint token | `assinafy_webhook_token` | generated at activation |
+| Registered webhook endpoint | `assinafy_webhook_endpoint_id` | `''` (written by registration) |
+| Webhook signing secret | `assinafy_webhook_secret_enc` | `''` (stored encrypted; field only on OAuth sites) |
 | Signature deadline (days) | `assinafy_default_expiry_days` | `30` |
 | Message to signers | `assinafy_default_message` | `''` |
 | Capability required to send | `assinafy_sender_cap` | `assinafy_send` |
@@ -763,32 +765,42 @@ WordPress jobs. When replacing page-triggered WP-Cron with a system timer, run a
 ```
 $ wp assinafy webhook status
 This site endpoint: https://example.com/wp-json/assinafy/v1/webhook/<token>
-Registered URL:    https://other-site.example.com/hooks/assinafy
-Delivering:        no
-Failure alerts to: ops@example.com
-Events:            document_ready, signer_signed_document, signer_rejected_document
-Last changed:      2026-08-27T17:55:12Z
-Warning: The account delivers somewhere else. This site will not receive webhooks until it is registered.
+Endpoint 9f2c4a7bd1… (this site):
+  URL:      https://example.com/wp-json/assinafy/v1/webhook/<token>
+  Active:   yes
+  Signing:  enabled
+  Events:   document_metadata_ready, document_ready, signer_signed_document
+Endpoint 8b1e05c93f…:
+  URL:      https://other-site.example.com/hooks/assinafy
+  Active:   yes
+  Signing:  disabled
+  Events:   document_ready, signer_signed_document
 
 $ wp assinafy webhook register
-This account delivers to https://other-site.example.com/hooks/assinafy. Replace it with this site? [y/n] y
 Success: Assinafy now delivers to https://example.com/wp-json/assinafy/v1/webhook/<token>
 
 $ wp assinafy webhook off
-Success: Deliveries stopped. The subscription stays on file and can be registered again.
+Success: Deliveries stopped. The endpoint stays on file and can be registered again.
 ```
+
+`status` lists every endpoint on the account, marks this site's own with `(this site)` and
+shows each endpoint's signing state. When this site has no endpoint it warns; an account with
+no endpoints says so.
 
 | Option | Notes |
 |---|---|
 | `--email=<address>` | Address Assinafy alerts when a delivery fails. Defaults to the site admin email. |
-| `--yes` | Answer the take-over prompt without asking. Use it in an unattended migration. |
 
-`register` subscribes to `document_metadata_ready`, `document_ready`,
-`signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
-`user_rejected_document` and `document_processing_failed`, and sets `assinafy_webhook_enabled` so the route starts
-accepting deliveries. `off` calls the inactivate route and clears that option — there is no
-DELETE route for a subscription. This operation deactivates the account-wide subscription,
-including one currently pointing to another application.
+`register` adds or updates this site's own endpoint — located among the account's endpoints by
+URL prefix match, created when absent — subscribing it to `document_metadata_ready`,
+`document_ready`, `signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
+`user_rejected_document` and `document_processing_failed` (merged with any events already on the
+endpoint) with delivery signing enabled, and sets `assinafy_webhook_enabled` so the route starts
+accepting deliveries. It never touches another integration's endpoint; when the plan's endpoint
+limit is reached, it fails asking you to remove an endpoint in the Assinafy dashboard first.
+`off` sets `is_active=false` on this site's own endpoint only — by the stored endpoint id,
+falling back to the URL match — and clears that option; it errors when this site has no
+endpoint. Other integrations' endpoints are never touched.
 
 ---
 
@@ -800,20 +812,24 @@ availability.
 
 ### Delivery authentication
 
-The plugin registers its endpoint with `PUT /accounts/{accountId}/webhooks/subscriptions`, which
-accepts exactly four keys — `events`, `is_active`, `url`, `email` — and does not enable
-delivery signing. The plugin does not verify the Standard Webhooks `webhook-signature` header
-that Assinafy adds when signing is enabled on an endpoint. It authenticates each delivery by
-its secret URL token and **never trusts a delivery body.** The security model is:
+The plugin registers this site's endpoint through the `/webhooks/endpoints` routes with
+`signing_enabled: true`, so deliveries carry the Standard Webhooks headers — `webhook-id`,
+`webhook-timestamp` and `webhook-signature`, an HMAC-SHA256 over `id.timestamp.raw_body` keyed
+by the endpoint's `whsec_` secret. Delivery authentication is two-layered: the secret URL token
+is the baseline, and when a signing secret is configured the signature is verified on top of
+it. The plugin **never trusts a delivery body** either way. The security model is:
 
 1. **An unguessable endpoint.** The REST route is
    `POST /wp-json/assinafy/v1/webhook/(?P<token>[A-Za-z0-9]{32})`. The token is generated at
    activation into an `autoload => false` option.
 2. **`permission_callback` does the check**, using `hash_equals()`. It is never
    `__return_true`. A mismatch, or a site with no token yet, returns a `WP_Error` with status
-   403. Switching webhook acceptance off does **not** refuse the delivery: the subscription is
-   account-wide, so a 403 would pause deliveries for every site sharing the account. The
-   handler acknowledges such a delivery with 200 and `reason: disabled`, writing nothing.
+   403. With a signing secret configured, an unsigned, badly signed or stale delivery — a
+   `webhook-timestamp` more than 300 seconds from the local clock — returns 401. With no secret
+   configured the token alone authenticates, as before. Switching webhook acceptance off does
+   **not** refuse the delivery: the endpoint lives on the Assinafy account rather than in this
+   toggle, so an authenticated delivery still has to be answered. The handler acknowledges such
+   a delivery with 200 and `reason: disabled`, writing nothing.
 3. **Suppress sequential retries.** After account/event/document checks, eligible positive
    integer or digit-string activity IDs are remembered for seven days before re-fetching.
    The transient guard is not atomic; simultaneous copies can both trigger a re-fetch.
@@ -829,7 +845,8 @@ its secret URL token and **never trusts a delivery body.** The security model is
 ### Acknowledging valid deliveries
 
 Valid authenticated envelopes receive 200 with the outcome in the body. Invalid JSON or
-a missing/invalid activity ID returns 400. An incorrect or absent token returns 403; a site
+a missing/invalid activity ID returns 400. An incorrect or absent token returns 403; with a
+signing secret configured, an unsigned, badly signed or stale delivery returns 401; a site
 with webhook acceptance switched off answers 200 with `reason: disabled`:
 
 ```json
@@ -888,36 +905,37 @@ signer_rejected_document   user_rejected_document     document_processing_failed
 
 The plugin allow-list contains these fifteen events. SDK template-event constants, including
 `template_created`, `template_processed` and `template_processing_failed`, are not included
-in that allow-list and are filtered out of subscription requests.
+in that allow-list and are filtered out of registration requests.
 
 The plugin subscribes to seven by default: `document_metadata_ready`, `document_ready`,
 `signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
 `user_rejected_document` and `document_processing_failed`. Reconciliation can recover the
 latest document state, but not a complete history of intermediate events.
 
-### The plugin manages the account's oldest endpoint
+### This site's own endpoint
 
-An Assinafy account has one webhook endpoint, or up to three on paid plans. The subscription
-routes the plugin uses act on the account's **oldest** endpoint, and `register()` is a
-wholesale upsert of all four fields — a partial update is impossible — so registering from
-WordPress **overwrites the oldest endpoint when it points elsewhere.** Other endpoints are not
-changed.
+An Assinafy account has one webhook endpoint, or up to three on paid plans, and every active
+endpoint subscribed to an event receives it. Registering — from the settings screen or WP-CLI —
+manages **this site's own endpoint**: it is located among the account's endpoints by URL prefix
+match, updated in place when found and created when absent. Endpoints belonging to other
+integrations coexist and are never replaced. When the plan's endpoint limit is already reached,
+registration fails with an error asking you to remove an endpoint in the Assinafy dashboard
+first.
 
-The plugin handles this by reading the current subscription first. Registering from the
-settings screen against an account that points elsewhere returns
-`requiresConfirmation: true` with the current URL, and the screen asks before repeating the
-call with `confirm=1`. WP-CLI asks the same question at the prompt, or takes `--yes`.
-
-If another integration owns the account's subscription and you cannot take it over, do
-nothing: leave `assinafy_webhook_enabled` off and let the hourly reconcile cron do the work.
-That is the whole reason it exists.
+Endpoints are registered with `signing_enabled: true`. On API-key sites, registration also reads
+the endpoint's `whsec_` secret from the API and stores it encrypted with the same cipher as the
+API key — the settings screen shows this row as managed automatically. The secret routes are not
+available to OAuth applications, so an OAuth site pastes the `whsec_` value the Assinafy
+dashboard shows for the endpoint into the **Signing secret** field; it is stored encrypted and
+the field keeps the stored value when submitted blank. With no secret configured, the URL token
+alone authenticates deliveries, as before.
 
 ### Programmatic webhook API
 
-[`Route`](src/Webhook/Route.php) exposes the subscription lifecycle as static methods for
+[`Route`](src/Webhook/Route.php) exposes the endpoint lifecycle as static methods for
 code that needs it — a migration script, a multisite provisioning routine, a custom settings
-screen. The settings screen and WP-CLI use these same methods for takeover protection and
-merging supported events.
+screen. The settings screen and WP-CLI use these same methods to locate this site's endpoint
+and merge supported events.
 
 ```php
 use Assinafy\WP\Settings;
@@ -937,8 +955,8 @@ if ( null !== $client ) {
 	if ( ! is_wp_error( $result ) ) {
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
 	}
-	// Handle WP_Error before reporting success. A takeover conflict requires an
-	// explicit operator decision before separately calling Route::take_over().
+	// Handle WP_Error before reporting success. A full plan returns
+	// assinafy_webhook_limit — remove an endpoint in the Assinafy dashboard first.
 }
 ```
 
@@ -955,11 +973,10 @@ currently stored on the Assinafy account.
 | `Route::token()` | The stored endpoint token, `''` before one exists. |
 | `Route::url()` | This site's full endpoint, `''` when there is no token. |
 | `Route::rotate_token()` | A new token, already stored. |
-| `Route::subscribe( AssinafyClient $client, string $email, array $events = array() )` | `array\|WP_Error`. Refuses a subscription pointing at another endpoint with `assinafy_webhook_takeover`. |
-| `Route::take_over( AssinafyClient $client, string $email, array $events = array() )` | `array\|WP_Error`. The same call with that objection answered. |
+| `Route::subscribe( AssinafyClient $client, string $email, array $events = array() )` | `array\|WP_Error`. Adds or updates this site's own endpoint; a full plan fails with `assinafy_webhook_limit`. |
 
-`WP_Error` codes: `assinafy_webhook_forbidden` (403), `assinafy_webhook_no_token`,
-`assinafy_webhook_takeover` (409, data carries `url`),
+`WP_Error` codes: `assinafy_webhook_forbidden` (403), `assinafy_webhook_bad_signature` (401),
+`assinafy_webhook_no_token`, `assinafy_webhook_limit` (403),
 `assinafy_webhook_request_failed` (data carries `type` and `status`),
 `assinafy_webhook_bad_body` (400) and `assinafy_webhook_bad_id` (400).
 
@@ -1415,13 +1432,13 @@ Default WP-Cron scheduling depends on requests reaching the site. A system timer
 `wp cron event run --due-now`, so queued sends and other WordPress jobs also execute; see
 [§6](#6-wp-cli). `wp assinafy sync` refreshes document status only.
 
-If you registered a webhook and still see nothing, `wp assinafy webhook status` says whether
-the account is delivering here or somewhere else. Common causes:
+If you registered a webhook and still see nothing, `wp assinafy webhook status` lists the
+account's endpoints and marks this site's own. Common causes:
 
 - `assinafy_webhook_enabled` is off, so the route acknowledges every delivery with
   `reason: disabled` and writes nothing.
-- Another integration on the same Assinafy account re-registered the subscription and took the
-  URL back.
+- This site's endpoint is missing or inactive on the account; `wp assinafy webhook register`
+  restores it.
 - Delivery or API failures are preventing updates; inspect the account and local event log.
 
 Reconciliation can recover the latest state of open mirrored documents. It does not

@@ -4,13 +4,7 @@
  * Both controls post to admin-ajax with the `assinafy_admin` nonce that
  * Settings::enqueue_assets() localises as `assinafySettings`. Both handlers answer
  * with wp_send_json_success/wp_send_json_error, so the payload is always
- * `{ success: bool, data: { message: string, requiresConfirmation?: bool } }`.
- *
- * An Assinafy account has exactly one webhook subscription, and register() is a
- * wholesale upsert. When the account already points somewhere other than this site
- * the handler refuses and returns `requiresConfirmation: true` together with the
- * URL on file; the request is only repeated with `confirm=1` after the operator
- * agrees to replace it.
+ * `{ success: bool, data: { message: string } }`.
  *
  * Every message here was produced by the server, so it is written with textContent.
  */
@@ -137,33 +131,10 @@
 	} );
 
 	wire( 'assinafy-register-webhook', 'assinafy-register-webhook-result', function ( button, result ) {
-		/**
-		 * @param {boolean} confirmed Whether the operator agreed to replace the
-		 *                            subscription already on the account.
-		 * @return {Promise} Resolves when the exchange is finished.
-		 */
-		function register( confirmed ) {
-			say( result, i18n.working || '', 'busy' );
+		say( result, i18n.working || '', 'busy' );
 
-			return post( 'assinafy_register_webhook', confirmed ? { confirm: '1' } : {} )
-				.then( function ( payload ) {
-					var body = payload && payload.data ? payload.data : {};
-					var message = messageOf( payload );
-
-					if ( ! confirmed && body.requiresConfirmation ) {
-						say( result, message, 'warning' );
-
-						if ( window.confirm( message + '\n\n' + ( i18n.overwrite || '' ) ) ) {
-							return register( true );
-						}
-
-						return;
-					}
-
-					say( result, message, payload && payload.success ? 'success' : 'error' );
-				} );
-		}
-
-		return register( false );
+		return post( 'assinafy_register_webhook' ).then( function ( payload ) {
+			say( result, messageOf( payload ), payload && payload.success ? 'success' : 'error' );
+		} );
 	} );
 }() );

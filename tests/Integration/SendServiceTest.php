@@ -503,6 +503,18 @@ final class SendServiceTest extends AssinafyTestCase {
 		$this->assertSame( array(), $this->requests );
 	}
 
+	/**
+	 * The API requires an expiry at least one hour in the future, so the service refuses a
+	 * nearer one locally too.
+	 */
+	public function test_an_expiry_under_an_hour_ahead_is_rejected_before_upload(): void {
+		$this->fake_successful_send();
+		$result = $this->service->send( $this->args( array( 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() + 1800 ) ) ) );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_invalid_expiry', $result->get_error_code() );
+		$this->assertSame( array(), $this->requests );
+	}
+
 	/** An unsupported verification method must never become Email verification. */
 	public function test_unknown_verification_method_is_rejected_before_upload(): void {
 		$result = $this->service->send(

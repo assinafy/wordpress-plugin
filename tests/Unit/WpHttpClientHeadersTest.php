@@ -102,6 +102,7 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 			'oauth revocation'       => array( 'POST', 'oauth/revoke' ),
 			'login'                  => array( 'POST', 'login' ),
 			'social login'           => array( 'POST', 'authentication/social-login' ),
+			'mfa verification'       => array( 'POST', 'authentication/mfa/verify' ),
 			'password reset'         => array( 'PUT', 'authentication/reset-password' ),
 			'signer landing'         => array( 'GET', 'sign' ),
 			'code verification'      => array( 'POST', 'verify' ),

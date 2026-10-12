@@ -166,6 +166,27 @@ final class OAuthTokensTest extends TestCase {
 		$this->assertSame( 'access-new', ( new OAuthTokens( $credentials ) )->access_token() );
 	}
 
+	/** A 429 rejects the refresh before the grant is processed, so the token was never spent. */
+	public function test_a_rate_limited_refresh_keeps_the_connection_and_retries_later(): void {
+		$credentials = new Credentials();
+		$credentials->set_oauth_connection( self::connection( time() - 1 ) );
+		FakeHttp::queue( 429, '{"error":"rate_limited","message":"Rate limit exceeded"}', array( 'Retry-After' => '20' ) );
+
+		$result = ( new OAuthTokens( $credentials ) )->access_token();
+		$stored = $credentials->oauth_connection();
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_oauth_retry', $result->get_error_code() );
+		$this->assertIsArray( $stored );
+		$this->assertSame( 'refresh-old', $stored['refresh_token'] );
+		$this->assertFalse( get_option( OAuthTokens::OPTION_REFRESH_LOCK ) );
+		$this->assertCount( 1, FakeHttp::$requests );
+
+		FakeHttp::queue( 200, self::ROTATED );
+		$this->assertSame( 'access-new', ( new OAuthTokens( $credentials ) )->access_token() );
+		$this->assertCount( 2, FakeHttp::$requests );
+		$this->assertStringContainsString( 'refresh_token=refresh-old', FakeHttp::$requests[1]['args']['body'] );
+	}
+
 	/** A second request cannot send the same rotating refresh token. */
 	public function test_a_busy_refresh_lock_never_replays_an_expired_token(): void {
 		$credentials = new Credentials();

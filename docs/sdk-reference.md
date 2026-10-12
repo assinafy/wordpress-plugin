@@ -1,6 +1,6 @@
 # Bundled PHP SDK reference
 
-This reference describes the SDK installed by the plugin (2.4.2). Obtain the configured client through `ClientFactory::client()`. WordPress uses `WpHttpClient`, including credential isolation and encrypted OAuth renewal. The SDK default Guzzle transport is unavailable in the plugin distribution.
+This reference describes the SDK installed by the plugin (2.6.2). Obtain the configured client through `ClientFactory::client()`. WordPress uses `WpHttpClient`, including credential isolation and encrypted OAuth renewal. The SDK default Guzzle transport is unavailable in the plugin distribution.
 
 For OAuth discovery, obtain the resource through `OAuthTokens::oauth()`. It supplies a credential-free WordPress transport for each discovery origin; constructing the SDK OAuth resource without this discovery factory would use the unavailable default transport.
 
@@ -167,10 +167,14 @@ Account-scoped.
 public function webhooks() : WebhookResource
 ```
 
-Webhooks: the workspace's single event subscription and its delivery history.
+Webhooks: the workspace's webhook endpoints, the legacy single-subscription
+routes, the event catalog and the delivery history.
 
-Deliveries are unsigned — see {@see self::webhookEvents()} for how to handle that.
-Account-scoped.
+An account can register 1 endpoint, or up to 3 on paid plans. Each endpoint has
+its own URL, events, active flag and optional Standard Webhooks signing; every
+active endpoint subscribed to an event receives it independently. The
+subscription methods act on the account's oldest endpoint. See
+{@see self::webhookEvents()} for verifying signed deliveries. Account-scoped.
 
 ### `auth()`
 
@@ -178,7 +182,8 @@ Account-scoped.
 public function auth() : AuthResource
 ```
 
-Authentication: login, social login, API-key management, and password flows.
+Authentication: login (including two-factor completion), social login, API-key
+management, and password flows.
 
 Mostly used on a client built with {@see self::forAuth()}, before any workspace
 credential exists.
@@ -241,7 +246,8 @@ the signer access code, not the API key.
 public function users() : UserResource
 ```
 
-Authenticated user profile and cross-account KPI endpoints.
+Authenticated user profile, cross-account KPI endpoints, notification preferences,
+and two-factor enrollment (authenticator methods and recovery codes).
 
 ### `webhookEvents()`
 
@@ -249,10 +255,12 @@ Authenticated user profile and cross-account KPI endpoints.
 public function webhookEvents() : WebhookEventParser
 ```
 
-Helpers for decoding incoming webhook deliveries.
+Helpers for verifying and decoding incoming webhook deliveries.
 
-The webhook contract provides no signing secret or signature header. Secure the
-endpoint as described by {@see WebhookEventParser}.
+An endpoint created with `signing_enabled: true` signs every delivery following
+the Standard Webhooks specification; check the signature with
+{@see WebhookEventParser::verifySignature()} before decoding the body. Unsigned
+endpoints send `webhook-id` and `webhook-timestamp` only.
 
 ### `uploadAndRequestSignatures()`
 
@@ -665,6 +673,40 @@ public function getResponseHeaderLine(string $name) : string
 
 One response header, comma-joined, matched case-insensitively; `''` when absent.
 
+### `isRateLimited()`
+
+```php
+public function isRateLimited() : bool
+```
+
+True for `429 Too Many Requests`; wait {@see self::getRetryAfter()} seconds before retrying.
+
+### `getRetryAfter()`
+
+```php
+public function getRetryAfter() : ?int
+```
+
+Seconds to wait before retrying, from the `Retry-After` header the API sends with `429`.
+An HTTP-date value is converted to the remaining seconds (never negative).
+
+@return int|null `null` when the header is absent or unreadable
+
+### `getRateLimit()`
+
+```php
+public function getRateLimit() : ?array
+```
+
+The rate-limit window reported by the `X-Rate-Limit-*` response headers.
+
+```php
+['limit' => 120, 'remaining' => 0, 'reset' => 42] // reset: seconds until the window resets
+```
+
+@return array{limit: int, remaining: int, reset: int}|null `null` unless all three
+    headers are present and numeric
+
 ### `fromResponse()`
 
 ```php
@@ -709,6 +751,18 @@ public function setContext(#[\SensitiveParameter] array $context) : self
 ```
 
 @param array<string, mixed> $context
+
+## `Exceptions/NetworkException`
+
+```php
+class NetworkException extends AssinafyException
+```
+
+A transport- or payload-level failure rather than an API error response: connection
+errors and timeouts from the HTTP layer, and successful-looking responses whose body
+is unusable (an invalid data envelope, invalid pagination headers, or a webhook secret
+route answering without a secret). Adds no members beyond
+{@see \Assinafy\SDK\Exceptions\AssinafyException}.
 
 ## `Exceptions/ValidationException`
 
@@ -2027,9 +2081,68 @@ Example response (SDK return; optional fields depend on state):
 Feed `access_token` and one of the `accounts[].id` values into
 {@see \Assinafy\SDK\AssinafyClient::forBearer()} to get a workspace-scoped client.
 
-@return array<string, mixed> `{ access_token, user, accounts }`
+When the user has two-factor authentication enabled, the response carries an
+`mfa_token` instead of an `access_token`; complete the login with
+{@see self::verifyMfa()} within five minutes.
+
+@return array<string, mixed> `{ access_token, user, accounts }`, or a two-factor
+    challenge carrying `mfa_token`
 @throws ValidationException on a malformed email or empty password
 @throws \Assinafy\SDK\Exceptions\ApiException 401 on wrong credentials
+
+### `verifyMfa()`
+
+```php
+public function verifyMfa(
+        #[\SensitiveParameter] string $mfaToken,
+        #[\SensitiveParameter] string $code
+    ) : array
+```
+
+Complete a two-factor login.
+`POST /authentication/mfa/verify`
+
+Exchanges the `mfa_token` from {@see self::login()} plus the user's second factor for an
+access token. `$code` is the 6-digit authenticator code or one of the recovery codes
+issued at enrollment (consumed on use). The challenge is single-use and expires five
+minutes after login. Credentialless: no workspace key or Bearer token is sent.
+
+Request body:
+```
+['mfa_token' => '<mfa-token>', 'code' => '123456']
+```
+
+Example response (SDK return):
+```php
+[
+    'access_token' => '<access-token>',
+    'user' => [
+        'id' => 'auth-user-id',
+        'name' => 'John Smith',
+        'email' => 'person@example.com',
+        'telephone' => null,
+        'government_id' => null,
+        'is_email_verified' => true,
+        'has_accepted_terms' => true,
+        'created_at' => '2023-03-03T11:51:34Z',
+        'to_be_deleted_at' => null,
+    ],
+    'accounts' => [
+        [
+            'id' => 'auth-account-id',
+            'name' => 'JS',
+            'roles' => ['owner'],
+            'is_delete_allowed' => true,
+            'created_at' => '2023-03-03T11:51:34Z',
+        ],
+    ],
+]
+```
+
+@return array<string, mixed> `{ access_token, user, accounts }`
+@throws ValidationException on an empty token or code
+@throws \Assinafy\SDK\Exceptions\ApiException 400 on a wrong or already-used code;
+    401 when the challenge expired, was already used, or too many codes were tried
 
 ### `socialLogin()`
 
@@ -2961,24 +3074,19 @@ Only the `email` channel is supported. Pass {@see SEND_TOKEN_CHANNEL_EMAIL} — 
 strings are rejected up front so a typo never reaches the API. The recipient is validated
 as an email address locally for the same reason.
 
-The published description claims "email/WhatsApp", but the schema declares no `channel`
-property at all and the running API answers `400 "Canal inválido"` for `whatsapp` — the
-same error a nonsense channel gets. A lowercase `sms` does pass the API's channel check,
-yet always fails with `404 "Solicitação de entrada do signatário não encontrada."`: it
-needs an SMS signer entry, and none can be created, because `verification_method` accepts
-only Email/Whatsapp/DigitalCertificate and `notification_methods` only Email/Whatsapp.
+The published OpenAPI schema matches the contract below: `channel` (required, enum
+`["email"]`, "Only `email` is supported") and `recipient` (required). Live-verified:
+`whatsapp` draws `400 "Canal inválido"` from the API — the same error a nonsense
+channel gets — and a lowercase `sms` passes the channel check but always fails with
+`404 "Solicitação de entrada do signatário não encontrada."`: it needs an SMS signer
+entry, and none can be created, because `verification_method` accepts only
+Email/Whatsapp/DigitalCertificate and `notification_methods` only Email/Whatsapp.
 The single-channel list is deliberate and live-verified; do not widen it.
 
-Request body:
+Request body (both keys are mandatory):
 ```
 ['recipient' => 'jane@example.com', 'channel' => 'email']
 ```
-
-Both keys are mandatory. The published OpenAPI schema for this operation shows a
-single optional `email` property instead; that body is rejected by the running API
-with `400 "O atributo \"channel\" é obrigatório."`, so the SDK sends the pair above,
-which the server accepts. Verified against the live API — do not "correct" this
-toward the published schema without re-testing it.
 
 The document must be in `pending_signature`; otherwise the API answers
 `400 "O documento não está com status de assinatura pendente."`
@@ -4396,6 +4504,27 @@ Example response (SDK return; optional fields depend on state):
 @throws ValidationException when `page`/`per-page` are not integers, or the access
     code is blank
 
+### `listAsWorkspace()`
+
+```php
+public function listAsWorkspace(string $signerId, array $filters = []) : array
+```
+
+List a workspace signer's documents with the workspace API key or Bearer token.
+`GET /signers/{signer_id}/documents`
+
+Same request and response as {@see self::list()}, authenticated with the client's
+workspace credentials instead of a signer access code. The signer must belong to the
+configured workspace.
+
+@param array<string, scalar> $filters optional `page` and `per-page`
+@return array{status?: int, message?: string, data?: array<int, array<string, mixed>>,
+    pagination?: array{current_page: int, page_count: int, per_page: int, total_count: int}}
+@throws ValidationException when `page`/`per-page` are not integers, or the client was
+    built with {@see \Assinafy\SDK\Configuration::forPublic()}
+@throws \Assinafy\SDK\Exceptions\ApiException 401 on invalid credentials, 404 when the
+    signer is not in the workspace
+
 ### `search()`
 
 ```php
@@ -4461,6 +4590,26 @@ Example response (SDK return; optional fields depend on state):
 @param string $term substring to match against the document name
 @return array<int, array<string, mixed>>
 @throws ValidationException when the signer ID or access code is blank
+
+### `searchAsWorkspace()`
+
+```php
+public function searchAsWorkspace(string $signerId, string $term) : array
+```
+
+Search a workspace signer's documents with the workspace API key or Bearer token.
+`GET /signers/{signer_id}/documents/search`
+
+Same request and response as {@see self::search()}, authenticated with the client's
+workspace credentials instead of a signer access code. The signer must belong to the
+configured workspace.
+
+@param string $term substring to match against the document name
+@return array<int, array<string, mixed>>
+@throws ValidationException when the signer ID is blank, or the client was built with
+    {@see \Assinafy\SDK\Configuration::forPublic()}
+@throws \Assinafy\SDK\Exceptions\ApiException 401 on invalid credentials, 404 when the
+    signer is not in the workspace
 
 ### `signMultiple()`
 
@@ -4576,7 +4725,8 @@ file_put_contents('my-copy.pdf', $client->signerDocuments()->download(
 public function create(
         #[\SensitiveParameter] string $fullName,
         #[\SensitiveParameter] ?string $email = null,
-        #[\SensitiveParameter] ?string $whatsappPhoneNumber = null
+        #[\SensitiveParameter] ?string $whatsappPhoneNumber = null,
+        #[\SensitiveParameter] ?string $governmentId = null
     ) : array
 ```
 
@@ -4599,6 +4749,7 @@ Request body:
   'full_name'             => 'Jane Doe',        // required
   'email'                 => 'jane@example.com',
   'whatsapp_phone_number' => '+5548999990000',  // E.164
+  'government_id'         => '52998224725',     // CPF (11 digits) or CNPJ (14 characters)
 ]
 ```
 
@@ -4610,17 +4761,19 @@ Example response (SDK return; optional fields depend on state):
     'full_name' => 'Jane Doe',
     'email' => 'jane@example.com',
     'whatsapp_phone_number' => '+5548999990000',
-    'government_id' => null,
+    'government_id' => '52998224725',
     'has_accepted_terms' => false,
 ]
 ```
 
-`government_id` cannot be set here — add it afterwards with {@see self::update()},
-which digital-certificate signing requires.
+`government_id` is a CPF (11 digits) or a CNPJ (14 characters, possibly alphanumeric);
+the API normalises it on save. Digital-certificate signing requires it — it may also be
+added later with {@see self::update()}, but must be present **before** such an
+assignment is created for the signer.
 
 @return array<string, mixed> the created signer
-@throws ValidationException on an empty name, a malformed email, or a phone number
-    without a country code
+@throws ValidationException on an empty name, a malformed email, a phone number
+    without a country code, or a blank government ID
 
 ### `get()`
 
@@ -5992,6 +6145,168 @@ Available in production and sandbox; access depends on the authenticated account
     DocumentExpirationReset?: bool, DocumentProcessingFailed?: bool,
     TemplateProcessingFailed?: bool, SignerWhatsappFailed?: bool}
 
+### `mfaMethods()`
+
+```php
+public function mfaMethods(#[\SensitiveParameter] ?string $accessToken = null) : array
+```
+
+List the user's enrolled two-factor methods and remaining recovery codes.
+`GET /users/self/mfa`
+
+Request: no parameters.
+
+Example response (SDK return):
+```php
+[
+    'methods' => [
+        [
+            'id' => 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+            'type' => 'Totp',
+            'label' => 'My phone',
+            'confirmed_at' => '2026-09-09T14:21:03Z',
+            'last_used_at' => '2026-09-09T18:02:44Z',
+        ],
+    ],
+    'recovery_codes_remaining' => 8,
+]
+```
+
+@return array{methods?: array<int, array<string, mixed>>, recovery_codes_remaining?: int}
+@throws ValidationException when called on a public client without an access token
+
+### `startTotpEnrollment()`
+
+```php
+public function startTotpEnrollment(
+        ?string $label = null,
+        #[\SensitiveParameter] ?string $accessToken = null
+    ) : array
+```
+
+Start enrolling an authenticator app.
+`POST /users/self/mfa/totp`
+
+Creates an unconfirmed method and returns its shared secret — returned only by this call.
+Render `provisioning_uri` as a QR code, then prove one code with
+{@see self::confirmTotpEnrollment()}; two-factor login is not active until then.
+
+Request body:
+```php
+['label' => 'My phone']   // omitted when $label is null
+```
+
+Example response (SDK return):
+```php
+[
+    'id' => 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+    'secret' => 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+    'provisioning_uri' => 'otpauth://totp/user%40example.com?issuer=Assinafy&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+]
+```
+
+@return array{id?: string, secret?: string, provisioning_uri?: string}
+@throws ValidationException when called on a public client without an access token
+
+### `confirmTotpEnrollment()`
+
+```php
+public function confirmTotpEnrollment(
+        string $methodId,
+        #[\SensitiveParameter] string $code,
+        #[\SensitiveParameter] ?string $password = null,
+        #[\SensitiveParameter] ?string $reauthCode = null,
+        #[\SensitiveParameter] ?string $accessToken = null
+    ) : array
+```
+
+Confirm an authenticator enrollment and receive the recovery codes.
+`PUT /users/self/mfa/totp/confirm`
+
+`$code` is a live code from the device being enrolled. From now on every login needs a
+second factor ({@see AuthResource::verifyMfa()}). The recovery codes are shown only
+once. Replacing an already confirmed authenticator also needs re-authentication:
+`$password`, or `$reauthCode` (a code from the current device or a recovery code). A
+first enrollment needs neither.
+
+Request body:
+```php
+[
+    'id' => 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+    'code' => '123456',
+    'password' => 'current-password',   // only when replacing; or 'reauth_code'
+]
+```
+
+Example response (SDK return):
+```php
+['recovery_codes' => ['ABCD-EFGH-JKMN', 'PQRS-TUVW-XYZ2']]
+```
+
+@return array{recovery_codes?: list<string>}
+@throws ValidationException on an empty method ID or code
+
+### `regenerateRecoveryCodes()`
+
+```php
+public function regenerateRecoveryCodes(
+        #[\SensitiveParameter] ?string $password = null,
+        #[\SensitiveParameter] ?string $code = null,
+        #[\SensitiveParameter] ?string $accessToken = null
+    ) : array
+```
+
+Issue ten new recovery codes, invalidating the previous set.
+`POST /users/self/mfa/recovery-codes`
+
+Requires `$password` or `$code` — a live authenticator code or an existing recovery code,
+which is then consumed.
+
+Request body:
+```php
+['password' => 'current-password']   // or ['code' => '123456']
+```
+
+Example response (SDK return):
+```php
+['recovery_codes' => ['ABCD-EFGH-JKMN', 'PQRS-TUVW-XYZ2']]
+```
+
+@return array{recovery_codes?: list<string>}
+@throws ValidationException when neither `$password` nor `$code` is given
+
+### `removeMfaMethod()`
+
+```php
+public function removeMfaMethod(
+        string $methodId,
+        #[\SensitiveParameter] ?string $password = null,
+        #[\SensitiveParameter] ?string $code = null,
+        #[\SensitiveParameter] ?string $accessToken = null
+    ) : array
+```
+
+Remove an enrolled two-factor method.
+`DELETE /users/self/mfa/{method_id}`
+
+Requires `$password` or `$code` (a live authenticator code or a recovery code, then
+consumed), so a stolen session cannot silently disable two-factor login. Removing the
+last method also discards the recovery codes.
+
+Request body:
+```php
+['password' => 'current-password']   // or ['code' => '123456']
+```
+
+Example response (SDK return):
+```php
+['is_mfa_enabled' => false]
+```
+
+@return array{is_mfa_enabled?: bool}
+@throws ValidationException on an empty method ID, or when neither `$password` nor
+    `$code` is given
+
 ## `Resources/WebhookResource`
 
 ### `register()`
@@ -6005,16 +6320,17 @@ public function register(
     ) : array
 ```
 
-Register or replace the workspace webhook subscription.
+Register or replace the workspace webhook subscription (the oldest endpoint).
 `PUT /accounts/{account_id}/webhooks/subscriptions`
 
-A workspace has exactly one subscription, and this call is an upsert — it creates the
-subscription or replaces it wholesale. All four body fields are mandatory, so a
+This call is an upsert on the account's oldest endpoint — it creates it or replaces it
+wholesale. Use {@see self::createEndpoint()} to add further endpoints or to enable
+signing. All four body fields are mandatory, so a
 partial update is not possible; read the current values with {@see self::get()} first
 if you only mean to change one.
 
 `email` is the address the platform notifies when deliveries start failing; it is not
-a delivery target.
+a delivery target. OAuth scope: `webhooks:write`.
 
 Request body:
 ```
@@ -6037,8 +6353,8 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
-Deliveries are **unsigned** — there is no secret to register and no signature header.
-Secure the endpoint as described by {@see \Assinafy\SDK\Support\WebhookEventParser}.
+The subscription body has no signing field; enable signing on the endpoint with
+{@see self::updateEndpoint()}.
 
 @param string            $url    absolute HTTP(S) endpoint to POST deliveries to
 @param string            $email  address alerted when delivery fails
@@ -6054,7 +6370,7 @@ Secure the endpoint as described by {@see \Assinafy\SDK\Support\WebhookEventPars
 public function get() : ?array
 ```
 
-Get the current webhook subscription (or null if none has ever been configured).
+Get the current webhook subscription — the oldest endpoint (or null if none has ever been configured).
 `GET /accounts/{account_id}/webhooks/subscriptions`
 
 Request: no parameters.
@@ -6130,6 +6446,240 @@ Response (unwrapped `data` from the register call):
 
 @return array<string, mixed> the reactivated subscription
 @throws \RuntimeException when no subscription has been configured yet
+
+### `listEndpoints()`
+
+```php
+public function listEndpoints() : array
+```
+
+List the account's webhook endpoints, oldest first.
+`GET /accounts/{account_id}/webhooks/endpoints`
+
+Request: no parameters. OAuth scope: `account:read`.
+
+Example response (SDK return; a direct list, no pagination):
+```php
+[
+    [
+        'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
+        'name' => 'ERP',
+        'url' => 'https://example.com/webhooks/assinafy',
+        'email' => 'ops@example.com',
+        'events' => ['document_ready', 'signer_signed_document'],
+        'is_active' => true,
+        'signing_enabled' => true,
+        'created_at' => '2026-10-01T12:00:00Z',
+        'updated_at' => '2026-10-01T12:00:00Z',
+    ],
+]
+```
+
+@return array<int, array<string, mixed>>
+
+### `createEndpoint()`
+
+```php
+public function createEndpoint(
+        #[\SensitiveParameter] string $url,
+        #[\SensitiveParameter] string $email,
+        array $events = [],
+        ?string $name = null,
+        bool $isActive = true,
+        bool $signingEnabled = false
+    ) : array
+```
+
+Register an additional webhook endpoint.
+`POST /accounts/{account_id}/webhooks/endpoints`
+
+An account holds 1 endpoint, or up to 3 on paid plans; one past the limit returns
+`403`. Each endpoint needs a distinct `url` (`400` otherwise). With `$signingEnabled`,
+the API generates a `whsec_` secret — read it with {@see self::endpointSecret()}.
+OAuth scope: `webhooks:write`.
+
+Request body:
+```php
+[
+    'url' => 'https://example.com/webhooks/assinafy',   // required
+    'email' => 'ops@example.com',                      // required, failure notices
+    'events' => ['document_ready', 'signer_signed_document'],  // required
+    'name' => 'ERP',                                   // sent when not null
+    'is_active' => true,
+    'signing_enabled' => true,
+]
+```
+
+Example response (SDK return):
+```php
+[
+    'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
+    'name' => 'ERP',
+    'url' => 'https://example.com/webhooks/assinafy',
+    'email' => 'ops@example.com',
+    'events' => ['document_ready', 'signer_signed_document'],
+    'is_active' => true,
+    'signing_enabled' => true,
+    'created_at' => '2026-10-01T12:00:00Z',
+    'updated_at' => '2026-10-01T12:00:00Z',
+]
+```
+
+@param string            $url    absolute HTTP(S) URL that receives deliveries
+@param string            $email  address alerted when deliveries fail
+@param array<int, mixed> $events event type IDs; when empty, {@see DEFAULT_EVENTS} is sent
+@param string|null       $name   label telling endpoints apart
+@return array<string, mixed> the created endpoint
+@throws ValidationException on a non-absolute URL, a malformed email or a non-string event
+@throws \Assinafy\SDK\Exceptions\ApiException 403 past the plan's endpoint limit,
+    400 on a duplicate URL
+
+### `getEndpoint()`
+
+```php
+public function getEndpoint(string $endpointId) : array
+```
+
+Retrieve one webhook endpoint.
+`GET /accounts/{account_id}/webhooks/endpoints/{endpoint_id}`
+
+Request: no parameters. OAuth scope: `account:read`.
+
+Example response (SDK return):
+```php
+[
+    'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
+    'name' => 'ERP',
+    'url' => 'https://example.com/webhooks/assinafy',
+    'email' => 'ops@example.com',
+    'events' => ['document_ready', 'signer_signed_document'],
+    'is_active' => true,
+    'signing_enabled' => true,
+    'created_at' => '2026-10-01T12:00:00Z',
+    'updated_at' => '2026-10-01T12:00:00Z',
+]
+```
+
+@return array<string, mixed>
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when the endpoint does not exist
+
+### `updateEndpoint()`
+
+```php
+public function updateEndpoint(string $endpointId, #[\SensitiveParameter] array $changes) : array
+```
+
+Change selected fields of a webhook endpoint.
+`PUT /accounts/{account_id}/webhooks/endpoints/{endpoint_id}`
+
+A partial update: only the keys sent change. `url` cannot repeat another endpoint's
+(`400`). Turning `signing_enabled` on generates a secret when the endpoint has none and
+keeps the existing one otherwise; turning it off discards the secret.
+OAuth scope: `webhooks:write`.
+
+Request body (any subset, at least one key):
+```php
+[
+    'url' => 'https://example.com/webhooks/assinafy',
+    'email' => 'ops@example.com',
+    'events' => ['document_ready'],
+    'name' => 'ERP',
+    'is_active' => false,
+    'signing_enabled' => true,
+]
+```
+
+Example response (SDK return, the updated endpoint):
+```php
+[
+    'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
+    'name' => 'ERP',
+    'url' => 'https://example.com/webhooks/assinafy',
+    'email' => 'ops@example.com',
+    'events' => ['document_ready', 'signer_signed_document'],
+    'is_active' => true,
+    'signing_enabled' => true,
+    'created_at' => '2026-10-01T12:00:00Z',
+    'updated_at' => '2026-10-01T12:00:00Z',
+]
+```
+
+@param array<string, mixed> $changes subset of `url`, `email`, `events`, `name`,
+    `is_active`, `signing_enabled`
+@return array<string, mixed> the updated endpoint
+@throws ValidationException when `$changes` is empty, has an unknown key, or a value of
+    the wrong type
+
+### `deleteEndpoint()`
+
+```php
+public function deleteEndpoint(string $endpointId) : array
+```
+
+Delete a webhook endpoint, stopping its deliveries and freeing its slot.
+`DELETE /accounts/{account_id}/webhooks/endpoints/{endpoint_id}`
+
+Request: no body. OAuth scope: `webhooks:write`.
+
+Example response (SDK return, the unwrapped empty `data`):
+```php
+[]
+```
+
+@return array<array-key, mixed>
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when the endpoint does not exist
+
+### `endpointSecret()`
+
+```php
+public function endpointSecret(string $endpointId) : string
+```
+
+Read the secret that signs deliveries to an endpoint.
+`GET /accounts/{account_id}/webhooks/endpoints/{endpoint_id}/secret`
+
+Pass it to {@see \Assinafy\SDK\Support\WebhookEventParser::verifySignature()}. Store
+it like any credential. Not available to OAuth applications; requires an API key or a
+user access token.
+
+Request: no parameters.
+
+Wire response `data`: `['secret' => 'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw']`.
+
+Example response (SDK return, the secret itself):
+```php
+'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw'
+```
+
+@return string `whsec_` followed by the base64-encoded key
+@throws \Assinafy\SDK\Exceptions\ApiException 400 when signing is disabled, 404 when
+    the endpoint does not exist
+@throws NetworkException when a successful response carries no secret
+
+### `rotateEndpointSecret()`
+
+```php
+public function rotateEndpointSecret(string $endpointId) : string
+```
+
+Replace an endpoint's signing secret and return the new one.
+`POST /accounts/{account_id}/webhooks/endpoints/{endpoint_id}/secret/rotate`
+
+The old secret stops working immediately: deliveries sent afterwards are signed only
+with the new one, so update the receiver's stored secret right away. Not available to
+OAuth applications.
+
+Request: no body.
+
+Example response (SDK return, the new secret):
+```php
+'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw'
+```
+
+@return string the new `whsec_` secret
+@throws \Assinafy\SDK\Exceptions\ApiException 400 when signing is disabled, 404 when
+    the endpoint does not exist
+@throws NetworkException when a successful response carries no secret
 
 ### `eventTypes()`
 
@@ -6373,6 +6923,72 @@ public function log($level, $message, array $context = []) : void
 
 ## `Support/WebhookEventParser`
 
+Verifies and parses Assinafy webhook deliveries. An endpoint created with
+`signing_enabled: true` signs every delivery following the Standard Webhooks
+specification: the `webhook-id`, `webhook-timestamp` and `webhook-signature` headers
+carry an HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the endpoint's
+`whsec_` secret. Deduplicate by the `webhook-id` header: it is identical on every
+attempt of the same event to the same endpoint, and distinct per endpoint.
+
+### `verifySignature()`
+
+```php
+public function verifySignature(
+        #[\SensitiveParameter] string $payload,
+        array $headers,
+        #[\SensitiveParameter] string $secret,
+        int $toleranceSeconds = self::SIGNATURE_TOLERANCE_SECONDS,
+        ?int $now = null
+    ) : bool
+```
+
+Check a signed delivery's `webhook-signature` against the endpoint secret.
+
+Local verification only — makes no HTTP request. Pass the **raw** body exactly as
+received (never a re-encoded copy) and the request headers. Header names are matched
+case-insensitively, and `$_SERVER`-style keys (`HTTP_WEBHOOK_ID`) are accepted, so
+`getallheaders()`, `$_SERVER` and PSR-7 `getHeaders()` all work unchanged.
+
+Request (the delivery your endpoint receives):
+```php
+$headers = [
+    'webhook-id' => 'msg_p5jXN8AQM9LWM0D4loKWxJek',
+    'webhook-timestamp' => '1614265330',
+    'webhook-signature' => 'v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=',
+];
+$rawBody = '{"test": 2432232314}';
+$secret = 'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw';   // WebhookResource::endpointSecret()
+```
+
+Response: `true` when any space-separated `v1,<signature>` entry matches (compared in
+constant time) and the timestamp lies within `$toleranceSeconds` of `$now`; otherwise
+`false` — including when a header is missing. Answer `false` with HTTP 401 and do not
+process the body:
+```php
+$raw = (string) file_get_contents('php://input');
+$parser = $client->webhookEvents();
+if (!$parser->verifySignature($raw, getallheaders(), $secret)) {
+    http_response_code(401);
+    return;
+}
+$event = $parser->extractEvent($raw);
+```
+
+The secret is the `whsec_` value issued for the endpoint: the key is the base64-decoded
+part after the prefix, and anything else throws. The default tolerance is
+`SIGNATURE_TOLERANCE_SECONDS` (300 seconds), rejecting replayed old deliveries. A
+rotated secret takes effect immediately, so read it from your configuration on each
+request rather than caching it for the process lifetime.
+
+@param string $payload raw request body, exactly as received
+@param array<array-key, mixed> $headers request headers; values may be strings or
+    lists of strings
+@param string $secret the endpoint's `whsec_` signing secret
+@param int $toleranceSeconds accepted clock distance, in seconds
+@param int|null $now Unix time to compare against; defaults to `time()`
+@return bool whether the delivery is authentic and fresh
+@throws ValidationException when `$secret` is not a `whsec_` base64 secret
+
 ### `extractEvent()`
 
 ```php
@@ -6474,8 +7090,9 @@ Example for signer_created:
 ```
 
 Returns `[]` rather than null when the key is missing, so the result is always safe to
-iterate. Treat it as a hint, not as truth: deliveries are unsigned, so re-fetch the
-entity through the API before acting on it.
+iterate. Treat it as a hint, not as truth: the snapshot reflects the moment the event
+fired, so re-fetch the entity through the API before acting on state that may have
+changed since.
 
 @param array<string, mixed>|null $event the decoded envelope
 @return array<string, mixed> the `object` entity, or `[]` when absent

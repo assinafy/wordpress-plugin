@@ -26,8 +26,8 @@ use WP_Upgrader;
  * {@see self::send()} with the same argument array.
  *
  * The order of operations is not negotiable. Local validation runs before any request
- * because **every upload the API rejects with 415 still creates a document row in the
- * customer's workspace with status `failed`, and the 415 body does not carry its id** — the
+ * because **every upload the API rejects still leaves a document row in the
+ * customer's workspace with status `failed`, and the rejection body does not carry its id** — the
  * plugin cannot clean up after itself, so it must not create the mess. The affordability
  * check cannot join it there: `estimate-cost` is addressed to a document that has not been
  * assigned yet, so it runs on the freshly uploaded one, between the upload and the
@@ -82,8 +82,8 @@ final class SendService {
 	 * - `signers` (array) — one or more rows of `{name|full_name, email, phone?, step?,
 	 *   verification_method?, notification_methods?, id?}`.
 	 * - `message` (string, optional) — falls back to the configured default message.
-	 * - `expires_at` (string, optional) — ISO 8601 with `Z` or an explicit offset; falls back
-	 *   to the configured expiry in days. `0` days means no expiry.
+	 * - `expires_at` (string, optional) — ISO 8601 with `Z` or an explicit offset, at least one
+	 *   hour in the future; falls back to the configured expiry in days. `0` days means no expiry.
 	 * - `post_id` (int, optional) — reuse an empty mirror record instead of creating one.
 	 * - `idempotency_key` (string, optional) — defaults to a digest of the file and request,
 	 *   scoped to the account and environment. Completed keys remain tied to their mirror.
@@ -234,10 +234,10 @@ final class SendService {
 	 * Run every check that must pass before the API is touched, and derive the lock key from
 	 * what survives.
 	 *
-	 * Nothing here reaches the network, which is the point: an upload the API rejects with 415
-	 * still creates a document row in the customer's workspace with status `failed`, and the
-	 * 415 body does not carry its id, so a file that cannot be uploaded has to be refused
-	 * locally.
+	 * Nothing here reaches the network, which is the point: an upload the API rejects still
+	 * leaves a document row in the customer's workspace with status `failed`, and the
+	 * rejection body does not carry its id, so a file that cannot be uploaded has to be
+	 * refused locally.
 	 *
 	 * @param array<string, mixed> $args Send arguments.
 	 *
@@ -263,10 +263,10 @@ final class SendService {
 		}
 
 		$expires_at = $this->expires_at( $args );
-		if ( null !== $expires_at && ( null !== Iso8601::reasonInvalid( $expires_at ) || strtotime( $expires_at ) <= time() ) ) {
+		if ( null !== $expires_at && ( null !== Iso8601::reasonInvalid( $expires_at ) || strtotime( $expires_at ) <= time() + HOUR_IN_SECONDS ) ) {
 			return new WP_Error(
 				'assinafy_invalid_expiry',
-				__( 'The signature deadline must be a valid date in the future.', 'assinafy' )
+				__( 'The signature deadline must be a valid date at least one hour in the future.', 'assinafy' )
 			);
 		}
 
@@ -390,9 +390,8 @@ final class SendService {
 	/**
 	 * The expiry instant, or null for no expiry.
 	 *
-	 * The API requires a trailing `Z` or an explicit offset and rejects an instant in the
-	 * past with 400 `"A expiração deve maior que a data/hora atual."`, so the default is
-	 * always computed forward from now.
+	 * The API requires a trailing `Z` or an explicit offset and an expiry at least one hour in
+	 * the future, so the default is always computed forward from now.
 	 *
 	 * @param array<string, mixed> $args Send arguments.
 	 */

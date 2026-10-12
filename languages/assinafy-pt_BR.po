@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Assinafy 1.2.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/assinafy\n"
-"POT-Creation-Date: 2026-09-25T21:20:57+00:00\n"
+"POT-Creation-Date: 2026-10-12T13:11:03+00:00\n"
 "PO-Revision-Date: 2026-09-24 13:42-0400\n"
 "Last-Translator: Assinafy\n"
 "Language-Team: Portugues do Brasil\n"
@@ -18,15 +18,16 @@ msgstr ""
 
 #. Plugin Name of the plugin
 #. Author of the plugin
-#: assinafy.php src/Integrations/ElementorAction.php:59 src/Settings.php:240
-#: src/Settings.php:241 src/Settings.php:362
+#: assinafy.php src/Integrations/ElementorAction.php:59 src/Settings.php:270
+#: src/Settings.php:271 src/Settings.php:412
 msgid "Assinafy"
 msgstr "Assinafy"
 
 #. Plugin URI of the plugin
+#. Author URI of the plugin
 #: assinafy.php
-msgid "https://github.com/assinafy/wordpress-plugin"
-msgstr ""
+msgid "https://www.assinafy.com.br/"
+msgstr "https://www.assinafy.com.br/"
 
 #. Description of the plugin
 #: assinafy.php
@@ -36,11 +37,6 @@ msgid ""
 msgstr ""
 "Envie documentos do WordPress para assinatura eletrônica com o Assinafy e "
 "acompanhe-os até a conclusão."
-
-#. Author URI of the plugin
-#: assinafy.php
-msgid "https://www.assinafy.com.br/"
-msgstr ""
 
 #. translators: 1: required PHP version, 2: current PHP version.
 #: assinafy.php:43
@@ -111,59 +107,59 @@ msgstr "Esse documento não existe."
 msgid "Connect the plugin to Assinafy first."
 msgstr "Conecte o plugin ao Assinafy primeiro."
 
-#: src/Admin/DocumentMetaBox.php:86
+#: src/Admin/DocumentMetaBox.php:84
 msgid "Signature status"
 msgstr "Status da assinatura"
 
-#: src/Admin/DocumentMetaBox.php:107
+#: src/Admin/DocumentMetaBox.php:105
 msgid "This record has not been sent to Assinafy yet."
 msgstr "Este registro ainda não foi enviado ao Assinafy."
 
 #. translators: %s: human-readable time difference, for example "5 mins".
-#: src/Admin/DocumentMetaBox.php:131
+#: src/Admin/DocumentMetaBox.php:129
 #, php-format
 msgid "checked %s ago"
 msgstr "verificado há %s"
 
-#: src/Admin/DocumentMetaBox.php:166
+#: src/Admin/DocumentMetaBox.php:164
 msgid "No signers recorded yet."
 msgstr "Nenhum signatário registrado ainda."
 
-#: src/Admin/DocumentMetaBox.php:171 src/Admin/SendScreen.php:176
+#: src/Admin/DocumentMetaBox.php:169 src/Admin/SendScreen.php:176
 #: src/Documents/DocumentPostType.php:117
 msgid "Signers"
 msgstr "Signatários"
 
-#: src/Admin/DocumentMetaBox.php:173
+#: src/Admin/DocumentMetaBox.php:171
 msgid "Signer"
 msgstr "Signatário"
 
-#: src/Admin/DocumentMetaBox.php:174 src/Admin/SendScreen.php:184
+#: src/Admin/DocumentMetaBox.php:172 src/Admin/SendScreen.php:184
 msgid "Order"
 msgstr "Ordem"
 
-#: src/Admin/DocumentMetaBox.php:175
+#: src/Admin/DocumentMetaBox.php:173
 msgid "Progress"
 msgstr "Progresso"
 
-#: src/Admin/DocumentMetaBox.php:176 src/Admin/DocumentMetaBox.php:237
+#: src/Admin/DocumentMetaBox.php:174 src/Admin/DocumentMetaBox.php:235
 msgid "Signing link"
 msgstr "Link de assinatura"
 
-#: src/Admin/DocumentMetaBox.php:194 src/Documents/DocumentPostType.php:215
+#: src/Admin/DocumentMetaBox.php:192 src/Documents/DocumentPostType.php:215
 #: src/Privacy.php:180
 msgid "Signed"
 msgstr "Assinado"
 
-#: src/Admin/DocumentMetaBox.php:195
+#: src/Admin/DocumentMetaBox.php:193
 msgid "Invited, waiting"
 msgstr "Convidado, aguardando"
 
-#: src/Admin/DocumentMetaBox.php:196
+#: src/Admin/DocumentMetaBox.php:194
 msgid "Not yet invited"
 msgstr "Ainda não convidado"
 
-#: src/Admin/DocumentMetaBox.php:208
+#: src/Admin/DocumentMetaBox.php:206
 msgid ""
 "The link does not sign anyone in on its own: Assinafy emails the signer a "
 "one-time code when they open it."
@@ -171,56 +167,56 @@ msgstr ""
 "O link sozinho não autentica ninguém: ao abri-lo, o signatário recebe do "
 "Assinafy um código de uso único por e-mail."
 
-#: src/Admin/DocumentMetaBox.php:223
+#: src/Admin/DocumentMetaBox.php:221
 msgid "No longer needed"
 msgstr "Não é mais necessário"
 
-#: src/Admin/DocumentMetaBox.php:229
+#: src/Admin/DocumentMetaBox.php:227
 msgid "Available once this signer is invited"
 msgstr "Disponível assim que este signatário for convidado"
 
-#: src/Admin/DocumentMetaBox.php:239
+#: src/Admin/DocumentMetaBox.php:237
 msgid "Open"
 msgstr "Abrir"
 
-#: src/Admin/DocumentMetaBox.php:256
+#: src/Admin/DocumentMetaBox.php:254
 msgid "Original PDF"
 msgstr "PDF original"
 
-#: src/Admin/DocumentMetaBox.php:257
+#: src/Admin/DocumentMetaBox.php:255
 msgid "Signed PDF"
 msgstr "PDF assinado"
 
-#: src/Admin/DocumentMetaBox.php:258
+#: src/Admin/DocumentMetaBox.php:256
 msgid "Signature certificate"
 msgstr "Página de certificação"
 
-#: src/Admin/DocumentMetaBox.php:259
+#: src/Admin/DocumentMetaBox.php:257
 msgid "PAdES signed PDF"
 msgstr "PDF assinado em PAdES"
 
-#: src/Admin/DocumentMetaBox.php:260
+#: src/Admin/DocumentMetaBox.php:258
 msgid "Everything (zip)"
 msgstr "Tudo (zip)"
 
-#: src/Admin/DocumentMetaBox.php:271
+#: src/Admin/DocumentMetaBox.php:269
 msgid "Downloads"
 msgstr "Downloads"
 
-#: src/Admin/DocumentMetaBox.php:291 src/Admin/SendScreen.php:185
+#: src/Admin/DocumentMetaBox.php:289 src/Admin/SendScreen.php:185
 #: src/Documents/DocumentPostType.php:119
 msgid "Actions"
 msgstr "Ações"
 
-#: src/Admin/DocumentMetaBox.php:348
+#: src/Admin/DocumentMetaBox.php:346
 msgid "Document name"
 msgstr "Nome do documento"
 
-#: src/Admin/DocumentMetaBox.php:358
+#: src/Admin/DocumentMetaBox.php:356
 msgid "Rename"
 msgstr "Renomear"
 
-#: src/Admin/DocumentMetaBox.php:359
+#: src/Admin/DocumentMetaBox.php:357
 msgid ""
 "Renaming is only possible until the signature request is created. Assinafy "
 "folds accents and replaces unsupported characters."
@@ -228,25 +224,25 @@ msgstr ""
 "Só é possível renomear até a solicitação de assinatura ser criada. O "
 "Assinafy remove os acentos e substitui os caracteres não suportados."
 
-#: src/Admin/DocumentMetaBox.php:374
+#: src/Admin/DocumentMetaBox.php:372
 msgid "New deadline"
 msgstr "Novo prazo"
 
-#: src/Admin/DocumentMetaBox.php:384
+#: src/Admin/DocumentMetaBox.php:382
 msgid "Move deadline"
 msgstr "Alterar prazo"
 
 #. translators: %s: signer name or email address.
-#: src/Admin/DocumentMetaBox.php:410
+#: src/Admin/DocumentMetaBox.php:408
 #, php-format
 msgid "Resend invitation to %s"
 msgstr "Reenviar convite para %s"
 
-#: src/Admin/DocumentMetaBox.php:430
+#: src/Admin/DocumentMetaBox.php:428
 msgid "Cancel and delete from Assinafy"
 msgstr "Cancelar e excluir do Assinafy"
 
-#: src/Admin/DocumentMetaBox.php:435
+#: src/Admin/DocumentMetaBox.php:433
 msgid ""
 "Signers can no longer open the document. This cannot be undone, and a "
 "cancelled request cannot be restarted — send the file again instead."
@@ -255,11 +251,11 @@ msgstr ""
 "desfeito, e uma solicitação cancelada não pode ser reiniciada — envie o "
 "arquivo novamente."
 
-#: src/Admin/DocumentMetaBox.php:436
+#: src/Admin/DocumentMetaBox.php:434
 msgid "Removes the document from your Assinafy account. This cannot be undone."
 msgstr "Remove o documento da sua conta Assinafy. Isso não pode ser desfeito."
 
-#: src/Admin/DocumentMetaBox.php:492 src/Admin/DocumentMetaBox.php:505
+#: src/Admin/DocumentMetaBox.php:490 src/Admin/DocumentMetaBox.php:503
 msgid "History"
 msgstr "Histórico"
 
@@ -337,11 +333,11 @@ msgstr ""
 "número maior só é convidado depois que todos os números menores assinarem. "
 "Deixe a coluna em 1 para convidar todos de uma vez."
 
-#: src/Admin/SendScreen.php:205 src/Settings.php:464
+#: src/Admin/SendScreen.php:205 src/Settings.php:474
 msgid "Message to signers"
 msgstr "Mensagem aos signatários"
 
-#: src/Admin/SendScreen.php:215 src/Settings.php:452
+#: src/Admin/SendScreen.php:215 src/Settings.php:462
 msgid "Signature deadline"
 msgstr "Prazo de assinatura"
 
@@ -356,12 +352,13 @@ msgstr ""
 #: src/Admin/SendScreen.php:229
 msgid ""
 "Sending consumes one document from your Assinafy balance. Email invitations "
-"cost no credits. If the balance is short, the request is refused before "
-"anything is uploaded."
+"cost no credits. If the balance is short, the uploaded document remains "
+"available for recovery and no signature request is created."
 msgstr ""
-"O envio consome um documento do seu saldo Assinafy. Convites por e-mail não "
-"custam créditos. Se o saldo for insuficiente, a solicitação é recusada antes "
-"de qualquer arquivo ser enviado."
+"O envio consome um documento do seu saldo da Assinafy. Convites por "
+"e-mail não custam créditos. Se o saldo for insuficiente, o documento "
+"enviado permanece disponível para recuperação e nenhuma solicitação de "
+"assinatura é criada."
 
 #: src/Admin/SendScreen.php:253 src/Privacy.php:164
 msgid "Signer name"
@@ -433,22 +430,99 @@ msgstr "sua conta"
 msgid "Connect the plugin to Assinafy before registering the webhook."
 msgstr "Conecte o plugin ao Assinafy antes de registrar o webhook."
 
-#: src/Admin/SettingsAjax.php:151
+#: src/Admin/SettingsAjax.php:147
 msgid ""
 "Webhook registered. Assinafy will notify this site as documents progress."
 msgstr ""
 "Webhook registrado. O Assinafy notificará este site conforme os documentos "
 "avançarem."
 
-#. translators: %s: currently registered webhook URL.
-#: src/Admin/SettingsAjax.php:177
-#, php-format
+#: src/Admin/WebhookSettings.php:39
+msgid "Webhook"
+msgstr "Webhook"
+
+#: src/Admin/WebhookSettings.php:42
+msgid "Status updates"
+msgstr "Atualizações de status"
+
+#: src/Admin/WebhookSettings.php:47
+msgid "Accept webhook deliveries from Assinafy"
+msgstr "Aceitar entregas de webhook do Assinafy"
+
+#: src/Admin/WebhookSettings.php:49
 msgid ""
-"This Assinafy account already delivers webhooks to %s. Registering this site "
-"replaces that subscription."
+"Document status is also reconciled hourly, so webhooks are an optimisation "
+"rather than a requirement."
 msgstr ""
-"Esta conta Assinafy já entrega webhooks em %s. Registrar este site substitui "
-"essa inscrição."
+"O status dos documentos também é reconciliado a cada hora, então os webhooks "
+"são uma otimização, não um requisito."
+
+#: src/Admin/WebhookSettings.php:54
+msgid "Endpoint"
+msgstr "Endpoint"
+
+#: src/Admin/WebhookSettings.php:61
+msgid "Register this site with Assinafy"
+msgstr "Registrar este site no Assinafy"
+
+#: src/Admin/WebhookSettings.php:65
+msgid ""
+"An Assinafy account has one webhook endpoint, or up to three on paid plans. "
+"Registering adds or updates this site's own endpoint and leaves any others "
+"untouched."
+msgstr ""
+"Uma conta da Assinafy tem um endpoint de webhook, ou até três em planos "
+"pagos. O registro adiciona ou atualiza o endpoint deste site e não altera "
+"os demais."
+
+#. translators: %s: webhook endpoint ID on the Assinafy account.
+#: src/Admin/WebhookSettings.php:71
+#, php-format
+msgid "Registered endpoint: %s"
+msgstr "Endpoint registrado: %s"
+
+#: src/Admin/WebhookSettings.php:103 src/Admin/WebhookSettings.php:106
+msgid "Signing secret"
+msgstr "Chave de assinatura"
+
+#: src/Admin/WebhookSettings.php:113 src/ConnectionSettings.php:166
+msgid "Saved — leave blank to keep it"
+msgstr "Salva — deixe em branco para mantê-la"
+
+#: src/Admin/WebhookSettings.php:113
+msgid "Paste the whsec_ value"
+msgstr "Cole o valor whsec_"
+
+#: src/Admin/WebhookSettings.php:114
+msgid ""
+"OAuth connections cannot read the endpoint's signing secret through the API. "
+"Copy the whsec_ value from the endpoint in the Assinafy dashboard and paste "
+"it here; it is stored encrypted, and leaving the field blank keeps the "
+"stored one. With a secret configured, unsigned or stale deliveries are "
+"refused."
+msgstr ""
+"Conexões OAuth não conseguem ler a chave de assinatura do endpoint pela "
+"API. Copie o valor whsec_ do endpoint no painel da Assinafy e cole aqui; "
+"ele é armazenado criptografado, e deixar o campo em branco mantém o valor "
+"salvo. Com uma chave configurada, entregas sem assinatura ou fora da "
+"janela de validade são recusadas."
+
+#: src/Admin/WebhookSettings.php:121
+msgid ""
+"Managed automatically: registration reads the endpoint's secret from the "
+"API. A signing secret is currently configured."
+msgstr ""
+"Gerenciada automaticamente: o registro lê a chave do endpoint pela API. "
+"Uma chave de assinatura está configurada no momento."
+
+#: src/Admin/WebhookSettings.php:122
+msgid ""
+"Managed automatically: registration reads the endpoint's secret from the "
+"API. No signing secret is stored yet — register this site to fetch one."
+msgstr ""
+"Gerenciada automaticamente: o registro lê a chave do endpoint pela API. "
+"Nenhuma chave de assinatura está armazenada ainda — registre este site "
+"para obtê-la."
 
 #: src/ConnectionSettings.php:33
 msgid "Connection"
@@ -521,41 +595,23 @@ msgstr "Concluir conexão"
 msgid "Disconnect"
 msgstr "Desconectar"
 
-#: src/ConnectionSettings.php:116
-msgid "OAuth is available in Production. Sandbox still uses an API key."
-msgstr ""
-"O OAuth está disponível em Produção. O Sandbox ainda usa uma chave de API."
-
-#: src/ConnectionSettings.php:119
-msgid "The Assinafy WordPress OAuth app is awaiting registration."
-msgstr "O aplicativo OAuth do Assinafy para WordPress aguarda cadastro."
-
-#: src/ConnectionSettings.php:122
-msgid "Connect from an HTTPS WordPress admin page."
-msgstr ""
-"Conecte-se a partir de uma página de administração do WordPress com HTTPS."
-
-#: src/ConnectionSettings.php:151
+#: src/ConnectionSettings.php:133
 msgid "Defined by ASSINAFY_ACCOUNT_ID in wp-config.php."
 msgstr "Definido por ASSINAFY_ACCOUNT_ID no wp-config.php."
 
-#: src/ConnectionSettings.php:175
+#: src/ConnectionSettings.php:157
 msgid "Defined in wp-config.php"
 msgstr "Definida no wp-config.php"
 
-#: src/ConnectionSettings.php:176
+#: src/ConnectionSettings.php:158
 msgid "Defined by ASSINAFY_API_KEY in wp-config.php."
 msgstr "Definida por ASSINAFY_API_KEY no wp-config.php."
 
-#: src/ConnectionSettings.php:184
-msgid "Saved — leave blank to keep it"
-msgstr "Salva — deixe em branco para mantê-la"
-
-#: src/ConnectionSettings.php:184
+#: src/ConnectionSettings.php:166
 msgid "Paste your API key"
 msgstr "Cole sua chave de API"
 
-#: src/ConnectionSettings.php:185
+#: src/ConnectionSettings.php:167
 msgid "Stored encrypted. Leave the field blank to keep the current key."
 msgstr ""
 "Armazenada criptografada. Deixe o campo em branco para manter a chave atual."
@@ -733,20 +789,20 @@ msgstr "Esse documento não está disponível para download."
 msgid "Not found"
 msgstr "Não encontrado"
 
-#: src/Documents/SendAttempt.php:120
+#: src/Documents/SendAttempt.php:121
 msgid ""
 "Signers must be unique, and their signing steps must start at 1 without gaps."
 msgstr ""
 "Os signatários não podem se repetir, e as etapas de assinatura devem começar "
 "em 1, sem pular números."
 
-#: src/Documents/SendAttempt.php:125
+#: src/Documents/SendAttempt.php:126
 msgid "A digital certificate signer must have a signing step of their own."
 msgstr ""
 "O signatário que utiliza certificado digital deve ter uma etapa de "
 "assinatura exclusiva."
 
-#: src/Documents/SendAttempt.php:154
+#: src/Documents/SendAttempt.php:155
 msgid ""
 "The uploaded document id could not be saved. Check the Assinafy account "
 "before retrying."
@@ -754,7 +810,7 @@ msgstr ""
 "O ID do documento enviado não pôde ser salvo. Confira a conta do Assinafy "
 "antes de tentar novamente."
 
-#: src/Documents/SendAttempt.php:178
+#: src/Documents/SendAttempt.php:179
 msgid ""
 "Assinafy returned no assignment id. Retry to check whether signatures were "
 "requested."
@@ -762,11 +818,11 @@ msgstr ""
 "O Assinafy não retornou o ID da solicitação de assinatura. Tente novamente "
 "para verificar se as assinaturas foram solicitadas."
 
-#: src/Documents/SendAttempt.php:211
+#: src/Documents/SendAttempt.php:212
 msgid "Assinafy returned no valid signer id."
 msgstr "O Assinafy não retornou um ID de signatário válido."
 
-#: src/Documents/SendAttempt.php:230
+#: src/Documents/SendAttempt.php:231
 msgid ""
 "The previous upload outcome is unknown. Check the Assinafy account before "
 "starting a new send with a new idempotency key."
@@ -774,7 +830,7 @@ msgstr ""
 "O resultado do envio anterior é desconhecido. Confira a conta do Assinafy "
 "antes de iniciar um novo envio com uma nova chave de idempotência."
 
-#: src/Documents/SendAttempt.php:250
+#: src/Documents/SendAttempt.php:251
 msgid ""
 "This record already mirrors a document. Start a new send without post_id to "
 "keep its signature history."
@@ -782,21 +838,21 @@ msgstr ""
 "Este registro já corresponde a um documento. Inicie um novo envio sem "
 "post_id para preservar o histórico de assinaturas."
 
-#: src/Documents/SendAttempt.php:264
+#: src/Documents/SendAttempt.php:265
 msgid "The local document record could not be created. Nothing was uploaded."
 msgstr ""
 "O registro local do documento não pôde ser criado. Nenhum arquivo foi "
 "enviado."
 
-#: src/Documents/SendAttempt.php:270
+#: src/Documents/SendAttempt.php:271
 msgid "The integration source could not be saved. Nothing was uploaded."
 msgstr "A origem da integração não pôde ser salva. Nenhum arquivo foi enviado."
 
-#: src/Documents/SendAttempt.php:275
+#: src/Documents/SendAttempt.php:276
 msgid "The send reservation could not be saved. Nothing was uploaded."
 msgstr "A reserva do envio não pôde ser salva. Nenhum arquivo foi enviado."
 
-#: src/Documents/SendAttempt.php:289
+#: src/Documents/SendAttempt.php:290
 msgid ""
 "Upload returned no valid document id. Check the Assinafy account before "
 "retrying."
@@ -809,8 +865,11 @@ msgid "Connect the plugin to Assinafy before sending a document."
 msgstr "Conecte o plugin ao Assinafy antes de enviar um documento."
 
 #: src/Documents/SendService.php:269
-msgid "The signature deadline must be a valid date in the future."
-msgstr "O prazo de assinatura deve ser uma data válida no futuro."
+msgid ""
+"The signature deadline must be a valid date at least one hour in the future."
+msgstr ""
+"O prazo para assinatura deve ser uma data válida pelo menos uma hora no "
+"futuro."
 
 #: src/Documents/SendService.php:323
 msgid ""
@@ -879,6 +938,14 @@ msgstr ""
 "O canal de notificação do signatário deve corresponder ao método de "
 "verificação; certificados digitais permitem e-mail ou WhatsApp."
 
+#: src/Documents/Signers.php:262
+msgid ""
+"Choose a supported signer verification method: Email, Whatsapp or "
+"DigitalCertificate."
+msgstr ""
+"Escolha um método de verificação de signatário suportado: Email, Whatsapp "
+"ou DigitalCertificate."
+
 #: src/Documents/SourceReference.php:45
 msgid ""
 "The integration source must contain a valid integration slug and record id."
@@ -903,7 +970,7 @@ msgid "Assinafy returned an invalid or mismatched document."
 msgstr "O Assinafy retornou um documento inválido ou diferente do solicitado."
 
 #. translators: %s: Assinafy API host, such as api.assinafy.com.br.
-#: src/Http/RequestFactory.php:132
+#: src/Http/RequestFactory.php:134
 #, php-format
 msgid ""
 "Without the PHP cURL extension, WordPress cannot send Assinafy requests "
@@ -970,19 +1037,19 @@ msgstr ""
 "Escolha um PDF acessível deste site antes de ativar a ação Assinafy no "
 "formulário."
 
-#: src/Integrations/Hook.php:211
+#: src/Integrations/Hook.php:212
 msgid "assinafy_send_document expects one array argument."
 msgstr "assinafy_send_document espera um argumento do tipo array."
 
-#: src/Integrations/Hook.php:223
+#: src/Integrations/Hook.php:224
 msgid "assinafy_send_document needs either a file_path or an attachment_id."
 msgstr "assinafy_send_document precisa de um file_path ou de um attachment_id."
 
-#: src/Integrations/Hook.php:230
+#: src/Integrations/Hook.php:231
 msgid "assinafy_send_document needs at least one signer."
 msgstr "assinafy_send_document precisa de pelo menos um signatário."
 
-#: src/Integrations/WooCommerce.php:135
+#: src/Integrations/WooCommerce.php:149
 msgid ""
 "Assinafy: no signature request sent — the order has no usable billing email "
 "address."
@@ -990,18 +1057,18 @@ msgstr ""
 "Assinafy: nenhuma solicitação de assinatura enviada — o pedido não tem um e-"
 "mail de cobrança utilizável."
 
-#: src/Integrations/WooCommerce.php:207 src/Integrations/WooCommerce.php:217
+#: src/Integrations/WooCommerce.php:221 src/Integrations/WooCommerce.php:231
 msgid "Documents to sign"
 msgstr "Documentos para assinar"
 
 #. translators: 1: document name, 2: signer email address.
-#: src/Integrations/WooCommerce.php:269
+#: src/Integrations/WooCommerce.php:283
 #, php-format
 msgid "Assinafy: signature request for \"%1$s\" sent to %2$s."
 msgstr "Assinafy: solicitação de assinatura de \"%1$s\" enviada para %2$s."
 
 #. translators: 1: document name, 2: error message from Assinafy.
-#: src/Integrations/WooCommerce.php:294
+#: src/Integrations/WooCommerce.php:308
 #, php-format
 msgid ""
 "Assinafy: signature request for \"%1$s\" failed — %2$s. Re-completing the "
@@ -1042,25 +1109,19 @@ msgstr ""
 msgid "— Select a PDF —"
 msgstr "— Selecione um PDF —"
 
-#: src/OAuthConnection.php:59 src/OAuthConnection.php:112
-msgid "OAuth requires a registered WordPress app and an HTTPS production site."
-msgstr ""
-"O OAuth exige um aplicativo WordPress registrado e um site de Produção com "
-"HTTPS."
-
-#: src/OAuthConnection.php:87
+#: src/OAuthConnection.php:82
 msgid "Could not start the Assinafy connection. Try again."
 msgstr "Não foi possível iniciar a conexão com o Assinafy. Tente novamente."
 
-#: src/OAuthConnection.php:129
+#: src/OAuthConnection.php:118
 msgid "Assinafy could not complete the connection. Try again."
 msgstr "O Assinafy não conseguiu concluir a conexão. Tente novamente."
 
-#: src/OAuthConnection.php:135
+#: src/OAuthConnection.php:124
 msgid "Assinafy is connected with OAuth."
 msgstr "O Assinafy está conectado via OAuth."
 
-#: src/OAuthConnection.php:136
+#: src/OAuthConnection.php:125
 msgid ""
 "Assinafy is connected, but the previous workspace could not be revoked. "
 "Revoke it in Assinafy Connected Apps."
@@ -1069,19 +1130,23 @@ msgstr ""
 "workspace anterior. Revogue esse acesso em Aplicativos conectados no "
 "Assinafy."
 
-#: src/OAuthConnection.php:163
+#: src/OAuthConnection.php:152
 msgid "The Assinafy connection expired or was invalid. Try again."
 msgstr "A conexão com o Assinafy expirou ou é inválida. Tente novamente."
 
-#: src/OAuthConnection.php:175
+#: src/OAuthConnection.php:164
 msgid "The Assinafy connection code was invalid. Try again."
 msgstr "O código de conexão do Assinafy é inválido. Tente novamente."
 
-#: src/OAuthConnection.php:187
+#: src/OAuthConnection.php:176
 msgid "Assinafy has been disconnected."
 msgstr "O Assinafy foi desconectado."
 
-#: src/OAuthConnection.php:188
+#: src/OAuthConnection.php:177
+msgid "Assinafy was already disconnected from this site."
+msgstr "A Assinafy já estava desconectada deste site."
+
+#: src/OAuthConnection.php:178
 msgid ""
 "This site is disconnected, but Assinafy could not confirm revocation. Revoke "
 "the app in Assinafy Connected Apps."
@@ -1089,28 +1154,42 @@ msgstr ""
 "Este site foi desconectado, mas o Assinafy não confirmou a revogação. "
 "Revogue o aplicativo em Aplicativos conectados no Assinafy."
 
-#: src/OAuthConnection.php:189
+#: src/OAuthConnection.php:179
 msgid "Assinafy could not remove the connection from this site. Try again."
 msgstr ""
 "Não foi possível remover a conexão do Assinafy deste site. Tente novamente."
 
-#: src/OAuthConnection.php:190 src/OAuthTokens.php:119
+#: src/OAuthConnection.php:180 src/OAuthTokens.php:125
 msgid "Assinafy is renewing the connection. Try again shortly."
 msgstr "O Assinafy está renovando a conexão. Tente novamente em instantes."
 
-#: src/OAuthConnection.php:244 src/Settings.php:355
+#: src/OAuthConnection.php:235 src/Settings.php:405
 msgid "You are not allowed to manage Assinafy settings."
 msgstr "Você não tem permissão para gerenciar as configurações do Assinafy."
 
-#: src/OAuthTokens.php:90
+#: src/OAuthConnection.php:242
+msgid "OAuth is available in Production. Sandbox still uses an API key."
+msgstr ""
+"O OAuth está disponível em Produção. O Sandbox ainda usa uma chave de API."
+
+#: src/OAuthConnection.php:245
+msgid "The Assinafy WordPress OAuth app is awaiting registration."
+msgstr "O aplicativo OAuth do Assinafy para WordPress aguarda cadastro."
+
+#: src/OAuthConnection.php:248
+msgid "Connect from an HTTPS WordPress admin page."
+msgstr ""
+"Conecte-se a partir de uma página de administração do WordPress com HTTPS."
+
+#: src/OAuthTokens.php:91
 msgid "Assinafy was reconnected during renewal. Try again."
 msgstr "O Assinafy foi reconectado durante a renovação. Tente novamente."
 
-#: src/OAuthTokens.php:97
+#: src/OAuthTokens.php:98
 msgid "Assinafy could not be reached. Try again shortly."
 msgstr "Não foi possível acessar o Assinafy. Tente novamente em instantes."
 
-#: src/OAuthTokens.php:124 src/RefreshLock.php:70
+#: src/OAuthTokens.php:130 src/RefreshLock.php:70
 msgid "Assinafy needs to be reconnected."
 msgstr "É preciso reconectar o Assinafy."
 
@@ -1188,159 +1267,169 @@ msgstr ""
 "datas — é mantida, porque uma assinatura eletrônica precisa continuar "
 "verificável durante toda a vida do documento que assinou."
 
-#: src/Settings.php:251
+#: src/Settings.php:281
 msgid "Assinafy Settings"
 msgstr "Configurações do Assinafy"
 
-#: src/Settings.php:252
+#: src/Settings.php:282
 msgid "Settings"
 msgstr "Configurações"
 
-#: src/Settings.php:291
+#: src/Settings.php:321
 msgid "Testing…"
 msgstr "Testando…"
 
-#: src/Settings.php:292
+#: src/Settings.php:322
 msgid "Working…"
 msgstr "Processando…"
 
-#: src/Settings.php:293
+#: src/Settings.php:323
 msgid "Request failed."
 msgstr "A requisição falhou."
 
-#: src/Settings.php:294
+#: src/Settings.php:324
 msgid "This page has expired. Reload it and try again."
 msgstr "Esta página expirou. Recarregue-a e tente novamente."
 
-#: src/Settings.php:295
-msgid ""
-"This account already sends webhooks to another address. Replace it with this "
-"site?"
-msgstr ""
-"Esta conta já envia webhooks para outro endereço. Substituir por este site?"
-
-#: src/Settings.php:394
+#: src/Settings.php:444
 msgid "Recent activity"
 msgstr "Atividade recente"
 
-#: src/Settings.php:407
-msgid "Webhook"
-msgstr "Webhook"
-
-#: src/Settings.php:410
-msgid "Status updates"
-msgstr "Atualizações de status"
-
-#: src/Settings.php:415
-msgid "Accept webhook deliveries from Assinafy"
-msgstr "Aceitar entregas de webhook do Assinafy"
-
-#: src/Settings.php:417
-msgid ""
-"Document status is also reconciled hourly, so webhooks are an optimisation "
-"rather than a requirement."
-msgstr ""
-"O status dos documentos também é reconciliado a cada hora, então os webhooks "
-"são uma otimização, não um requisito."
-
-#: src/Settings.php:422
-msgid "Endpoint"
-msgstr "Endpoint"
-
-#: src/Settings.php:429
-msgid "Register this site with Assinafy"
-msgstr "Registrar este site no Assinafy"
-
-#: src/Settings.php:433
-msgid ""
-"An Assinafy account has one webhook subscription. Registering this site "
-"replaces any subscription already on file."
-msgstr ""
-"Uma conta Assinafy tem uma única inscrição de webhook. Registrar este site "
-"substitui qualquer inscrição já existente."
-
-#: src/Settings.php:448
+#: src/Settings.php:458
 msgid "Defaults"
 msgstr "Padrões"
 
-#: src/Settings.php:458
+#: src/Settings.php:468
 msgid "days"
 msgstr "dias"
 
-#: src/Settings.php:459
+#: src/Settings.php:469
 msgid "Zero sends no deadline."
 msgstr "Zero envia sem prazo."
 
-#: src/Settings.php:473
+#: src/Settings.php:483
 msgid "Capability required to send"
 msgstr "Permissão necessária para enviar"
 
 #. translators: %s: default capability name.
-#: src/Settings.php:483
+#: src/Settings.php:493
 #, php-format
 msgid ""
 "Defaults to %s, which administrators and editors are granted on activation."
 msgstr "O padrão é %s, concedida a administradores e editores na ativação."
 
-#: src/Settings.php:500
+#: src/Settings.php:510
 msgid "Data"
 msgstr "Dados"
 
-#: src/Settings.php:503
+#: src/Settings.php:513
 msgid "On uninstall"
 msgstr "Ao desinstalar"
 
-#: src/Settings.php:508
+#: src/Settings.php:518
 msgid ""
 "Delete the plugin settings and document records when the plugin is deleted"
 msgstr ""
 "Excluir as configurações do plugin e os registros de documentos quando o "
 "plugin for excluído"
 
-#: src/Settings.php:510
+#: src/Settings.php:520
 msgid "Documents already sent stay in your Assinafy account either way."
 msgstr ""
 "Os documentos já enviados permanecem na sua conta Assinafy de qualquer forma."
 
-#: src/Settings.php:524
+#: src/Settings.php:534
 msgid "Nothing logged yet."
 msgstr "Nada registrado ainda."
 
-#: src/Settings.php:530
+#: src/Settings.php:540
 msgid "When"
 msgstr "Quando"
 
-#: src/Settings.php:531
+#: src/Settings.php:541
 msgid "Event"
 msgstr "Evento"
 
-#: src/Settings.php:532
+#: src/Settings.php:542
 msgid "Detail"
 msgstr "Detalhe"
 
-#: src/Webhook/Handler.php:117
+#: src/Webhook/Handler.php:122
 msgid "Delivery body is not valid JSON."
 msgstr "O corpo da entrega não é um JSON válido."
 
-#: src/Webhook/Handler.php:127
+#: src/Webhook/Handler.php:132
 msgid "Delivery is missing a numeric id."
 msgstr "A entrega não tem um id numérico."
 
-#: src/Webhook/Route.php:170
+#: src/Webhook/Route.php:176
 msgid "Invalid webhook endpoint."
 msgstr "Endpoint de webhook inválido."
 
-#: src/Webhook/Route.php:295
-msgid ""
-"This Assinafy account already delivers webhooks to another endpoint. Confirm "
-"to replace it."
-msgstr ""
-"Esta conta Assinafy já entrega webhooks em outro endpoint. Confirme para "
-"substituí-lo."
+#: src/Webhook/Route.php:184
+msgid "Invalid webhook signature."
+msgstr "Assinatura de webhook inválida."
 
-#: src/Webhook/Route.php:342
+#: src/Webhook/Route.php:309
 msgid "No webhook endpoint has been generated for this site yet."
 msgstr "Nenhum endpoint de webhook foi gerado para este site ainda."
+
+#: src/Webhook/Route.php:416
+msgid ""
+"This Assinafy account already has the maximum number of webhook endpoints — "
+"paid plans allow up to three. Remove one in the Assinafy dashboard before "
+"registering this site."
+msgstr ""
+"Esta conta da Assinafy já tem o número máximo de endpoints de webhook — "
+"planos pagos permitem até três. Remova um no painel da Assinafy antes de "
+"registrar este site."
+
+#~ msgid ""
+#~ "Sending consumes one document from your Assinafy balance. Email "
+#~ "invitations cost no credits. If the balance is short, the request is "
+#~ "refused before anything is uploaded."
+#~ msgstr ""
+#~ "O envio consome um documento do seu saldo Assinafy. Convites por e-mail "
+#~ "não custam créditos. Se o saldo for insuficiente, a solicitação é "
+#~ "recusada antes de qualquer arquivo ser enviado."
+
+#, php-format
+#~ msgid ""
+#~ "This Assinafy account already delivers webhooks to %s. Registering this "
+#~ "site replaces that subscription."
+#~ msgstr ""
+#~ "Esta conta Assinafy já entrega webhooks em %s. Registrar este site "
+#~ "substitui essa inscrição."
+
+#~ msgid "The signature deadline must be a valid date in the future."
+#~ msgstr "O prazo de assinatura deve ser uma data válida no futuro."
+
+#~ msgid ""
+#~ "OAuth requires a registered WordPress app and an HTTPS production site."
+#~ msgstr ""
+#~ "O OAuth exige um aplicativo WordPress registrado e um site de Produção "
+#~ "com HTTPS."
+
+#~ msgid ""
+#~ "This account already sends webhooks to another address. Replace it with "
+#~ "this site?"
+#~ msgstr ""
+#~ "Esta conta já envia webhooks para outro endereço. Substituir por este "
+#~ "site?"
+
+#~ msgid ""
+#~ "An Assinafy account has one webhook subscription. Registering this site "
+#~ "replaces any subscription already on file."
+#~ msgstr ""
+#~ "Uma conta Assinafy tem uma única inscrição de webhook. Registrar este "
+#~ "site substitui qualquer inscrição já existente."
+
+#~ msgid ""
+#~ "This Assinafy account already delivers webhooks to another endpoint. "
+#~ "Confirm to replace it."
+#~ msgstr ""
+#~ "Esta conta Assinafy já entrega webhooks em outro endpoint. Confirme para "
+#~ "substituí-lo."
 
 #~ msgid "Reconnect Assinafy to continue."
 #~ msgstr "Reconecte o Assinafy para continuar."

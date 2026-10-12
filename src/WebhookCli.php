@@ -32,12 +32,12 @@ final class WebhookCli {
 	}
 
 	/**
-	 * Inspect or change the account's webhook subscription.
+	 * Inspect or change this site's webhook endpoint on the account.
 	 *
-	 * The subscription routes act on the account's oldest webhook endpoint, which another
-	 * integration may own. Registering from here takes that endpoint over, and `off` stops
-	 * its deliveries without losing the configuration, so both ask for confirmation when it
-	 * points somewhere else.
+	 * The endpoint routes give every integration its own endpoint — an account has one, or up
+	 * to three on paid plans — so registering adds or updates this site's own endpoint and
+	 * never touches another integration's, and `off` switches only this site's endpoint off
+	 * without losing its configuration.
 	 *
 	 * Webhooks are optional: the reconcile pass keeps a site correct without them.
 	 *
@@ -55,22 +55,19 @@ final class WebhookCli {
 	 * [--email=<address>]
 	 * : Address Assinafy alerts when a delivery fails. Defaults to the site admin email.
 	 *
-	 * [--yes]
-	 * : Answer the take-over or switch-off prompt without asking.
-	 *
 	 * ## EXAMPLES
 	 *
-	 *     # See where the account currently delivers.
+	 *     # See the account's endpoints and which one is this site's.
 	 *     $ wp assinafy webhook status
 	 *
-	 *     # Point the account at this site.
+	 *     # Add or update this site's endpoint.
 	 *     $ wp assinafy webhook register
 	 *     Success: Assinafy now delivers to https://example.com/wp-json/assinafy/v1/webhook/...
 	 *
-	 *     # Take over another endpoint unattended, during a migration.
-	 *     $ wp assinafy webhook register --email=ops@example.com --yes
+	 *     # Register with a custom failure-alert address.
+	 *     $ wp assinafy webhook register --email=ops@example.com
 	 *
-	 *     # Stop deliveries, keeping the configuration on file.
+	 *     # Stop deliveries, keeping the endpoint on file.
 	 *     $ wp assinafy webhook off
 	 *
 	 * @param array<int, string>    $args       Positional arguments: the action.
@@ -85,7 +82,7 @@ final class WebhookCli {
 			WP_CLI::error(
 				null !== $error
 					? $error->get_error_message()
-					: 'Connect the plugin to Assinafy before touching the webhook subscription.'
+					: 'Connect the plugin to Assinafy before touching the webhook endpoints.'
 			);
 
 			return;
@@ -100,7 +97,7 @@ final class WebhookCli {
 		}
 
 		if ( 'off' === $action ) {
-			$this->stop( $client, $assoc_args );
+			$this->stop( $client );
 
 			return;
 		}
@@ -109,41 +106,56 @@ final class WebhookCli {
 	}
 
 	/**
-	 * Print where the account currently delivers.
+	 * Print the account's endpoints and which one is this site's.
 	 *
 	 * @param AssinafyClient $client Connected client.
 	 */
 	private function show( AssinafyClient $client ): void {
 		try {
-			$this->print_subscription( $client->webhooks()->get(), Route::url() );
+			$this->print_endpoints( $client->webhooks()->listEndpoints(), Route::url() );
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );
 		}
 	}
 
 	/**
-	 * Stop deliveries without discarding the subscription.
+	 * Stop this site's deliveries without discarding the endpoint.
 	 *
-	 * The API has no route that deletes a subscription; inactivating it is the only way to
-	 * switch deliveries off, and the URL, email and event list stay on file so the same
-	 * subscription can be switched back on.
+	 * The endpoint stays on file — URL, email, events and signing — so registering again
+	 * re-enables it without resupplying anything. Prefers the endpoint id stored by
+	 * registration; a site that registered before the id was recorded falls back to the URL
+	 * match. Foreign endpoints are never touched.
 	 *
-	 * @param AssinafyClient        $client     Connected client.
-	 * @param array<string, string> $assoc_args Associative arguments; `--yes` answers the prompt.
+	 * @param AssinafyClient $client Connected client.
 	 */
-	private function stop( AssinafyClient $client, array $assoc_args ): void {
-		try {
-			$subscription = $client->webhooks()->get();
-			if ( null !== $subscription && ! Route::is_ours( $subscription ) ) {
-				WP_CLI::confirm(
-					sprintf(
-						'This account delivers to %s, not this site. Stop those deliveries?',
-						is_string( $subscription['url'] ?? null ) ? $subscription['url'] : ''
-					),
-					$assoc_args
-				);
+	private function stop( AssinafyClient $client ): void {
+		$id = (string) Settings::get( Settings::OPTION_WEBHOOK_ENDPOINT_ID );
+
+		if ( '' === $id ) {
+			try {
+				$endpoints = $client->webhooks()->listEndpoints();
+			} catch ( \Throwable $e ) {
+				WP_CLI::error( $e->getMessage() );
+
+				return;
 			}
-			$client->webhooks()->deactivate();
+
+			foreach ( $endpoints as $endpoint ) {
+				if ( Route::is_ours( $endpoint ) && is_string( $endpoint['id'] ?? null ) ) {
+					$id = $endpoint['id'];
+					break;
+				}
+			}
+		}
+
+		if ( '' === $id ) {
+			WP_CLI::error( 'This site has no webhook endpoint registered on the account.' );
+
+			return;
+		}
+
+		try {
+			$client->webhooks()->updateEndpoint( $id, array( 'is_active' => false ) );
 		} catch ( \Throwable $e ) {
 			WP_CLI::error( $e->getMessage() );
 
@@ -152,39 +164,24 @@ final class WebhookCli {
 
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, false );
 
-		WP_CLI::success( 'Deliveries stopped. The subscription stays on file and can be registered again.' );
+		WP_CLI::success( 'Deliveries stopped. The endpoint stays on file and can be registered again.' );
 	}
 
 	/**
-	 * Point the account at this site.
+	 * Add or update this site's endpoint.
 	 *
-	 * `Route` owns the upsert here for the same reason the settings screen leaves it to it:
-	 * the subscription is account-wide, so the events already on it have to survive the
-	 * replacement, and a URL belonging to somebody else must not be taken over unasked.
-	 * `subscribe()` reports a takeover as an error carrying the URL on file, which is the
-	 * prompt below; `take_over()` is the answer to it.
+	 * `Route` owns the flow here for the same reason the settings screen leaves it to it: the
+	 * events already on this site's endpoint have to survive, the endpoint id and signing
+	 * secret are stored in one place, and a full plan is an error to report, not an endpoint
+	 * to take over.
 	 *
 	 * @param AssinafyClient        $client     Connected client.
-	 * @param array<string, string> $assoc_args Associative arguments; `--yes` answers the prompt.
+	 * @param array<string, string> $assoc_args Associative arguments.
 	 */
 	private function start( AssinafyClient $client, array $assoc_args ): void {
 		$url    = Route::url();
 		$email  = (string) ( $assoc_args['email'] ?? get_option( 'admin_email' ) );
 		$result = Route::subscribe( $client, $email, Route::DEFAULT_EVENTS );
-
-		if ( $result instanceof WP_Error && 'assinafy_webhook_takeover' === $result->get_error_code() ) {
-			$data = $result->get_error_data();
-
-			WP_CLI::confirm(
-				sprintf(
-					'This account delivers to %s. Replace it with this site?',
-					is_array( $data ) && is_string( $data['url'] ?? null ) ? $data['url'] : ''
-				),
-				$assoc_args
-			);
-
-			$result = Route::take_over( $client, $email, Route::DEFAULT_EVENTS );
-		}
 
 		if ( $result instanceof WP_Error ) {
 			WP_CLI::error( $result->get_error_message() );
@@ -198,31 +195,36 @@ final class WebhookCli {
 	}
 
 	/**
-	 * Print one subscription.
+	 * Print the account's endpoints, marking this site's own.
 	 *
-	 * @param array<string, mixed>|null $subscription The account's subscription, or null.
-	 * @param string                    $url          This site's own endpoint.
+	 * @param array<int, array<string, mixed>> $endpoints Endpoints as returned by the API.
+	 * @param string                           $url       This site's own endpoint.
 	 */
-	private function print_subscription( ?array $subscription, string $url ): void {
+	private function print_endpoints( array $endpoints, string $url ): void {
 		WP_CLI::line( 'This site endpoint: ' . $url );
 
-		if ( null === $subscription ) {
-			WP_CLI::line( 'No webhook subscription has ever been configured on this account.' );
+		if ( array() === $endpoints ) {
+			WP_CLI::line( 'The account has no webhook endpoints.' );
 
 			return;
 		}
 
-		$events  = $subscription['events'] ?? array();
-		$current = (string) ( $subscription['url'] ?? '' );
+		$found = false;
 
-		WP_CLI::line( 'Registered URL:    ' . $current );
-		WP_CLI::line( 'Delivering:        ' . ( ( $subscription['is_active'] ?? false ) ? 'yes' : 'no' ) );
-		WP_CLI::line( 'Failure alerts to: ' . (string) ( $subscription['email'] ?? '' ) );
-		WP_CLI::line( 'Events:            ' . ( is_array( $events ) ? implode( ', ', array_map( 'strval', $events ) ) : '' ) );
-		WP_CLI::line( 'Last changed:      ' . (string) ( $subscription['updated_at'] ?? '' ) );
+		foreach ( $endpoints as $endpoint ) {
+			$events = $endpoint['events'] ?? array();
+			$own    = Route::is_ours( $endpoint );
+			$found  = $found || $own;
 
-		if ( untrailingslashit( $current ) !== untrailingslashit( $url ) ) {
-			WP_CLI::warning( 'The account delivers somewhere else. This site will not receive webhooks until it is registered.' );
+			WP_CLI::line( 'Endpoint ' . (string) ( $endpoint['id'] ?? '' ) . ( $own ? ' (this site)' : '' ) . ':' );
+			WP_CLI::line( '  URL:      ' . (string) ( $endpoint['url'] ?? '' ) );
+			WP_CLI::line( '  Active:   ' . ( ( $endpoint['is_active'] ?? false ) ? 'yes' : 'no' ) );
+			WP_CLI::line( '  Signing:  ' . ( ( $endpoint['signing_enabled'] ?? false ) ? 'enabled' : 'disabled' ) );
+			WP_CLI::line( '  Events:   ' . ( is_array( $events ) ? implode( ', ', array_map( 'strval', $events ) ) : '' ) );
+		}
+
+		if ( ! $found ) {
+			WP_CLI::warning( 'This site has no endpoint on the account. Register it with `wp assinafy webhook register`.' );
 		}
 	}
 }

@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Assinafy\SDK\AssinafyClient;
 use Assinafy\SDK\Configuration;
+use Assinafy\SDK\Exceptions\ApiException;
 use Assinafy\SDK\Exceptions\NetworkException;
 use Assinafy\SDK\Resources\OAuthResource;
 use Assinafy\WP\Http\WpHttpClient;
@@ -92,8 +93,8 @@ final class OAuthTokens {
 
 			return $updated['access_token'];
 		} catch ( \Throwable $e ) {
-			// Releasing the lock removes the mark, so a token that never left can be retried.
-			if ( self::never_sent( $e ) ) {
+			// Releasing the lock removes the mark, so an unspent token can be sent again later.
+			if ( self::token_unspent( $e ) ) {
 				return new WP_Error( 'assinafy_oauth_retry', __( 'Assinafy could not be reached. Try again shortly.', 'assinafy' ) );
 			}
 
@@ -105,12 +106,17 @@ final class OAuthTokens {
 	}
 
 	/**
-	 * Only a failure proven to come before the request left, such as DNS, a refused connection
-	 * or a TLS handshake, keeps a refresh token that may be sent again.
+	 * Only a failure that proves the refresh token was not spent keeps it sendable: one that
+	 * happened before the request left, such as DNS, a refused connection or a TLS handshake,
+	 * or the token endpoint's 429, which rejects the call before the grant is processed.
 	 *
 	 * @param \Throwable $e Refresh failure.
 	 */
-	private static function never_sent( \Throwable $e ): bool {
+	private static function token_unspent( \Throwable $e ): bool {
+		if ( $e instanceof ApiException ) {
+			return $e->isRateLimited();
+		}
+
 		return $e instanceof NetworkException && false === ( $e->getContext()['request_sent'] ?? null );
 	}
 

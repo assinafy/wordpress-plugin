@@ -40,6 +40,7 @@ final class RequestFactory {
 		'POST oauth/revoke',
 		'POST login',
 		'POST authentication/social-login',
+		'POST authentication/mfa/verify',
 		'PUT authentication/request-password-reset',
 		'PUT authentication/reset-password',
 		'GET sign',

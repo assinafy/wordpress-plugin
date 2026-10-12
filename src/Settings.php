@@ -12,7 +12,7 @@ namespace Assinafy\WP;
 defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Admin\SettingsAjax;
-use Assinafy\WP\Webhook\Route;
+use Assinafy\WP\Admin\WebhookSettings;
 use WP_Error;
 
 /**
@@ -42,6 +42,10 @@ final class Settings {
 
 	public const OPTION_WEBHOOK_ENABLED = 'assinafy_webhook_enabled';
 
+	public const OPTION_WEBHOOK_ENDPOINT_ID = 'assinafy_webhook_endpoint_id';
+
+	public const OPTION_WEBHOOK_SECRET_ENC = 'assinafy_webhook_secret_enc';
+
 	public const OPTION_EXPIRY_DAYS = 'assinafy_default_expiry_days';
 
 	public const OPTION_MESSAGE = 'assinafy_default_message';
@@ -59,73 +63,85 @@ final class Settings {
 	 * @var array<string, array{default: mixed, sanitize: string, autoload: bool, type: string}>
 	 */
 	public const OPTIONS = array(
-		self::OPTION_ACCOUNT_ID       => array(
+		self::OPTION_ACCOUNT_ID          => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_text_field',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_ENVIRONMENT      => array(
+		self::OPTION_ENVIRONMENT         => array(
 			'default'  => 'production',
 			'sanitize' => 'sanitize_key',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_API_KEY          => array(
+		self::OPTION_API_KEY             => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_api_key',
 			'autoload' => false,
 			'type'     => 'string',
 		),
-		self::OPTION_OAUTH_CONNECTION => array(
+		self::OPTION_OAUTH_CONNECTION    => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_text_field',
 			'autoload' => false,
 			'type'     => 'string',
 		),
-		self::OPTION_AUTH_MODE        => array(
+		self::OPTION_AUTH_MODE           => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_key',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_REFRESH_LOCK     => array(
+		self::OPTION_REFRESH_LOCK        => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_text_field',
 			'autoload' => false,
 			'type'     => 'string',
 		),
-		self::OPTION_WEBHOOK_TOKEN    => array(
+		self::OPTION_WEBHOOK_TOKEN       => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_key',
 			'autoload' => false,
 			'type'     => 'string',
 		),
-		self::OPTION_WEBHOOK_ENABLED  => array(
+		self::OPTION_WEBHOOK_ENDPOINT_ID => array(
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+			'autoload' => false,
+			'type'     => 'string',
+		),
+		self::OPTION_WEBHOOK_SECRET_ENC  => array(
+			'default'  => '',
+			'sanitize' => 'sanitize_webhook_secret',
+			'autoload' => false,
+			'type'     => 'string',
+		),
+		self::OPTION_WEBHOOK_ENABLED     => array(
 			'default'  => false,
 			'sanitize' => 'rest_sanitize_boolean',
 			'autoload' => true,
 			'type'     => 'boolean',
 		),
-		self::OPTION_EXPIRY_DAYS      => array(
+		self::OPTION_EXPIRY_DAYS         => array(
 			'default'  => 30,
 			'sanitize' => 'absint',
 			'autoload' => true,
 			'type'     => 'integer',
 		),
-		self::OPTION_MESSAGE          => array(
+		self::OPTION_MESSAGE             => array(
 			'default'  => '',
 			'sanitize' => 'sanitize_textarea_field',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_SENDER_CAP       => array(
+		self::OPTION_SENDER_CAP          => array(
 			'default'  => Capabilities::SEND,
 			'sanitize' => 'sanitize_key',
 			'autoload' => true,
 			'type'     => 'string',
 		),
-		self::OPTION_DELETE_DATA      => array(
+		self::OPTION_DELETE_DATA         => array(
 			'default'  => false,
 			'sanitize' => 'rest_sanitize_boolean',
 			'autoload' => true,
@@ -174,7 +190,8 @@ final class Settings {
 		add_action( 'added_option', array( $this, 'maybe_reset_client' ) );
 		add_action( 'deleted_option', array( $this, 'maybe_reset_client' ) );
 		add_action( 'switch_blog', array( $this->clients, 'reset' ) );
-		add_filter( 'pre_update_option_' . self::OPTION_API_KEY, array( $this, 'keep_api_key_when_blank' ), 10, 2 );
+		add_filter( 'pre_update_option_' . self::OPTION_API_KEY, array( $this, 'keep_credential_when_blank' ), 10, 2 );
+		add_filter( 'pre_update_option_' . self::OPTION_WEBHOOK_SECRET_ENC, array( $this, 'keep_credential_when_blank' ), 10, 2 );
 		// The settings form posts to options.php, which writes each option with no autoload at
 		// all, so core's heuristic stores `auto` — autoloaded — and the encrypted key would be
 		// read into `alloptions` on every request. This makes `self::OPTIONS` the authority.
@@ -204,12 +221,7 @@ final class Settings {
 			// settings registry and nothing in core ever reads it back, so passing it here
 			// would only look like it were doing something. The `wp_default_autoload_value`
 			// filter in `register()` applies the value `self::OPTIONS` declares instead.
-			// An option the form cannot post stays out of the saved group, or options.php
-			// would erase it as an omitted input: the token has no field at all, and the
-			// account id drops its `name` while `ASSINAFY_ACCOUNT_ID` defines it.
-			$internal   = in_array( $name, array( self::OPTION_WEBHOOK_TOKEN, self::OPTION_OAUTH_CONNECTION, self::OPTION_AUTH_MODE, self::OPTION_REFRESH_LOCK ), true )
-				|| ( ! $connection_settings->show_legacy_fields() && in_array( $name, array( self::OPTION_ACCOUNT_ID, self::OPTION_API_KEY ), true ) )
-				|| ( self::OPTION_ACCOUNT_ID === $name && $this->credentials->is_account_id_constant() );
+			$internal   = $this->is_internal_option( $name, $connection_settings );
 			$registered = get_registered_settings()[ $name ]['group'] ?? null;
 			if ( is_string( $registered ) ) {
 				unregister_setting( $registered, $name );
@@ -226,6 +238,24 @@ final class Settings {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Whether an option stays out of the saved settings group.
+	 *
+	 * An option the form cannot post would be erased by options.php as an omitted input: the
+	 * webhook token and endpoint id have no field at all, the signing secret has one only for
+	 * OAuth sites — API-key sites read it from the API instead — and the legacy credentials
+	 * follow the same rule as the connection fields.
+	 *
+	 * @param string             $name                Option name from `self::OPTIONS`.
+	 * @param ConnectionSettings $connection_settings The connection field rules.
+	 */
+	private function is_internal_option( string $name, ConnectionSettings $connection_settings ): bool {
+		return in_array( $name, array( self::OPTION_WEBHOOK_TOKEN, self::OPTION_WEBHOOK_ENDPOINT_ID, self::OPTION_OAUTH_CONNECTION, self::OPTION_AUTH_MODE, self::OPTION_REFRESH_LOCK ), true )
+			|| ( self::OPTION_WEBHOOK_SECRET_ENC === $name && ! $this->credentials->uses_oauth() )
+			|| ( ! $connection_settings->show_legacy_fields() && in_array( $name, array( self::OPTION_ACCOUNT_ID, self::OPTION_API_KEY ), true ) )
+			|| ( self::OPTION_ACCOUNT_ID === $name && $this->credentials->is_account_id_constant() );
 	}
 
 	/**
@@ -288,49 +318,69 @@ final class Settings {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'assinafy_admin' ),
 				'i18n'    => array(
-					'testing'   => __( 'Testing…', 'assinafy' ),
-					'working'   => __( 'Working…', 'assinafy' ),
-					'failed'    => __( 'Request failed.', 'assinafy' ),
-					'expired'   => __( 'This page has expired. Reload it and try again.', 'assinafy' ),
-					'overwrite' => __( 'This account already sends webhooks to another address. Replace it with this site?', 'assinafy' ),
+					'testing' => __( 'Testing…', 'assinafy' ),
+					'working' => __( 'Working…', 'assinafy' ),
+					'failed'  => __( 'Request failed.', 'assinafy' ),
+					'expired' => __( 'This page has expired. Reload it and try again.', 'assinafy' ),
 				),
 			)
 		);
 	}
 
 	/**
-	 * Keep the stored key when the field is submitted empty.
+	 * Keep the stored credential when its field is submitted empty.
 	 *
-	 * The field renders with `value=""` so ciphertext never reaches the browser, which means
-	 * every save that does not change the key arrives blank.
+	 * Both encrypted-credential fields — the API key and the webhook signing secret — render
+	 * with `value=""` so ciphertext never reaches the browser, which means every save that
+	 * does not change the credential arrives blank.
 	 *
 	 * @param mixed $value     Incoming value.
 	 * @param mixed $old_value Currently stored value.
 	 *
 	 * @return mixed
 	 */
-	public function keep_api_key_when_blank( mixed $value, mixed $old_value ): mixed {
+	public function keep_credential_when_blank( mixed $value, mixed $old_value ): mixed {
 		return '' === $value || null === $value ? $old_value : $value;
 	}
 
 	/**
 	 * Encrypt a submitted API key.
 	 *
-	 * Values that already decrypt under the current key are passed through untouched, so
-	 * the option's sanitisation stays idempotent no matter which code path writes it.
-	 *
 	 * @param mixed $value Submitted value.
 	 */
 	public function sanitize_api_key( mixed $value ): string {
+		return $this->encrypt_credential( $value, self::OPTION_API_KEY );
+	}
+
+	/**
+	 * Encrypt a submitted webhook signing secret.
+	 *
+	 * @param mixed $value Submitted value.
+	 */
+	public function sanitize_webhook_secret( mixed $value ): string {
+		return $this->encrypt_credential( $value, self::OPTION_WEBHOOK_SECRET_ENC );
+	}
+
+	/**
+	 * Encrypt a submitted credential for storage.
+	 *
+	 * Values that already decrypt under the current key are passed through untouched, so the
+	 * option's sanitisation stays idempotent no matter which code path writes it. Without
+	 * server key material the old value stays and the screen explains why.
+	 *
+	 * @param mixed  $value  Submitted value.
+	 * @param string $option Option being sanitised.
+	 */
+	private function encrypt_credential( mixed $value, string $option ): string {
 		$value = is_string( $value ) ? trim( $value ) : '';
 
 		if ( '' === $value || $this->credentials->is_encrypted( $value ) ) {
 			return $value;
 		}
 		if ( ! $this->credentials->has_server_key_material() ) {
-			add_settings_error( self::OPTION_API_KEY, 'assinafy_missing_key_material', Credentials::missing_key_material_message() );
+			add_settings_error( $option, 'assinafy_missing_key_material', Credentials::missing_key_material_message() );
 
-			return (string) get_option( self::OPTION_API_KEY, '' );
+			return (string) get_option( $option, '' );
 		}
 
 		return $this->credentials->encrypt( $value );
@@ -384,7 +434,7 @@ final class Settings {
 				<?php
 				settings_fields( self::PAGE );
 				( new ConnectionSettings( $this->credentials ) )->render( '' === $key_error && '' !== $api_key );
-				$this->render_webhook_section();
+				( new WebhookSettings( $this->credentials ) )->render();
 				$this->render_defaults_section();
 				$this->render_data_section();
 				submit_button();
@@ -394,46 +444,6 @@ final class Settings {
 			<h2><?php esc_html_e( 'Recent activity', 'assinafy' ); ?></h2>
 			<?php $this->render_log(); ?>
 		</div>
-		<?php
-	}
-
-	/**
-	 * Render the webhook toggle and this site's endpoint.
-	 */
-	private function render_webhook_section(): void {
-		$webhook_url = Route::url();
-		$webhook_on  = (bool) self::get( self::OPTION_WEBHOOK_ENABLED );
-		?>
-		<h2><?php esc_html_e( 'Webhook', 'assinafy' ); ?></h2>
-		<table class="form-table" role="presentation">
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Status updates', 'assinafy' ); ?></th>
-				<td>
-					<label>
-						<input type="checkbox" name="<?php echo esc_attr( self::OPTION_WEBHOOK_ENABLED ); ?>"
-							value="1" <?php checked( $webhook_on ); ?> />
-						<?php esc_html_e( 'Accept webhook deliveries from Assinafy', 'assinafy' ); ?>
-					</label>
-					<p class="description"><?php esc_html_e( 'Document status is also reconciled hourly, so webhooks are an optimisation rather than a requirement.', 'assinafy' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row">
-					<label for="assinafy-webhook-url"><?php esc_html_e( 'Endpoint', 'assinafy' ); ?></label>
-				</th>
-				<td>
-					<input type="text" class="large-text code" id="assinafy-webhook-url"
-						value="<?php echo esc_attr( $webhook_url ); ?>" readonly />
-					<p>
-						<button type="button" class="button" id="assinafy-register-webhook">
-							<?php esc_html_e( 'Register this site with Assinafy', 'assinafy' ); ?>
-						</button>
-						<span id="assinafy-register-webhook-result" class="assinafy-result" role="status" aria-live="polite"></span>
-					</p>
-					<p class="description"><?php esc_html_e( 'An Assinafy account has one webhook subscription. Registering this site replaces any subscription already on file.', 'assinafy' ); ?></p>
-				</td>
-			</tr>
-		</table>
 		<?php
 	}
 

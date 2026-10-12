@@ -460,58 +460,63 @@ final class CliTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * `webhook status` on an account that has never configured one.
+	 * `webhook status` on an account with no endpoints at all.
 	 */
-	public function test_webhook_status_reports_an_account_with_no_subscription(): void {
-		$this->fake_response(
-			'webhooks/subscriptions',
-			200,
-			array(
-				'status'  => 200,
-				'message' => '',
-				'data'    => array(),
-			)
-		);
+	public function test_webhook_status_reports_an_account_with_no_endpoints(): void {
+		$this->fake_endpoints( array() );
 
 		$this->run_command( 'webhook', array( 'status' ) );
 
-		$this->assertContains(
-			'No webhook subscription has ever been configured on this account.',
-			WP_CLI::messages( 'line' )
-		);
+		$this->assertContains( 'The account has no webhook endpoints.', WP_CLI::messages( 'line' ) );
 		$this->assertSame( array(), WP_CLI::messages( 'warning' ) );
 	}
 
 	/**
-	 * An account delivering somewhere else is the case worth warning about: this site will
-	 * receive nothing until it takes the subscription over.
+	 * Every endpoint is listed, and the one belonging to this site is marked.
 	 */
-	public function test_webhook_status_warns_when_the_account_delivers_elsewhere(): void {
-		$this->fake_subscription( self::FOREIGN_ENDPOINT );
+	public function test_webhook_status_marks_this_sites_endpoint(): void {
+		$this->fake_endpoints( array( $this->foreign_endpoint(), $this->own_endpoint() ) );
 
 		$this->run_command( 'webhook', array( 'status' ) );
 
-		$this->assertContains( 'Registered URL:    ' . self::FOREIGN_ENDPOINT, WP_CLI::messages( 'line' ) );
+		$this->assertContains( 'Endpoint ep_own (this site):', WP_CLI::messages( 'line' ) );
+		$this->assertContains( 'Endpoint ep_foreign:', WP_CLI::messages( 'line' ) );
+		$this->assertContains( '  Signing:  enabled', WP_CLI::messages( 'line' ) );
+		$this->assertSame( array(), WP_CLI::messages( 'warning' ) );
+	}
+
+	/**
+	 * An account whose endpoints all belong elsewhere is the case worth warning about: this
+	 * site receives nothing until it registers one of its own.
+	 */
+	public function test_webhook_status_warns_when_no_endpoint_belongs_to_this_site(): void {
+		$this->fake_endpoints( array( $this->foreign_endpoint() ) );
+
+		$this->run_command( 'webhook', array( 'status' ) );
+
+		$this->assertContains( '  URL:      ' . self::FOREIGN_ENDPOINT, WP_CLI::messages( 'line' ) );
 		$this->assertSame(
-			array( 'The account delivers somewhere else. This site will not receive webhooks until it is registered.' ),
+			array( 'This site has no endpoint on the account. Register it with `wp assinafy webhook register`.' ),
 			WP_CLI::messages( 'warning' )
 		);
 	}
 
 	/**
-	 * `webhook off` stops delivery and records that this site is no longer expecting any.
+	 * `webhook off` switches this site's endpoint off and records that this site is no longer
+	 * expecting deliveries.
 	 */
 	public function test_webhook_off_stops_delivery_and_records_it(): void {
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_own' );
 
-		$this->fake_subscription( Route::url() );
 		$this->fake_response(
-			'webhooks/inactivate',
+			'webhooks/endpoints/ep_own',
 			200,
 			array(
 				'status'  => 200,
 				'message' => '',
 				'data'    => array(
+					'id'        => 'ep_own',
 					'url'       => Route::url(),
 					'is_active' => false,
 				),
@@ -521,85 +526,155 @@ final class CliTest extends AssinafyTestCase {
 		$this->run_command( 'webhook', array( 'off' ) );
 
 		$this->assertSame(
-			array( 'Deliveries stopped. The subscription stays on file and can be registered again.' ),
+			array( 'Deliveries stopped. The endpoint stays on file and can be registered again.' ),
+			WP_CLI::messages( 'success' )
+		);
+		$this->assertFalse( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
+
+		$body = json_decode( $this->last_request_body(), true );
+
+		$this->assertIsArray( $body );
+		$this->assertFalse( $body['is_active'] );
+	}
+
+	/**
+	 * A site that registered before the endpoint id was recorded finds its endpoint by URL.
+	 */
+	public function test_webhook_off_finds_the_endpoint_by_url_when_no_id_is_stored(): void {
+		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
+
+		$this->fake_response(
+			'webhooks/endpoints/ep_own',
+			200,
+			array(
+				'status'  => 200,
+				'message' => '',
+				'data'    => array(
+					'id'        => 'ep_own',
+					'is_active' => false,
+				),
+			)
+		);
+		$this->fake_endpoints( array( $this->foreign_endpoint(), $this->own_endpoint() ) );
+
+		$this->run_command( 'webhook', array( 'off' ) );
+
+		$this->assertSame(
+			array( 'Deliveries stopped. The endpoint stays on file and can be registered again.' ),
 			WP_CLI::messages( 'success' )
 		);
 		$this->assertFalse( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
 	}
 
 	/**
-	 * Switching off another integration's endpoint is asked about first.
+	 * Foreign endpoints are never this site's to switch off.
 	 */
-	public function test_webhook_off_asks_before_stopping_another_endpoint(): void {
+	public function test_webhook_off_refuses_when_no_endpoint_belongs_to_this_site(): void {
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
-		$this->fake_subscription( self::FOREIGN_ENDPOINT );
+		$this->fake_endpoints( array( $this->foreign_endpoint() ) );
 
 		$this->assertCommandStops(
-			'This account delivers to ' . self::FOREIGN_ENDPOINT . ', not this site. Stop those deliveries?',
+			'This site has no webhook endpoint registered on the account.',
 			'webhook',
 			array( 'off' )
 		);
 
 		$this->assertTrue( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
-		$this->assertSame( array(), array_filter( $this->requests, static fn( $request ): bool => str_contains( (string) ( $request['url'] ?? '' ), 'inactivate' ) ) );
+		$this->assertSame( array(), $this->writes(), 'A foreign endpoint was switched off.' );
 	}
 
 	/**
-	 * Registering on an account with no subscription needs no confirmation: nothing is being
-	 * taken over.
+	 * Registering on an account whose endpoints all belong elsewhere creates this site's own;
+	 * nothing is taken over.
 	 */
-	public function test_webhook_register_points_the_account_at_this_site(): void {
-		$this->fake_response(
-			'webhooks/subscriptions',
-			200,
-			array(
-				'status'  => 200,
-				'message' => '',
-				'data'    => array(),
-			)
-		);
+	public function test_webhook_register_creates_this_sites_endpoint(): void {
+		$this->fake_endpoint_routes( array( $this->foreign_endpoint() ) );
 
 		$this->run_command( 'webhook', array( 'register' ), array( 'email' => 'ops@example.com' ) );
 
 		$this->assertSame( array( 'Assinafy now delivers to ' . Route::url() ), WP_CLI::messages( 'success' ) );
 		$this->assertTrue( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
-		$this->assertSame( array(), WP_CLI::messages( 'confirm' ) );
+		$this->assertSame( 'ep_new', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
+		$this->assertNotSame( '', (string) get_option( Settings::OPTION_WEBHOOK_SECRET_ENC ), 'The endpoint secret was not stored.' );
 
-		$body = json_decode( (string) $this->last_request_body(), true );
+		$creates = $this->writes( 'POST' );
+		$body    = json_decode( (string) ( $creates[0]['args']['body'] ?? '' ), true );
 
+		$this->assertCount( 1, $creates );
+		$this->assertSame( array(), $this->writes( 'PUT' ), 'A foreign endpoint was updated.' );
+		$this->assertIsArray( $body );
 		$this->assertSame( Route::url(), $body['url'] );
 		$this->assertSame( 'ops@example.com', $body['email'] );
 		$this->assertSame( Route::DEFAULT_EVENTS, $body['events'] );
 		$this->assertTrue( $body['is_active'] );
+		$this->assertTrue( $body['signing_enabled'] );
 	}
 
 	/**
-	 * The subscription routes act on the account's oldest endpoint, so registering over
-	 * somebody else's endpoint takes it away from them. That is asked about first.
+	 * This site's own endpoint is updated in place, keeping the events it already had.
 	 */
-	public function test_webhook_register_asks_before_taking_over_another_endpoint(): void {
-		$this->fake_subscription( self::FOREIGN_ENDPOINT );
+	public function test_webhook_register_updates_this_sites_existing_endpoint(): void {
+		$this->fake_response(
+			'webhooks/endpoints/ep_own/secret',
+			200,
+			array(
+				'status'  => 200,
+				'message' => '',
+				'data'    => array( 'secret' => 'whsec_' . base64_encode( 'cli-test-signing-key' ) ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- The whsec_ format is base64 by definition.
+			)
+		);
+		$this->fake_response(
+			'webhooks/endpoints/ep_own',
+			200,
+			array(
+				'status'  => 200,
+				'message' => '',
+				'data'    => $this->own_endpoint(),
+			)
+		);
+		$this->fake_endpoints( array( $this->own_endpoint( array( 'events' => array( 'signature_requested' ) ) ) ) );
+
+		$this->run_command( 'webhook', array( 'register' ) );
+
+		$this->assertSame( array( 'Assinafy now delivers to ' . Route::url() ), WP_CLI::messages( 'success' ) );
+		$this->assertSame( 'ep_own', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
+
+		$updates = $this->writes( 'PUT' );
+		$body    = json_decode( (string) ( $updates[0]['args']['body'] ?? '' ), true );
+
+		$this->assertCount( 1, $updates );
+		$this->assertIsArray( $body );
+		$this->assertContains( 'signature_requested', $body['events'] );
+
+		foreach ( Route::DEFAULT_EVENTS as $wanted ) {
+			$this->assertContains( $wanted, $body['events'] );
+		}
+
+		$this->assertTrue( $body['is_active'] );
+		$this->assertTrue( $body['signing_enabled'] );
+	}
+
+	/**
+	 * A full plan is an error to report, not an endpoint to take over.
+	 */
+	public function test_webhook_register_reports_a_full_plan(): void {
+		$this->fake_endpoint_routes(
+			array(
+				$this->foreign_endpoint(),
+				$this->foreign_endpoint( 'ep_two' ),
+				$this->foreign_endpoint( 'ep_three' ),
+			),
+			403
+		);
 
 		$this->assertCommandStops(
-			'This account delivers to ' . self::FOREIGN_ENDPOINT . '. Replace it with this site?',
+			'This Assinafy account already has the maximum number of webhook endpoints — paid plans allow up to three. Remove one in the Assinafy dashboard before registering this site.',
 			'webhook',
 			array( 'register' )
 		);
 
 		$this->assertFalse( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
-	}
-
-	/**
-	 * `--yes` answers the take-over question, which is what makes a migration scriptable.
-	 */
-	public function test_webhook_register_takes_over_when_told_to(): void {
-		$this->fake_subscription( self::FOREIGN_ENDPOINT );
-
-		$this->run_command( 'webhook', array( 'register' ), array( 'yes' => true ) );
-
-		$this->assertCount( 1, WP_CLI::messages( 'confirm' ) );
-		$this->assertSame( array( 'Assinafy now delivers to ' . Route::url() ), WP_CLI::messages( 'success' ) );
-		$this->assertTrue( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
+		$this->assertSame( array(), $this->writes( 'PUT' ), 'A foreign endpoint was updated to make room.' );
 	}
 
 	/**
@@ -612,7 +687,7 @@ final class CliTest extends AssinafyTestCase {
 		$this->cli = $this->command_object();
 
 		$this->assertCommandStops(
-			'Connect the plugin to Assinafy before touching the webhook subscription.',
+			'Connect the plugin to Assinafy before touching the webhook endpoints.',
 			'webhook',
 			array( 'status' )
 		);
@@ -624,7 +699,7 @@ final class CliTest extends AssinafyTestCase {
 	 */
 	public function test_webhook_reports_a_failure_from_the_api(): void {
 		$this->fake_response(
-			'webhooks/subscriptions',
+			'webhooks/endpoints',
 			500,
 			array(
 				'status'  => 500,
@@ -766,6 +841,154 @@ final class CliTest extends AssinafyTestCase {
 					'is_active'  => true,
 					'updated_at' => '2026-08-27T17:55:12Z',
 				),
+			)
+		);
+	}
+
+	/**
+	 * Queue `GET /accounts/{accountId}/webhooks/endpoints`.
+	 *
+	 * @param array<int, array<string, mixed>> $endpoints The account's endpoints.
+	 */
+	private function fake_endpoints( array $endpoints ): void {
+		$this->fake_response(
+			'webhooks/endpoints',
+			200,
+			array(
+				'status'  => 200,
+				'message' => '',
+				'data'    => $endpoints,
+			)
+		);
+	}
+
+	/**
+	 * An endpoint this site owns, as the API returns it.
+	 *
+	 * @param array<string, mixed> $overrides Keys to replace.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function own_endpoint( array $overrides = array() ): array {
+		return array_merge(
+			array(
+				'id'              => 'ep_own',
+				'name'            => 'localhost',
+				'url'             => Route::url(),
+				'email'           => 'ops@example.com',
+				'events'          => array( 'document_ready' ),
+				'is_active'       => true,
+				'signing_enabled' => true,
+			),
+			$overrides
+		);
+	}
+
+	/**
+	 * An endpoint another integration on the same account owns.
+	 *
+	 * @param string $id Endpoint id.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function foreign_endpoint( string $id = 'ep_foreign' ): array {
+		return array(
+			'id'              => $id,
+			'name'            => 'ERP',
+			'url'             => self::FOREIGN_ENDPOINT,
+			'email'           => 'ops@example.com',
+			'events'          => array( 'document_ready' ),
+			'is_active'       => true,
+			'signing_enabled' => false,
+		);
+	}
+
+	/**
+	 * Serve the endpoint routes method-aware: list, create and secret reads.
+	 *
+	 * The shared fake keys responses by URL fragment alone, and `POST /webhooks/endpoints`
+	 * shares its URL with the list route, so creating through it needs the request method.
+	 *
+	 * @param array<int, array<string, mixed>> $endpoints   The account's endpoints.
+	 * @param int                              $post_status Status the create route answers with.
+	 */
+	private function fake_endpoint_routes( array $endpoints, int $post_status = 200 ): void {
+		remove_filter( 'pre_http_request', array( $this, 'intercept_http' ), 10 );
+		add_filter(
+			'pre_http_request',
+			function ( mixed $preempt, array $args, string $url ) use ( $endpoints, $post_status ): mixed {
+				if ( ! str_starts_with( $url, self::API_HOST ) ) {
+					return $preempt;
+				}
+
+				$this->requests[] = array(
+					'url'  => $url,
+					'args' => $args,
+				);
+
+				$method = strtoupper( (string) ( $args['method'] ?? 'GET' ) );
+
+				if ( 'POST' === $method && str_contains( $url, 'webhooks/endpoints' ) ) {
+					if ( 200 !== $post_status ) {
+						return self::json_response(
+							$post_status,
+							array(
+								'status'  => $post_status,
+								'message' => 'Limite de endpoints de webhook atingido.',
+								'data'    => null,
+							)
+						);
+					}
+
+					$body = json_decode( (string) ( $args['body'] ?? '' ), true );
+
+					return self::json_response(
+						200,
+						array(
+							'status'  => 200,
+							'message' => '',
+							'data'    => array_merge( is_array( $body ) ? $body : array(), array( 'id' => 'ep_new' ) ),
+						)
+					);
+				}
+
+				if ( str_contains( $url, '/secret' ) ) {
+					return self::json_response(
+						200,
+						array(
+							'status'  => 200,
+							'message' => '',
+							'data'    => array( 'secret' => 'whsec_' . base64_encode( 'cli-test-signing-key' ) ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- The whsec_ format is base64 by definition.
+						)
+					);
+				}
+
+				return self::json_response(
+					200,
+					array(
+						'status'  => 200,
+						'message' => '',
+						'data'    => $endpoints,
+					)
+				);
+			},
+			10,
+			3
+		);
+	}
+
+	/**
+	 * The intercepted writes, oldest first.
+	 *
+	 * @param string $method HTTP method to select.
+	 *
+	 * @return array<int, array{url: string, args: array<string, mixed>}>
+	 */
+	private function writes( string $method = 'PUT' ): array {
+		return array_values(
+			array_filter(
+				$this->requests,
+				static fn( array $request ): bool => strtoupper( (string) ( $request['args']['method'] ?? 'GET' ) ) === $method
 			)
 		);
 	}

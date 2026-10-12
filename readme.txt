@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,7 +99,7 @@ No. An hourly job re-checks every open document. The webhook only makes the upda
 
 = Is the webhook endpoint secure? =
 
-The endpoint carries a 32-character secret token generated for this site, compared in constant time. A delivery never writes anything from its body: the plugin re-fetches the document from the API and writes that. The plugin does not verify delivery signatures; the token authenticates each delivery.
+The endpoint carries a 32-character secret token generated for this site, compared in constant time. Registered endpoints sign every delivery (Standard Webhooks); once a signing secret is configured — stored automatically on API-key sites, pasted from the Assinafy dashboard on OAuth sites — unsigned or stale deliveries are refused. Either way, a delivery never writes anything from its body: the plugin re-fetches the document from the API and writes that.
 
 = Does it need WooCommerce? =
 
@@ -147,6 +147,14 @@ Assinafy delivers status notifications back to this site over the webhook endpoi
 Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 == Changelog ==
+
+= 1.3.0 =
+* Webhook deliveries are signed (Standard Webhooks): registration manages this site's own endpoint with signing enabled, and unsigned or stale deliveries are refused once a secret is configured — stored automatically on API-key sites, pasted from the Assinafy dashboard on OAuth sites.
+* Registering the webhook no longer replaces another integration's endpoint; each site manages its own (accounts support up to three endpoints on paid plans).
+* Updates the bundled Assinafy SDK to 2.6.2.
+* The signature deadline must be at least one hour in the future, matching the API's rule.
+* A rate-limited OAuth token refresh no longer disconnects the site.
+* Fixes the rename action's availability, signer names in document activities, and the deletable-status fallback after an API outage.
 
 = 1.2.1 =
 * Security: updates development dependencies to fix the proxy-addr advisory.

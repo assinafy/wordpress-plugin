@@ -218,7 +218,7 @@ final class SettingsAjaxTest extends WP_Ajax_UnitTestCase {
 
 	/**
 	 * The webhook registration endpoint is gated the same way, and a subscriber holding a
-	 * valid nonce must not be able to point the account's single webhook at anything.
+	 * valid nonce must not be able to register this site's webhook endpoint.
 	 */
 	public function test_register_webhook_requires_the_capability(): void {
 		$this->configure_plugin();
@@ -229,7 +229,7 @@ final class SettingsAjaxTest extends WP_Ajax_UnitTestCase {
 		$response = $this->dispatch( 'assinafy_register_webhook' );
 
 		$this->assertFalse( $response['success'] ?? true );
-		$this->assertSame( array(), $this->requests, 'A subscriber reached the webhook subscription.' );
+		$this->assertSame( array(), $this->requests, 'A subscriber reached the webhook endpoints.' );
 	}
 
 	/**

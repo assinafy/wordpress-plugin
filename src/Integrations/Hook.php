@@ -26,9 +26,10 @@ use WP_Error;
  *
  * Two actions are listened to:
  *
- * - `assinafy_send_document` sends inline. The calling request waits for three Assinafy API
- *   calls (upload, signer resolution, assignment) — typically one to two seconds. Use it from
- *   an admin screen or anywhere a person is waiting and wants to be told what happened.
+ * - `assinafy_send_document` sends inline. The calling request waits for four Assinafy API
+ *   calls (signer resolution, upload, cost estimate, assignment) — typically one to two
+ *   seconds. Use it from an admin screen or anywhere a person is waiting and wants to be
+ *   told what happened.
  * - `assinafy_send_document_async` schedules the same send with `wp_schedule_single_event()`
  *   and returns immediately. Use it from a front-end request, a payment callback or anything
  *   else that must not block on a third-party API. WordPress refuses a second identical

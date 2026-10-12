@@ -7,6 +7,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-12
+
+### Added
+
+- Webhook deliveries are signed following the Standard Webhooks specification. Registration creates or updates this site's own webhook endpoint with signing enabled, and an unsigned, badly signed or stale delivery is refused once a signing secret is configured. API-key sites store the endpoint's secret automatically; OAuth sites paste it from the Assinafy dashboard into the new encrypted Signing secret field.
+- Every site manages its own webhook endpoint — an account has one, or up to three on paid plans — so registering no longer replaces another integration's endpoint, and `wp assinafy webhook status` lists every endpoint on the account.
+- Brazilian Portuguese translations for the new settings strings.
+
+### Changed
+
+- Update the bundled Assinafy SDK to 2.6.2.
+- The signature deadline must be at least one hour in the future, matching the API's rule.
+- Update the API payload and SDK references to the current published contract.
+
+### Fixed
+
+- A rate-limited OAuth token refresh no longer disconnects the site; the refresh is retried later with the same grant.
+- The rename action is offered only while the API allows it (`uploaded` or `metadata_ready`).
+- Document activities name the signer from the event field the API actually sends.
+- The fallback list of deletable statuses no longer keeps answering for a day after the API recovers.
+
 ## [1.2.1] - 2026-10-11
 
 ### Security

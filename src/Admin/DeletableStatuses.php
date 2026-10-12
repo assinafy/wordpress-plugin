@@ -80,15 +80,16 @@ final class DeletableStatuses {
 						}
 					}
 
+					// Only the API's own answer is cached: caching the fallback would keep
+					// answering it for a day after the API came back.
 					if ( array() !== $fresh ) {
 						$map = $fresh;
+						set_transient( self::STATUSES_TRANSIENT, $map, DAY_IN_SECONDS );
 					}
 				} catch ( \Throwable $e ) {
 					unset( $e );
 				}
 			}
-
-			set_transient( self::STATUSES_TRANSIENT, $map, DAY_IN_SECONDS );
 		}
 
 		return (bool) ( $map[ $status ] ?? false );
