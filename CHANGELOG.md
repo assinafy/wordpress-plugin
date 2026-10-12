@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-12
+
+### Fixed
+
+- Disconnecting OAuth after an interrupted token refresh again reports that revocation is unconfirmed and asks the administrator to revoke the app in Assinafy Connected Apps, because the rotated grant may still be active.
+
 ## [1.3.0] - 2026-10-12
 
 ### Added

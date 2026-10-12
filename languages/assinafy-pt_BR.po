@@ -1142,10 +1142,6 @@ msgstr "O código de conexão do Assinafy é inválido. Tente novamente."
 msgid "Assinafy has been disconnected."
 msgstr "O Assinafy foi desconectado."
 
-#: src/OAuthConnection.php:177
-msgid "Assinafy was already disconnected from this site."
-msgstr "A Assinafy já estava desconectada deste site."
-
 #: src/OAuthConnection.php:178
 msgid ""
 "This site is disconnected, but Assinafy could not confirm revocation. Revoke "

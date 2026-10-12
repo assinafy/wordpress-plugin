@@ -125,8 +125,8 @@ final class OAuthConnectionTest extends TestCase {
 		$this->assertSame( array(), FakeHttp::$requests );
 	}
 
-	/** A grant a crashed refresh already dropped has nothing left to revoke or remove. */
-	public function test_disconnecting_a_connection_dropped_by_a_crashed_refresh_says_so(): void {
+	/** A crashed refresh may have rotated a grant this site can no longer revoke. */
+	public function test_disconnecting_after_a_crashed_refresh_asks_for_manual_revocation(): void {
 		$credentials = new Credentials();
 		$credentials->set_oauth_connection(
 			array(
@@ -141,7 +141,7 @@ final class OAuthConnectionTest extends TestCase {
 		update_option( OAuthTokens::OPTION_REFRESH_LOCK, ( time() - 1 ) . ':crashed-request:' . hash( 'sha256', 'old-refresh' ) );
 
 		$method = new ReflectionMethod( OAuthConnection::class, 'disconnect_current' );
-		$this->assertSame( 'already_disconnected', $method->invoke( new OAuthConnection( $credentials ) ) );
+		$this->assertSame( 'remote_failed', $method->invoke( new OAuthConnection( $credentials ) ) );
 		$this->assertNull( $credentials->oauth_connection() );
 		$this->assertSame( array(), FakeHttp::$requests );
 		$this->assertFalse( get_option( OAuthTokens::OPTION_REFRESH_LOCK ) );

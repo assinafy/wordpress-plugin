@@ -173,13 +173,12 @@ final class OAuthConnection {
 		check_admin_referer( 'assinafy_oauth_disconnect' );
 		$result   = $this->disconnect_current();
 		$messages = array(
-			'success'              => __( 'Assinafy has been disconnected.', 'assinafy' ),
-			'already_disconnected' => __( 'Assinafy was already disconnected from this site.', 'assinafy' ),
-			'remote_failed'        => __( 'This site is disconnected, but Assinafy could not confirm revocation. Revoke the app in Assinafy Connected Apps.', 'assinafy' ),
-			'local_failed'         => __( 'Assinafy could not remove the connection from this site. Try again.', 'assinafy' ),
-			'busy'                 => __( 'Assinafy is renewing the connection. Try again shortly.', 'assinafy' ),
+			'success'       => __( 'Assinafy has been disconnected.', 'assinafy' ),
+			'remote_failed' => __( 'This site is disconnected, but Assinafy could not confirm revocation. Revoke the app in Assinafy Connected Apps.', 'assinafy' ),
+			'local_failed'  => __( 'Assinafy could not remove the connection from this site. Try again.', 'assinafy' ),
+			'busy'          => __( 'Assinafy is renewing the connection. Try again shortly.', 'assinafy' ),
 		);
-		$this->finish( 'success' === $result || 'already_disconnected' === $result ? 'success' : 'error', $messages[ $result ] );
+		$this->finish( 'success' === $result ? 'success' : 'error', $messages[ $result ] );
 	}
 
 	/**
@@ -191,15 +190,15 @@ final class OAuthConnection {
 	 * with nothing on this site able to revoke it. Only the grant revoked is deleted; one a
 	 * reconnection saved meanwhile stays.
 	 *
-	 * @return string success, already_disconnected, remote_failed, local_failed, or busy while a refresh holds the lock.
+	 * @return string success, remote_failed, local_failed, or busy while a refresh holds the lock.
 	 */
 	public function disconnect_current(): string {
 		$lock    = new RefreshLock( $this->credentials );
 		$claimed = $lock->claim();
 		if ( true !== $claimed ) {
-			// An error means the grant is already gone: a refresh that may have spent the token
-			// dropped it, so there is nothing left to revoke or remove.
-			return $claimed instanceof WP_Error ? 'already_disconnected' : 'busy';
+			// An error means a refresh that may have spent the token already dropped the local
+			// grant. The rotated grant can still be live remotely, so revocation is unconfirmed.
+			return $claimed instanceof WP_Error ? 'remote_failed' : 'busy';
 		}
 
 		try {

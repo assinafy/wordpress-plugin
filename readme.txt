@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -148,6 +148,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.3.1 =
+* Disconnecting OAuth after an interrupted token refresh again asks you to revoke the app in Assinafy Connected Apps, because that grant may still be active.
+
 = 1.3.0 =
 * Webhook deliveries are signed (Standard Webhooks): registration manages this site's own endpoint with signing enabled, and unsigned or stale deliveries are refused once a secret is configured — stored automatically on API-key sites, pasted from the Assinafy dashboard on OAuth sites.
 * Registering the webhook no longer replaces another integration's endpoint; each site manages its own (accounts support up to three endpoints on paid plans).
@@ -192,6 +195,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.3.1 =
+Restores the manual revocation notice when disconnecting OAuth after an interrupted token refresh.
 
 = 1.2.1 =
 Maintenance release with dependency security updates.
