@@ -10,6 +10,13 @@ share the same send service.
 The HTTP examples show the legacy/Sandbox API key; a Production OAuth connection uses
 `Authorization: Bearer {ACCESS_TOKEN}` on the same endpoints.
 
+Beyond the Email flow below, hooks and the shared service accept `Whatsapp`,
+`DigitalCertificate` (A1/A3) and `IdDocumentFaceMatchBasic` (biometric). Certificates and biometric
+verification accept one Email or Whatsapp notification and require an existing signer with
+government ID configured; biometric verification requires a valid CPF and consent on the hosted
+flow. When biometric review is required, certification waits for account approval in Assinafy.
+See [methods and requirements](../README.en.md#verification-and-notification-methods).
+
 ### Step 0 — Validate locally, before spending a request
 
 Core validates the optional source, credentials, file selection, signer identities,

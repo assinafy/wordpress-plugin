@@ -572,7 +572,7 @@ final class DocumentRecordTest extends TestCase {
 	}
 
 	/**
-	 * Exactly the eleven codes `GET /documents/statuses` returns. There is no `ready` code,
+	 * The supported codes `GET /documents/statuses` returns. There is no `ready` code,
 	 * whatever `DocumentResource::STATUS_READY` suggests, and an unrecognised code is shown
 	 * as-is rather than blanked.
 	 */
@@ -583,6 +583,7 @@ final class DocumentRecordTest extends TestCase {
 			'metadata_processing',
 			'metadata_ready',
 			'pending_signature',
+			'pending_identity_review',
 			'certificating',
 			'certificated',
 			'rejected_by_signer',

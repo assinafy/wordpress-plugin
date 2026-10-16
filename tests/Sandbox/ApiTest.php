@@ -14,6 +14,7 @@ use Assinafy\SDK\Configuration;
 use Assinafy\SDK\Exceptions\ApiException;
 use Assinafy\SDK\Resources\DocumentResource;
 use Assinafy\WP\Http\WpHttpClient;
+use Assinafy\WP\Webhook\Route;
 
 /** Creates one disposable, unassigned PDF; no invitations or workspace settings changes. */
 final class ApiTest extends \WP_UnitTestCase {
@@ -28,6 +29,7 @@ final class ApiTest extends \WP_UnitTestCase {
 		$client = new AssinafyClient( $config, new WpHttpClient( $config ) );
 		$this->assertSame( $account, $client->accounts()->get()['id'] );
 		$this->assertNotEmpty( $client->documents()->statuses() );
+		$this->assertEmpty( array_diff( array_column( $client->webhooks()->eventTypes(), 'id' ), Route::EVENTS ), 'Every deployed event must be understood by the receiver.' );
 		$document = $client->documents()->upload( dirname( __DIR__ ) . '/fixtures/sample.pdf' );
 		$id       = (string) $document['id'];
 		$this->assertNotSame( '', $id );
@@ -35,20 +37,23 @@ final class ApiTest extends \WP_UnitTestCase {
 		try {
 			$this->assertSame( $id, $client->documents()->get( $id )['id'] );
 			$this->assertStringStartsWith( '%PDF-', $client->documents()->download( $id, DocumentResource::ARTIFACT_ORIGINAL ) );
-			foreach ( array( 'Email', 'Whatsapp', 'DigitalCertificate' ) as $method ) {
-				try {
-					$estimate = $client->assignments()->estimateCost(
-						$id,
-						array(
+			foreach ( array( 'Email', 'Whatsapp', 'DigitalCertificate', 'IdDocumentFaceMatchBasic' ) as $method ) {
+				$channels = in_array( $method, array( 'Email', 'Whatsapp' ), true ) ? array( $method ) : array( 'Email', 'Whatsapp' );
+				foreach ( $channels as $channel ) {
+					try {
+						$estimate = $client->assignments()->estimateCost(
+							$id,
 							array(
-								'verification_method'  => $method,
-								'notification_methods' => array( 'Whatsapp' === $method ? 'Whatsapp' : 'Email' ),
-							),
-						)
-					);
-					$this->assertArrayHasKey( 'breakdown', $estimate, $method );
-				} catch ( ApiException $error ) {
-					$refused[] = $method . ': HTTP ' . $error->getStatusCode() . ' ' . $error->getMessage();
+								array(
+									'verification_method'  => $method,
+									'notification_methods' => array( $channel ),
+								),
+							)
+						);
+						$this->assertArrayHasKey( 'breakdown', $estimate, $method );
+					} catch ( ApiException $error ) {
+						$refused[] = $method . '/' . $channel . ': HTTP ' . $error->getStatusCode() . ' ' . $error->getMessage();
+					}
 				}
 			}
 		} finally {

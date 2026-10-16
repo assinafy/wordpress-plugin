@@ -134,6 +134,16 @@ final class WebhookRegistrationAjaxTest extends WP_Ajax_UnitTestCase {
 			'url'    => $url,
 			'body'   => is_array( $body ) ? $body : array(),
 		);
+		if ( str_ends_with( $url, '/webhooks/event-types' ) ) {
+			return $this->json_response(
+				200,
+				array(
+					'status'  => 200,
+					'message' => '',
+					'data'    => array_map( static fn( string $event ): array => array( 'id' => $event ), Route::EVENTS ),
+				)
+			);
+		}
 
 		if ( 'POST' === $method ) {
 			if ( 200 !== $this->post_status ) {
@@ -466,6 +476,20 @@ final class WebhookRegistrationAjaxTest extends WP_Ajax_UnitTestCase {
 		$decoded = json_decode( $this->_last_response, true );
 
 		return is_array( $decoded ) ? $decoded : array();
+	}
+
+	/** A database failure must not be reported as a fully configured signed endpoint. */
+	public function test_registration_reports_a_secret_storage_failure(): void {
+		$refuse = static fn( mixed $value, mixed $old ): mixed => $old;
+		add_filter( 'pre_update_option_' . Settings::OPTION_WEBHOOK_SECRET_ENC, $refuse, PHP_INT_MAX, 2 );
+		try {
+			$response = $this->register();
+		} finally {
+			remove_filter( 'pre_update_option_' . Settings::OPTION_WEBHOOK_SECRET_ENC, $refuse, PHP_INT_MAX );
+		}
+		$this->assertFalse( $response['success'] ?? true );
+		$this->assertStringContainsString( 'signing secret could not be stored', $response['data']['message'] ?? '' );
+		$this->assertFalse( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );
 	}
 
 	/**

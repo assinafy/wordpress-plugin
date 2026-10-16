@@ -47,6 +47,8 @@ final class RequestFactory {
 		'POST verify',
 		'POST signature',
 		'GET signers/self',
+		'GET signers/identity-verification',
+		'POST signers/identity-verification',
 		'PUT signers/accept-terms',
 		'PUT signers/documents/sign-multiple',
 		'PUT signers/documents/decline-multiple',
@@ -66,7 +68,7 @@ final class RequestFactory {
 		'~^POST documents/[^/]+/assignments/(?!estimate-cost$)[^/]+$~',
 		'~^PUT documents/[^/]+/assignments/[^/]+/reject$~',
 		'~^GET signers/[^/]+/document$~',
-		'~^GET signers/[^/]+/documents(?:/search|/[^/]+/download/[^/]+)?$~',
+		'~^GET signers/[^/]+/documents/[^/]+/download/[^/]+$~',
 	);
 
 	/**
@@ -222,7 +224,7 @@ final class RequestFactory {
 			throw new \InvalidArgumentException( 'A request cannot contain both Authorization and X-Api-Key headers' );
 		}
 
-		$credentialless = self::is_credentialless_request( $method, $uri );
+		$credentialless = self::is_credentialless_request( $method, $uri, $options );
 		foreach ( $this->default_headers as $name => $value ) {
 			if ( self::skips_default_header( $name, $credentialless, $has_authorization, $has_api_key ) ) {
 				continue;
@@ -267,11 +269,17 @@ final class RequestFactory {
 	 *
 	 * @param string $method HTTP method.
 	 * @param string $uri    URI relative to the configured base URL.
+	 * @param array<string, mixed> $options Transport options, including the signer access code.
 	 */
-	private static function is_credentialless_request( string $method, string $uri ): bool {
+	private static function is_credentialless_request( string $method, string $uri, array $options ): bool {
 		$path  = wp_parse_url( $uri, PHP_URL_PATH );
 		$path  = is_string( $path ) ? ltrim( $path, '/' ) : '';
 		$route = strtoupper( $method ) . ' ' . $path;
+		if ( 1 === preg_match( '~^GET signers/[^/]+/documents(?:/search)?$~', $route ) ) {
+			$query = array();
+			wp_parse_str( (string) wp_parse_url( $uri, PHP_URL_QUERY ), $query );
+			return isset( $query['signer-access-code'] ) || isset( $options['query']['signer-access-code'] );
+		}
 
 		if ( in_array( $route, self::CREDENTIALLESS_ROUTES, true ) ) {
 			return true;

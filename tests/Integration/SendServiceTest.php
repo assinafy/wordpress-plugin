@@ -548,9 +548,11 @@ final class SendServiceTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * Digital certificates permit either notification channel; the requested one is retained.
+	 * Identity methods permit either notification channel; preserve both on the wire.
+	 *
+	 * @dataProvider identity_channels
 	 */
-	public function test_digital_certificate_signers_keep_whatsapp_notifications(): void {
+	public function test_identity_signers_keep_their_notifications( string $method, string $channel ): void {
 		$this->fake_successful_send();
 		$result = $this->service->send(
 			$this->args(
@@ -558,8 +560,8 @@ final class SendServiceTest extends AssinafyTestCase {
 					'signers' => array(
 						array(
 							'id'                   => self::SIGNER_ID,
-							'verification_method'  => 'DigitalCertificate',
-							'notification_methods' => array( 'Whatsapp' ),
+							'verification_method'  => $method,
+							'notification_methods' => array( $channel ),
 						),
 					),
 				)
@@ -568,8 +570,22 @@ final class SendServiceTest extends AssinafyTestCase {
 		$this->assertIsInt( $result );
 		$request = end( $this->requests );
 		$body    = json_decode( (string) $request['args']['body'], true );
-		$this->assertSame( 'DigitalCertificate', $body['signers'][0]['verification_method'] );
-		$this->assertSame( array( 'Whatsapp' ), $body['signers'][0]['notification_methods'] );
+		$this->assertSame( $method, $body['signers'][0]['verification_method'] );
+		$this->assertSame( array( $channel ), $body['signers'][0]['notification_methods'] );
+		$estimate = array_values( array_filter( $this->requests, static fn( array $request ): bool => str_ends_with( $request['url'], '/estimate-cost' ) ) );
+		$priced   = json_decode( (string) $estimate[0]['args']['body'], true );
+		$this->assertSame( $method, $priced['signers'][0]['verification_method'] );
+		$this->assertSame( array( $channel ), $priced['signers'][0]['notification_methods'] );
+	}
+
+	/** @return array<string, array{string, string}> */
+	public static function identity_channels(): array {
+		return array(
+			'certificate email'    => array( 'DigitalCertificate', 'Email' ),
+			'certificate whatsapp' => array( 'DigitalCertificate', 'Whatsapp' ),
+			'biometric email'      => array( 'IdDocumentFaceMatchBasic', 'Email' ),
+			'biometric whatsapp'   => array( 'IdDocumentFaceMatchBasic', 'Whatsapp' ),
+		);
 	}
 
 	/**

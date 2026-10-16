@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.3.1
+Stable tag: 1.4.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,13 +49,14 @@ Use `assinafy_send_document_async` for the same thing on a scheduled event. Stat
 
 = Verification methods =
 
-Assinafy offers three, and a signer uses one of them:
+Assinafy offers four, and a signer uses one of them:
 
 * **Email** (the default) &mdash; the signer receives a one-time code by email. No credits.
 * **WhatsApp** &mdash; the code arrives over WhatsApp. Requires a phone number and a paid Assinafy plan.
 * **Digital certificate** &mdash; the signer signs with their own ICP-Brasil certificate. Requires the Digital Certificate feature on the Assinafy account, and the signer must be alone in their signing step.
+* **Biometric** &mdash; `IdDocumentFaceMatchBasic` uses government ID photos and a liveness check on Assinafy's hosted page with explicit signer consent. Requires the account feature and an existing signer with a valid CPF. Certification waits for account approval if identity review is required.
 
-The send screen uses email verification, and falls back to WhatsApp for a signer entered with a phone number and no address. The other methods are available to code that calls the `assinafy_send_document` action or WP-CLI.
+The send screen and WP-CLI send command use email verification. All four methods are available to code that calls the `assinafy_send_document` action or shared send service. DigitalCertificate covers A1 and A3. Certificates and biometric verification allow either Email or WhatsApp notifications.
 
 Signing happens on Assinafy's own hosted pages, not inside WordPress. This plugin composes the request, stores the document and assignment identifiers, and fetches status and files back.
 
@@ -99,7 +100,7 @@ No. An hourly job re-checks every open document. The webhook only makes the upda
 
 = Is the webhook endpoint secure? =
 
-The endpoint carries a 32-character secret token generated for this site, compared in constant time. Registered endpoints sign every delivery (Standard Webhooks); once a signing secret is configured — stored automatically on API-key sites, pasted from the Assinafy dashboard on OAuth sites — unsigned or stale deliveries are refused. Either way, a delivery never writes anything from its body: the plugin re-fetches the document from the API and writes that.
+The endpoint carries a 32-character secret token generated for this site, compared in constant time. Registration stores the Standard Webhooks signing secret returned on creation, including for OAuth connections. API-key sites can also retrieve it later. With a secret configured, unsigned, stale or unverifiable deliveries are refused. OAuth cannot re-read a lost secret: restore a saved copy or delete and recreate the endpoint. A delivery never writes state from its body: the plugin re-fetches the document from the API.
 
 = Does it need WooCommerce? =
 
@@ -115,7 +116,7 @@ In your Assinafy account. WordPress stores the identifiers and streams the file 
 
 = What does it cost to send? =
 
-One document from your Assinafy plan allowance. Email invitations cost no credits; WhatsApp costs 0.45 credits per signer and a digital-certificate signature costs 2 credits. If the balance is short, the request is refused before the file is uploaded.
+One document from your Assinafy plan allowance. Email invitations cost no credits; WhatsApp costs 0.45 credits per signer and a digital-certificate signature costs 0.5 credits in addition to notification cost. Biometric pricing comes from the account's estimate. The plugin estimates after upload and before requesting signatures; if the balance is short, the uploaded PDF remains available and no assignment is created.
 
 == External services ==
 
@@ -147,6 +148,12 @@ Assinafy delivers status notifications back to this site over the webhook endpoi
 Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Privacy Policy](https://www.assinafy.com.br/politica-de-privacidade).
 
 == Changelog ==
+
+= 1.4.0 =
+* Adds biometric verification, Email/WhatsApp notifications for identity methods, and identity-review status updates.
+* Stores signing secrets returned at webhook creation, including for OAuth, and refuses deliveries with an unreadable secret.
+* Fixes workspace/signer authentication and protects foreign webhook endpoints from stale stored IDs.
+* Includes Assinafy PHP SDK 2.7.0.
 
 = 1.3.1 =
 * Disconnecting OAuth after an interrupted token refresh again asks you to revoke the app in Assinafy Connected Apps, because that grant may still be active.
@@ -195,6 +202,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Adds biometric verification and signed OAuth webhook registration. Restore or recreate the endpoint if its signing secret is lost.
 
 = 1.3.1 =
 Restores the manual revocation notice when disconnecting OAuth after an interrupted token refresh.

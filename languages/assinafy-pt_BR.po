@@ -3,10 +3,10 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Assinafy 1.2.1\n"
+"Project-Id-Version: Assinafy 1.4.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/assinafy\n"
-"POT-Creation-Date: 2026-10-12T13:11:03+00:00\n"
-"PO-Revision-Date: 2026-09-24 13:42-0400\n"
+"POT-Creation-Date: 2026-10-16T17:08:16+00:00\n"
+"PO-Revision-Date: 2026-10-16 13:00-0400\n"
 "Last-Translator: Assinafy\n"
 "Language-Team: Portugues do Brasil\n"
 "Language: pt_BR\n"
@@ -126,7 +126,7 @@ msgid "No signers recorded yet."
 msgstr "Nenhum signatário registrado ainda."
 
 #: src/Admin/DocumentMetaBox.php:169 src/Admin/SendScreen.php:176
-#: src/Documents/DocumentPostType.php:117
+#: src/Documents/DocumentPostType.php:118
 msgid "Signers"
 msgstr "Signatários"
 
@@ -146,7 +146,7 @@ msgstr "Progresso"
 msgid "Signing link"
 msgstr "Link de assinatura"
 
-#: src/Admin/DocumentMetaBox.php:192 src/Documents/DocumentPostType.php:215
+#: src/Admin/DocumentMetaBox.php:192 src/Documents/DocumentPostType.php:216
 #: src/Privacy.php:180
 msgid "Signed"
 msgstr "Assinado"
@@ -161,11 +161,9 @@ msgstr "Ainda não convidado"
 
 #: src/Admin/DocumentMetaBox.php:206
 msgid ""
-"The link does not sign anyone in on its own: Assinafy emails the signer a "
-"one-time code when they open it."
-msgstr ""
-"O link sozinho não autentica ninguém: ao abri-lo, o signatário recebe do "
-"Assinafy um código de uso único por e-mail."
+"Assinafy verifies each signer using the requested method: an email or "
+"WhatsApp code, biometric identity verification, or an ICP-Brasil certificate."
+msgstr "A Assinafy verifica cada signatário pelo método solicitado: código por e-mail ou WhatsApp, verificação biométrica de identidade ou certificado ICP-Brasil."
 
 #: src/Admin/DocumentMetaBox.php:221
 msgid "No longer needed"
@@ -204,7 +202,7 @@ msgid "Downloads"
 msgstr "Downloads"
 
 #: src/Admin/DocumentMetaBox.php:289 src/Admin/SendScreen.php:185
-#: src/Documents/DocumentPostType.php:119
+#: src/Documents/DocumentPostType.php:120
 msgid "Actions"
 msgstr "Ações"
 
@@ -289,8 +287,8 @@ msgstr "Cada signatário deve ter um endereço de e-mail diferente."
 msgid "You are not allowed to send documents for signature."
 msgstr "Você não tem permissão para enviar documentos para assinatura."
 
-#: src/Admin/SendScreen.php:160 src/Documents/DocumentPostType.php:247
-#: src/Documents/DocumentPostType.php:250
+#: src/Admin/SendScreen.php:160 src/Documents/DocumentPostType.php:248
+#: src/Documents/DocumentPostType.php:251
 #: src/Integrations/WooCommerceProductTab.php:98 src/Privacy.php:152
 msgid "Document"
 msgstr "Documento"
@@ -355,10 +353,10 @@ msgid ""
 "cost no credits. If the balance is short, the uploaded document remains "
 "available for recovery and no signature request is created."
 msgstr ""
-"O envio consome um documento do seu saldo da Assinafy. Convites por "
-"e-mail não custam créditos. Se o saldo for insuficiente, o documento "
-"enviado permanece disponível para recuperação e nenhuma solicitação de "
-"assinatura é criada."
+"O envio consome um documento do seu saldo da Assinafy. Convites por e-mail "
+"não custam créditos. Se o saldo for insuficiente, o documento enviado "
+"permanece disponível para recuperação e nenhuma solicitação de assinatura é "
+"criada."
 
 #: src/Admin/SendScreen.php:253 src/Privacy.php:164
 msgid "Signer name"
@@ -472,8 +470,8 @@ msgid ""
 "untouched."
 msgstr ""
 "Uma conta da Assinafy tem um endpoint de webhook, ou até três em planos "
-"pagos. O registro adiciona ou atualiza o endpoint deste site e não altera "
-"os demais."
+"pagos. O registro adiciona ou atualiza o endpoint deste site e não altera os "
+"demais."
 
 #. translators: %s: webhook endpoint ID on the Assinafy account.
 #: src/Admin/WebhookSettings.php:71
@@ -495,25 +493,21 @@ msgstr "Cole o valor whsec_"
 
 #: src/Admin/WebhookSettings.php:114
 msgid ""
-"OAuth connections cannot read the endpoint's signing secret through the API. "
-"Copy the whsec_ value from the endpoint in the Assinafy dashboard and paste "
-"it here; it is stored encrypted, and leaving the field blank keeps the "
-"stored one. With a secret configured, unsigned or stale deliveries are "
-"refused."
-msgstr ""
-"Conexões OAuth não conseguem ler a chave de assinatura do endpoint pela "
-"API. Copie o valor whsec_ do endpoint no painel da Assinafy e cole aqui; "
-"ele é armazenado criptografado, e deixar o campo em branco mantém o valor "
-"salvo. Com uma chave configurada, entregas sem assinatura ou fora da "
-"janela de validade são recusadas."
+"Registration stores the signing secret returned when the endpoint is "
+"created. OAuth cannot read it again through the API. To restore a saved "
+"whsec_ value, paste it here; otherwise delete the endpoint in Assinafy, then "
+"register this site again to create a new one. Leaving the field blank keeps "
+"the stored secret. Unsigned or stale deliveries are refused when a secret is "
+"configured."
+msgstr "O registro armazena o segredo de assinatura retornado na criação do endpoint. OAuth não pode lê-lo novamente pela API. Para restaurar uma cópia salva do valor whsec_, cole-a aqui; caso contrário, exclua o endpoint na Assinafy e registre este site novamente para criar outro. Deixar o campo em branco mantém o segredo salvo. Entregas sem assinatura ou fora da janela de validade são recusadas quando há um segredo configurado."
 
 #: src/Admin/WebhookSettings.php:121
 msgid ""
 "Managed automatically: registration reads the endpoint's secret from the "
 "API. A signing secret is currently configured."
 msgstr ""
-"Gerenciada automaticamente: o registro lê a chave do endpoint pela API. "
-"Uma chave de assinatura está configurada no momento."
+"Gerenciada automaticamente: o registro lê a chave do endpoint pela API. Uma "
+"chave de assinatura está configurada no momento."
 
 #: src/Admin/WebhookSettings.php:122
 msgid ""
@@ -521,8 +515,8 @@ msgid ""
 "API. No signing secret is stored yet — register this site to fetch one."
 msgstr ""
 "Gerenciada automaticamente: o registro lê a chave do endpoint pela API. "
-"Nenhuma chave de assinatura está armazenada ainda — registre este site "
-"para obtê-la."
+"Nenhuma chave de assinatura está armazenada ainda — registre este site para "
+"obtê-la."
 
 #: src/ConnectionSettings.php:33
 msgid "Connection"
@@ -690,86 +684,90 @@ msgid "Awaiting signatures"
 msgstr "Aguardando assinaturas"
 
 #: src/Documents/DocumentPostType.php:95
+msgid "Awaiting identity review"
+msgstr "Aguardando revisão de identidade"
+
+#: src/Documents/DocumentPostType.php:96
 msgid "All signed — certifying"
 msgstr "Todos assinaram — certificando"
 
-#: src/Documents/DocumentPostType.php:96
+#: src/Documents/DocumentPostType.php:97
 msgid "Signed and certified"
 msgstr "Assinado e certificado"
 
-#: src/Documents/DocumentPostType.php:97
+#: src/Documents/DocumentPostType.php:98
 msgid "Declined by a signer"
 msgstr "Recusado por um signatário"
 
-#: src/Documents/DocumentPostType.php:98
+#: src/Documents/DocumentPostType.php:99
 msgid "Cancelled"
 msgstr "Cancelado"
 
-#: src/Documents/DocumentPostType.php:99
+#: src/Documents/DocumentPostType.php:100
 msgid "Expired"
 msgstr "Expirado"
 
-#: src/Documents/DocumentPostType.php:100
+#: src/Documents/DocumentPostType.php:101
 msgid "Failed"
 msgstr "Falhou"
 
-#: src/Documents/DocumentPostType.php:116 src/Privacy.php:160
+#: src/Documents/DocumentPostType.php:117 src/Privacy.php:160
 msgid "Status"
 msgstr "Status"
 
-#: src/Documents/DocumentPostType.php:118
+#: src/Documents/DocumentPostType.php:119
 msgid "Sent"
 msgstr "Enviado em"
 
-#: src/Documents/DocumentPostType.php:165
+#: src/Documents/DocumentPostType.php:166
 msgid "Not synced"
 msgstr "Não sincronizado"
 
-#: src/Documents/DocumentPostType.php:184
+#: src/Documents/DocumentPostType.php:185
 msgid "No assignment yet"
 msgstr "Sem solicitação ainda"
 
 #. translators: 1: number of signers who have signed, 2: total number of signers.
-#: src/Documents/DocumentPostType.php:197
+#: src/Documents/DocumentPostType.php:198
 #, php-format
 msgid "%1$d of %2$d signed"
 msgstr "%1$d de %2$d assinaram"
 
-#: src/Documents/DocumentPostType.php:214
+#: src/Documents/DocumentPostType.php:215
 msgid "Original"
 msgstr "Original"
 
-#: src/Documents/DocumentPostType.php:216
+#: src/Documents/DocumentPostType.php:217
 msgid "Certificate"
 msgstr "Certificação"
 
-#: src/Documents/DocumentPostType.php:217
+#: src/Documents/DocumentPostType.php:218
 msgid "PAdES"
 msgstr "PAdES"
 
-#: src/Documents/DocumentPostType.php:218
+#: src/Documents/DocumentPostType.php:219
 msgid "Bundle"
 msgstr "Pacote"
 
-#: src/Documents/DocumentPostType.php:246
-#: src/Documents/DocumentPostType.php:248
+#: src/Documents/DocumentPostType.php:247
 #: src/Documents/DocumentPostType.php:249
+#: src/Documents/DocumentPostType.php:250
 msgid "Documents"
 msgstr "Documentos"
 
-#: src/Documents/DocumentPostType.php:251
+#: src/Documents/DocumentPostType.php:252
 msgid "View document"
 msgstr "Ver documento"
 
-#: src/Documents/DocumentPostType.php:252
+#: src/Documents/DocumentPostType.php:253
 msgid "Search documents"
 msgstr "Buscar documentos"
 
-#: src/Documents/DocumentPostType.php:253
+#: src/Documents/DocumentPostType.php:254
 msgid "No documents sent yet."
 msgstr "Nenhum documento enviado ainda."
 
-#: src/Documents/DocumentPostType.php:254
+#: src/Documents/DocumentPostType.php:255
 msgid "No documents in the trash."
 msgstr "Nenhum documento na lixeira."
 
@@ -912,11 +910,9 @@ msgstr "O ID do signatário não é válido."
 #: src/Documents/Signers.php:179
 msgid ""
 "The selected verification method requires matching contact details, or an "
-"existing signer id for digital certificates."
-msgstr ""
-"O método de verificação selecionado exige os dados de contato "
-"correspondentes ou, no caso de certificados digitais, o ID de um signatário "
-"existente."
+"existing signer id with government ID for digital certificates and biometric "
+"verification."
+msgstr "O método de verificação selecionado exige dados de contato correspondentes ou o ID de um signatário existente com documento de identificação para certificados digitais e verificação biométrica."
 
 #: src/Documents/Signers.php:204
 msgid "Every signer needs a name."
@@ -930,21 +926,17 @@ msgstr "Um dos e-mails de signatário não é válido."
 msgid "Every signer needs an email address or a WhatsApp number."
 msgstr "Todo signatário precisa de um e-mail ou de um número de WhatsApp."
 
-#: src/Documents/Signers.php:243
+#: src/Documents/Signers.php:244
 msgid ""
 "The signer notification channel must match its verification method; digital "
-"certificates support Email or Whatsapp."
-msgstr ""
-"O canal de notificação do signatário deve corresponder ao método de "
-"verificação; certificados digitais permitem e-mail ou WhatsApp."
+"certificates and biometric verification support Email or Whatsapp."
+msgstr "O canal de notificação do signatário deve corresponder ao método de verificação; certificados digitais e verificação biométrica permitem Email ou Whatsapp."
 
-#: src/Documents/Signers.php:262
+#: src/Documents/Signers.php:266
 msgid ""
-"Choose a supported signer verification method: Email, Whatsapp or "
-"DigitalCertificate."
-msgstr ""
-"Escolha um método de verificação de signatário suportado: Email, Whatsapp "
-"ou DigitalCertificate."
+"Choose a supported signer verification method: Email, Whatsapp, "
+"DigitalCertificate or IdDocumentFaceMatchBasic."
+msgstr "Escolha um método de verificação de signatário suportado: Email, Whatsapp, DigitalCertificate ou IdDocumentFaceMatchBasic."
 
 #: src/Documents/SourceReference.php:45
 msgid ""
@@ -970,7 +962,7 @@ msgid "Assinafy returned an invalid or mismatched document."
 msgstr "O Assinafy retornou um documento inválido ou diferente do solicitado."
 
 #. translators: %s: Assinafy API host, such as api.assinafy.com.br.
-#: src/Http/RequestFactory.php:134
+#: src/Http/RequestFactory.php:136
 #, php-format
 msgid ""
 "Without the PHP cURL extension, WordPress cannot send Assinafy requests "
@@ -1142,7 +1134,7 @@ msgstr "O código de conexão do Assinafy é inválido. Tente novamente."
 msgid "Assinafy has been disconnected."
 msgstr "O Assinafy foi desconectado."
 
-#: src/OAuthConnection.php:178
+#: src/OAuthConnection.php:177
 msgid ""
 "This site is disconnected, but Assinafy could not confirm revocation. Revoke "
 "the app in Assinafy Connected Apps."
@@ -1150,29 +1142,29 @@ msgstr ""
 "Este site foi desconectado, mas o Assinafy não confirmou a revogação. "
 "Revogue o aplicativo em Aplicativos conectados no Assinafy."
 
-#: src/OAuthConnection.php:179
+#: src/OAuthConnection.php:178
 msgid "Assinafy could not remove the connection from this site. Try again."
 msgstr ""
 "Não foi possível remover a conexão do Assinafy deste site. Tente novamente."
 
-#: src/OAuthConnection.php:180 src/OAuthTokens.php:125
+#: src/OAuthConnection.php:179 src/OAuthTokens.php:125
 msgid "Assinafy is renewing the connection. Try again shortly."
 msgstr "O Assinafy está renovando a conexão. Tente novamente em instantes."
 
-#: src/OAuthConnection.php:235 src/Settings.php:405
+#: src/OAuthConnection.php:234 src/Settings.php:405
 msgid "You are not allowed to manage Assinafy settings."
 msgstr "Você não tem permissão para gerenciar as configurações do Assinafy."
 
-#: src/OAuthConnection.php:242
+#: src/OAuthConnection.php:241
 msgid "OAuth is available in Production. Sandbox still uses an API key."
 msgstr ""
 "O OAuth está disponível em Produção. O Sandbox ainda usa uma chave de API."
 
-#: src/OAuthConnection.php:245
+#: src/OAuthConnection.php:244
 msgid "The Assinafy WordPress OAuth app is awaiting registration."
 msgstr "O aplicativo OAuth do Assinafy para WordPress aguarda cadastro."
 
-#: src/OAuthConnection.php:248
+#: src/OAuthConnection.php:247
 msgid "Connect from an HTTPS WordPress admin page."
 msgstr ""
 "Conecte-se a partir de uma página de administração do WordPress com HTTPS."
@@ -1358,19 +1350,25 @@ msgstr "O corpo da entrega não é um JSON válido."
 msgid "Delivery is missing a numeric id."
 msgstr "A entrega não tem um id numérico."
 
-#: src/Webhook/Route.php:176
+#: src/Webhook/Route.php:186
 msgid "Invalid webhook endpoint."
 msgstr "Endpoint de webhook inválido."
 
-#: src/Webhook/Route.php:184
+#: src/Webhook/Route.php:194
 msgid "Invalid webhook signature."
 msgstr "Assinatura de webhook inválida."
 
-#: src/Webhook/Route.php:309
+#: src/Webhook/Route.php:318
 msgid "No webhook endpoint has been generated for this site yet."
 msgstr "Nenhum endpoint de webhook foi gerado para este site ainda."
 
-#: src/Webhook/Route.php:416
+#: src/Webhook/Route.php:336
+msgid ""
+"Assinafy returned no supported document webhook events. Try registering "
+"again later."
+msgstr "A Assinafy não retornou eventos de webhook de documentos compatíveis. Tente registrar novamente mais tarde."
+
+#: src/Webhook/Route.php:437
 msgid ""
 "This Assinafy account already has the maximum number of webhook endpoints — "
 "paid plans allow up to three. Remove one in the Assinafy dashboard before "
@@ -1379,6 +1377,20 @@ msgstr ""
 "Esta conta da Assinafy já tem o número máximo de endpoints de webhook — "
 "planos pagos permitem até três. Remova um no painel da Assinafy antes de "
 "registrar este site."
+
+#: src/Webhook/SigningSecret.php:88
+msgid ""
+"The webhook endpoint was registered, but its signing secret could not be "
+"stored. Register this site again or restore its signing secret before "
+"accepting deliveries."
+msgstr "O endpoint de webhook foi registrado, mas não foi possível armazenar seu segredo de assinatura. Registre este site novamente ou restaure o segredo antes de aceitar entregas."
+
+#~ msgid ""
+#~ "The link does not sign anyone in on its own: Assinafy emails the signer a "
+#~ "one-time code when they open it."
+#~ msgstr ""
+#~ "O link sozinho não autentica ninguém: ao abri-lo, o signatário recebe do "
+#~ "Assinafy um código de uso único por e-mail."
 
 #~ msgid ""
 #~ "Sending consumes one document from your Assinafy balance. Email "

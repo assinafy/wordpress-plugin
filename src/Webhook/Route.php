@@ -26,8 +26,8 @@ use WP_REST_Server;
  *
  * Deliveries authenticate in two layers. The URL token is the baseline: `permission_callback`
  * compares it with `hash_equals()` and is never `__return_true`. When a `whsec_` signing
- * secret is configured — stored by registration on API-key sites, pasted from the Assinafy
- * dashboard on OAuth sites — the delivery's Standard Webhooks signature is verified on top,
+ * secret is configured — stored by registration or restored from a saved copy — the
+ * delivery's Standard Webhooks signature is verified on top,
  * and an unsigned, badly signed or stale delivery fails with a 401. With no secret configured
  * the token alone authenticates, exactly as before, so the body is treated as a hint rather
  * than as truth either way (see {@see Handler}).
@@ -55,12 +55,12 @@ final class Route {
 	private const TOKEN_BYTES = 16;
 
 	/**
-	 * Every event `GET /webhooks/event-types` offers, in the order it returns them.
+	 * The documented document and signer events the receiver understands.
 	 *
-	 * Exactly fifteen. `template_created`, `template_processed` and
+	 * Twenty document and signer events. `template_created`, `template_processed` and
 	 * `template_processing_failed` exist as SDK constants and in the published event catalog
-	 * but are not subscribable, so they are absent here and are filtered out of any event
-	 * list handed to {@see self::subscribe()}.
+	 * but are not subscribable, so they are absent here. Registration also filters against
+	 * the target environment catalog returned by `GET /webhooks/event-types`.
 	 *
 	 * @var array<int, string>
 	 */
@@ -75,6 +75,11 @@ final class Route {
 		'signer_email_verified',
 		'signer_whatsapp_verified',
 		'signer_data_confirmed',
+		'signer_identity_verified',
+		'signer_identity_verification_failed',
+		'signer_identity_review_required',
+		'signer_identity_review_approved',
+		'signer_identity_review_rejected',
 		'signer_signed_document',
 		'signer_viewed_document',
 		'signer_rejected_document',
@@ -93,6 +98,11 @@ final class Route {
 	public const DEFAULT_EVENTS = array(
 		'document_metadata_ready',
 		'document_ready',
+		'signer_identity_verified',
+		'signer_identity_verification_failed',
+		'signer_identity_review_required',
+		'signer_identity_review_approved',
+		'signer_identity_review_rejected',
 		'signer_viewed_document',
 		'signer_signed_document',
 		'signer_rejected_document',
@@ -202,7 +212,7 @@ final class Route {
 		$secret = self::secret();
 
 		if ( '' === $secret ) {
-			return true;
+			return '' === (string) Settings::get( Settings::OPTION_WEBHOOK_SECRET_ENC );
 		}
 
 		try {
@@ -293,9 +303,8 @@ final class Route {
 	 * which is why a full plan fails with `assinafy_webhook_limit` rather than an offer to
 	 * take one over.
 	 *
-	 * On success the endpoint id is stored, and on API-key sites the endpoint's signing
-	 * secret is read and stored encrypted. OAuth applications cannot read endpoint secrets,
-	 * so an OAuth site keeps whatever the operator pasted into the settings field.
+	 * On success the endpoint id is stored and the creation secret encrypted. API-key sites
+	 * can re-read the secret; existing OAuth endpoints keep their saved secret.
 	 *
 	 * @param AssinafyClient     $client Configured API client.
 	 * @param string             $email  Address Assinafy alerts when delivery fails.
@@ -317,8 +326,17 @@ final class Route {
 		}
 
 		$existing = self::own_endpoint( $endpoints );
+		try {
+			$available = array_column( $client->webhooks()->eventTypes(), 'id' );
+		} catch ( \Throwable $e ) {
+			return self::error( $e );
+		}
+		$events = array_values( array_intersect( self::merged_events( $existing['events'] ?? null, $events ), $available ) );
+		if ( array() === $events ) {
+			return new WP_Error( 'assinafy_webhook_events_unavailable', __( 'Assinafy returned no supported document webhook events. Try registering again later.', 'assinafy' ) );
+		}
 
-		return self::write_endpoint( $client, $email, self::merged_events( $existing['events'] ?? null, $events ), $existing );
+		return self::write_endpoint( $client, $email, $events, $existing );
 	}
 
 	/**
@@ -357,9 +375,8 @@ final class Route {
 	/**
 	 * Update the matching endpoint, or create this site's own when none matches.
 	 *
-	 * On success the endpoint id is stored, and on API-key sites the endpoint's signing
-	 * secret is read and stored encrypted. OAuth applications cannot read endpoint secrets,
-	 * so an OAuth site keeps whatever the operator pasted into the settings field.
+	 * On success the endpoint id and creation secret are stored. API-key sites can also
+	 * re-read the secret; existing OAuth endpoints keep their saved secret.
 	 *
 	 * @param AssinafyClient            $client   Configured API client.
 	 * @param string                    $email    Address Assinafy alerts when delivery fails.
@@ -394,8 +411,12 @@ final class Route {
 
 		if ( '' !== $id ) {
 			update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, $id, false );
-			SigningSecret::store( $client, $id );
+			$error = SigningSecret::store( $client, $id, $endpoint );
+			if ( null !== $error ) {
+				return $error;
+			}
 		}
+		unset( $endpoint['secret'] );
 
 		return $endpoint;
 	}

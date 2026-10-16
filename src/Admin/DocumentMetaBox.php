@@ -203,7 +203,7 @@ final class DocumentMetaBox {
 		}
 
 		echo '</tbody></table>';
-		echo '<p class="description">' . esc_html__( 'The link does not sign anyone in on its own: Assinafy emails the signer a one-time code when they open it.', 'assinafy' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Assinafy verifies each signer using the requested method: an email or WhatsApp code, biometric identity verification, or an ICP-Brasil certificate.', 'assinafy' ) . '</p>';
 	}
 
 	/**

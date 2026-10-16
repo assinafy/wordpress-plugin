@@ -108,6 +108,8 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 			'code verification'      => array( 'POST', 'verify' ),
 			'signature submission'   => array( 'POST', 'signature' ),
 			'signer self'            => array( 'GET', 'signers/self' ),
+			'biometric status'       => array( 'GET', 'signers/identity-verification' ),
+			'biometric consent'      => array( 'POST', 'signers/identity-verification' ),
 			'accept terms'           => array( 'PUT', 'signers/accept-terms' ),
 			'sign multiple'          => array( 'PUT', 'signers/documents/sign-multiple' ),
 			'decline multiple'       => array( 'PUT', 'signers/documents/decline-multiple' ),
@@ -119,8 +121,8 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 			'signer signs'           => array( 'POST', 'documents/104618b275d321f5de22240ebfda/assignments/19e6b92e7895332ed9708535d8c' ),
 			'signer rejects'         => array( 'PUT', 'documents/104618b275d321f5de22240ebfda/assignments/1a09c15990f0144256b98ff38aa/reject' ),
 			'signer document'        => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/document' ),
-			'signer documents'       => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents' ),
-			'signer document search' => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents/search' ),
+			'signer documents'       => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents?signer-access-code=test-code' ),
+			'signer document search' => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents/search?signer-access-code=test-code' ),
 			'signer download'        => array(
 				'GET',
 				'signers/19e6b92e7895332ed9708535d8c/documents/104618b275d321f5de22240ebfda/download/original',
@@ -150,6 +152,38 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 		$this->assertArrayNotHasKey( 'x-api-key', $headers, "{$method} {$uri} must not carry the API key." );
 		$this->assertArrayNotHasKey( 'authorization', $headers, "{$method} {$uri} must not carry a bearer token." );
 		$this->assertSame( 'application/json', $headers['accept'], 'Non-credential defaults still apply.' );
+	}
+
+	/** Workspace signer lists use the configured credential when no access code is supplied. */
+	public function test_workspace_signer_lists_keep_the_workspace_credential(): void {
+		foreach ( array( 'documents', 'documents/search' ) as $suffix ) {
+			$this->queue_ok();
+			$this->client()->get( 'signers/19e6b92e7895332ed9708535d8c/' . $suffix );
+			$this->assertSame( self::API_KEY, FakeHttp::last_headers()['x-api-key'] ?? null );
+		}
+	}
+
+	/** Signer access codes supplied as SDK query options suppress workspace credentials. */
+	public function test_signer_list_query_options_isolate_the_access_code(): void {
+		$this->queue_ok();
+		$this->client()->get( 'signers/19e6b92e7895332ed9708535d8c/documents', array( 'signer-access-code' => 'test-code' ) );
+		$this->assertArrayNotHasKey( 'x-api-key', FakeHttp::last_headers() );
+	}
+
+	/** OAuth obeys the same workspace/signer boundary as API-key authentication. */
+	public function test_bearer_credentials_stay_on_workspace_routes(): void {
+		$client = new \Assinafy\WP\Http\WpHttpClient( $this->config( 'test-access-token' ) );
+		foreach ( array( 'GET', 'POST' ) as $method ) {
+			$this->queue_ok();
+			'GET' === $method ? $client->get( 'signers/identity-verification' ) : $client->post( 'signers/identity-verification', array( 'consent' => true ) );
+			$this->assertArrayNotHasKey( 'authorization', FakeHttp::last_headers() );
+		}
+		$this->queue_ok();
+		$client->get( 'signers/19e6b92e7895332ed9708535d8c/documents' );
+		$this->assertSame( 'Bearer test-access-token', FakeHttp::last_headers()['authorization'] ?? null );
+		$this->queue_ok();
+		$client->get( 'signers/19e6b92e7895332ed9708535d8c/documents', array( 'signer-access-code' => 'test-code' ) );
+		$this->assertArrayNotHasKey( 'authorization', FakeHttp::last_headers() );
 	}
 
 	/**

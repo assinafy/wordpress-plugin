@@ -79,7 +79,7 @@ final class DocumentPostType {
 	/**
 	 * The human label for a document status code.
 	 *
-	 * The eleven codes are the complete vocabulary of `GET /documents/statuses`; an unknown
+	 * Labels for `GET /documents/statuses`; an unknown
 	 * code is returned as-is so a status added to the platform shows through rather than
 	 * disappearing behind a blank badge.
 	 *
@@ -87,17 +87,18 @@ final class DocumentPostType {
 	 */
 	public static function status_label( string $code ): string {
 		$labels = array(
-			'uploading'           => __( 'Uploading', 'assinafy' ),
-			'uploaded'            => __( 'Uploaded', 'assinafy' ),
-			'metadata_processing' => __( 'Processing', 'assinafy' ),
-			'metadata_ready'      => __( 'Ready to send', 'assinafy' ),
-			'pending_signature'   => __( 'Awaiting signatures', 'assinafy' ),
-			'certificating'       => __( 'All signed — certifying', 'assinafy' ),
-			'certificated'        => __( 'Signed and certified', 'assinafy' ),
-			'rejected_by_signer'  => __( 'Declined by a signer', 'assinafy' ),
-			'rejected_by_user'    => __( 'Cancelled', 'assinafy' ),
-			'expired'             => __( 'Expired', 'assinafy' ),
-			'failed'              => __( 'Failed', 'assinafy' ),
+			'uploading'               => __( 'Uploading', 'assinafy' ),
+			'uploaded'                => __( 'Uploaded', 'assinafy' ),
+			'metadata_processing'     => __( 'Processing', 'assinafy' ),
+			'metadata_ready'          => __( 'Ready to send', 'assinafy' ),
+			'pending_signature'       => __( 'Awaiting signatures', 'assinafy' ),
+			'pending_identity_review' => __( 'Awaiting identity review', 'assinafy' ),
+			'certificating'           => __( 'All signed — certifying', 'assinafy' ),
+			'certificated'            => __( 'Signed and certified', 'assinafy' ),
+			'rejected_by_signer'      => __( 'Declined by a signer', 'assinafy' ),
+			'rejected_by_user'        => __( 'Cancelled', 'assinafy' ),
+			'expired'                 => __( 'Expired', 'assinafy' ),
+			'failed'                  => __( 'Failed', 'assinafy' ),
 		);
 
 		return $labels[ $code ] ?? $code;

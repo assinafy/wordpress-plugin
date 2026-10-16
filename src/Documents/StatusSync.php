@@ -245,7 +245,7 @@ final class StatusSync {
 		 * Fires whenever a mirrored document changes status.
 		 *
 		 * @param int    $post_id  Local post id of the document mirror.
-		 * @param string $current  New status code, one of the eleven `GET /documents/statuses` codes.
+		 * @param string $current  New status code, one of the `GET /documents/statuses` codes.
 		 * @param string $previous Status code held before this sync, empty on the first one.
 		 */
 		do_action( 'assinafy_document_status_changed', $post_id, $current, $previous );

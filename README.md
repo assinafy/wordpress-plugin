@@ -102,7 +102,7 @@ Três consequências saem direto do modelo e moldam o plugin inteiro:
 
 ### A máquina de estados
 
-Um documento passa por exatamente onze status. `is_closed: true` marca todos os terminais —
+Um documento passa por doze status, incluindo `pending_identity_review`. `is_closed: true` marca todos os terminais —
 responda "isto acabou?" por essa flag, não por uma lista mantida à mão.
 
 ```mermaid
@@ -118,7 +118,10 @@ stateDiagram-v2
     uploaded --> pending_signature: virtual assignment<br/>(promoted automatically)
     metadata_ready --> pending_signature: collect assignment
 
-    pending_signature --> certificating: last signer signs
+    pending_signature --> certificating: all signed, no review
+    pending_signature --> pending_identity_review: all signed, review required
+    pending_identity_review --> certificating: review approved
+    pending_identity_review --> rejected_by_user: review rejected
     certificating --> certificated
 
     pending_signature --> rejected_by_signer: a signer declines
@@ -139,6 +142,7 @@ stateDiagram-v2
 | `metadata_processing` | não | Páginas sendo renderizadas. `pages[]` é preenchido durante este estado. |
 | `metadata_ready` | **sim** | Páginas renderizadas, miniatura disponível. |
 | `pending_signature` | **sim** | Signatários notificados. Excluir é o único cancelamento que a API oferece. |
+| `pending_identity_review` | sim | Todas as assinaturas concluídas; aguarda revisão biométrica da conta. |
 | `certificating` | não | O último signatário assinou; a plataforma está selando o PDF. |
 | `certificated` | não | Sucesso terminal; marcado como não excluível no catálogo de status atual. |
 | `rejected_by_signer` | **sim** | Um signatário recusou. Terminal. |
@@ -155,7 +159,7 @@ documento.
 
 ### Métodos de verificação e de notificação
 
-O plugin suporta três métodos de verificação e um canal de notificação por signatário. Os valores
+O plugin suporta quatro métodos de verificação e um canal de notificação por signatário. Os valores
 são PascalCase; combinações incompatíveis de método/canal são rejeitadas localmente.
 
 | `verification_method` | `notification_methods` | Custo | Exige |
@@ -163,13 +167,19 @@ são PascalCase; combinações incompatíveis de método/canal são rejeitadas l
 | `Email` | `["Email"]` | Estimativa da conta | E-mail, ou um ID de signatário existente |
 | `Whatsapp` | `["Whatsapp"]` | Estimativa da conta; restrições de plano podem se aplicar | Número de telefone, ou um ID de signatário existente |
 | `DigitalCertificate` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; o recurso precisa estar habilitado | ID de signatário existente com documento de identificação configurado na Assinafy; signatário sozinho em sua etapa |
+| `IdDocumentFaceMatchBasic` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; recurso biométrico habilitado | ID de signatário existente com CPF válido configurado na Assinafy |
 
 [`Signers`](src/Documents/Signers.php) valida o pareamento. Omitir o método e o canal usa `Email`
 como padrão quando há e-mail ou quando nenhum telefone é informado, e `Whatsapp` caso contrário.
+Informar apenas o canal de notificação infere o método de verificação correspondente.
 Canais explícitos suportados são preservados.
 
-Esses três são todo o vocabulário de verificação. O plugin não oferece nenhum método que a API não
-implemente.
+A1 e A3 usam `DigitalCertificate`. A verificação biométrica usa `IdDocumentFaceMatchBasic`: o
+signatário confirma o consentimento na página hospedada e envia documento, foto e prova de vida.
+Quando a verificação exige revisão, a conta aprova ou rejeita no painel da Assinafy; a assinatura
+pode continuar, mas a certificação aguarda a aprovação (`pending_identity_review`).
+O formulário administrativo e os comandos de envio do WP-CLI usam Email; os quatro métodos
+estão disponíveis no hook `assinafy_send_document` e no serviço compartilhado.
 
 ---
 
@@ -494,8 +504,8 @@ Cada linha de signatário aceita:
 | `email` | `string` | Obrigatório para verificação por Email, a menos que um ID de signatário existente seja informado. Linhas só com telefone assumem Whatsapp. |
 | `whatsapp_phone_number` (ou `phone`) | `string` | E.164. Números nacionais crus de 10/11 dígitos recebem `+55`. |
 | `step` | `int` | Informe para todos os signatários ou omita para todos. O padrão é 1; etapas explícitas começam em 1 sem lacunas. Signatários DigitalCertificate precisam de uma etapa só deles. |
-| `verification_method` | `string` | `Email`, `Whatsapp` ou `DigitalCertificate`. DigitalCertificate exige um ID de signatário existente com documento de identificação configurado na Assinafy. |
-| `notification_methods` | `array<string>` | Exatamente um canal `Email` ou `Whatsapp`. A verificação por Email/Whatsapp exige o canal correspondente; DigitalCertificate aceita qualquer um dos dois. |
+| `verification_method` | `string` | `Email`, `Whatsapp`, `DigitalCertificate` ou `IdDocumentFaceMatchBasic`. Os dois últimos exigem um ID de signatário existente com documento de identificação configurado; a biometria exige CPF válido. |
+| `notification_methods` | `array<string>` | Exatamente um canal `Email` ou `Whatsapp`. A verificação por Email/Whatsapp exige o canal correspondente; DigitalCertificate e IdDocumentFaceMatchBasic aceitam qualquer um dos dois. |
 | `id` | `string` | Um id de signatário Assinafy existente, usado como está em vez do buscar-e-criar. |
 
 Chaves opcionais de nível superior:
@@ -667,7 +677,7 @@ não fazem parte do contrato. Para encontrar um registro, em vez de ler um, use 
 $records = new Assinafy\WP\Documents\DocumentRecord();
 
 $records->document_id( $post_id );    // string, '' when not yet sent
-$records->status( $post_id );         // one of the eleven status codes
+$records->status( $post_id );         // one of the document status codes
 $records->is_closed( $post_id );      // bool
 $records->assignment_id( $post_id );  // string
 $records->artifacts( $post_id );      // array<int, string> — NAMES, never URLs
@@ -883,7 +893,7 @@ com a aceitação de webhooks desligada responde 200 com `reason: disabled`:
 | `disabled` | `false` | Este site não está aceitando entregas. Nada foi lido nem gravado. |
 | `duplicate` | `false` | Este id de entrega já foi processado. |
 | `account_mismatch` | `false` | O envelope cita uma conta Assinafy diferente. |
-| `unknown_event` | `false` | O evento não é um dos quinze. |
+| `unknown_event` | `false` | O evento não é um dos vinte. |
 | `not_a_document` | `false` | `object` é um Signer, User ou Account — não há o que reler. |
 | `unknown_document` | `false` | Este site não tem registro desse documento. |
 | `sync_failed` | `false` | A releitura falhou. A reconciliação pode tentar de novo nos registros espelhados abertos. |
@@ -918,7 +928,7 @@ de circuit breaker.
   anterior aos metadados, `assignment_created` pode chegar primeiro. Reler torna o handler
   independente de ordem de graça.
 
-### Os quinze tipos de evento
+### Os vinte tipos de evento
 
 ```
 document_uploaded          document_metadata_ready    document_prepared
@@ -926,16 +936,24 @@ assignment_created         signature_requested        document_ready
 signer_created             signer_email_verified      signer_whatsapp_verified
 signer_data_confirmed      signer_signed_document     signer_viewed_document
 signer_rejected_document   user_rejected_document     document_processing_failed
+signer_identity_verified   signer_identity_verification_failed
+signer_identity_review_required   signer_identity_review_approved
+signer_identity_review_rejected
 ```
 
-A lista de permitidos do plugin contém esses quinze eventos. As constantes de eventos de template
+A lista de permitidos do plugin contém esses vinte eventos. As constantes de eventos de template
 do SDK, incluindo `template_created`, `template_processed` e `template_processing_failed`, não
 estão nessa lista e são filtradas das requisições de registro.
 
-O plugin se inscreve em sete por padrão: `document_metadata_ready`, `document_ready`,
+O plugin se inscreve em doze por padrão: `document_metadata_ready`, `document_ready`,
 `signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
 `user_rejected_document` e `document_processing_failed`. A reconciliação pode recuperar o estado
 mais recente do documento, mas não um histórico completo de eventos intermediários.
+
+Os cinco eventos `signer_identity_*` também fazem parte da inscrição padrão.
+
+O registro consulta `GET /webhooks/event-types` no ambiente selecionado e envia apenas os
+eventos disponíveis nele. Um ambiente com catálogo menor mantém o fluxo de registro.
 
 ### O endpoint próprio deste site
 
@@ -947,13 +965,14 @@ Endpoints de outras integrações coexistem e nunca são substituídos. Quando o
 do plano já foi atingido, o registro falha com um erro pedindo que você remova um endpoint no
 painel da Assinafy antes.
 
-Os endpoints são registrados com `signing_enabled: true`. Em sites com chave de API, o registro
-também lê o segredo `whsec_` do endpoint na API e o armazena criptografado com a mesma cifra da
-chave de API — a tela de configurações mostra essa linha como gerenciada automaticamente. As rotas
-de segredo não estão disponíveis para aplicações OAuth, então um site OAuth cola o valor `whsec_`
-que o painel da Assinafy mostra para o endpoint no campo **Segredo de assinatura**; ele é
-armazenado criptografado e o campo mantém o valor gravado quando enviado em branco. Sem segredo
-configurado, o token da URL sozinho autentica as entregas, como antes.
+Os endpoints são registrados com `signing_enabled: true`. O segredo `whsec_` retornado pela
+criação é armazenado criptografado, inclusive nas conexões OAuth. Sites com chave de API também
+podem recuperar o segredo pela API ao registrar novamente. OAuth não pode reler ou rotacionar
+esse segredo pela API: se ele for perdido, remova o endpoint no painel da Assinafy e registre este site novamente
+para criar outro, ou restaure uma cópia guardada no campo **Segredo de assinatura**. Enviar o campo em branco
+mantém o valor existente. Um segredo armazenado que não pode ser descriptografado faz as entregas
+falharem com 401 até ser restaurado; o token da URL sozinho autentica apenas quando nunca há
+segredo configurado.
 
 ### API programática de webhook
 
@@ -994,8 +1013,8 @@ armazenada na conta Assinafy.
 
 | Membro | Retorna |
 |---|---|
-| `Route::EVENTS` | Os quinze eventos assináveis, na ordem em que a API os retorna. |
-| `Route::DEFAULT_EVENTS` | Os sete eventos explicitamente solicitados pela tela de configurações e pelo WP-CLI. |
+| `Route::EVENTS` | Os vinte eventos documentados de documentos/signatários entendidos pelo receptor. |
+| `Route::DEFAULT_EVENTS` | Os doze eventos padrão; o registro envia o subconjunto disponível no ambiente selecionado. |
 | `Route::token()` | O token do endpoint armazenado, `''` antes de existir um. |
 | `Route::url()` | O endpoint completo deste site, `''` quando não há token. |
 | `Route::rotate_token()` | Um novo token, já armazenado. |
@@ -1330,7 +1349,7 @@ A resposta da inscrição não traz segredo de assinatura.
 
 O SDK envia os quatro campos do corpo HTTP. URL e e-mail são argumentos obrigatórios; o SDK fornece
 padrões para os eventos e para o estado ativo. Sua lista padrão de eventos contém quatro eventos,
-enquanto o plugin fornece explicitamente os sete de `Route::DEFAULT_EVENTS`.
+enquanto o plugin seleciona entre os doze de `Route::DEFAULT_EVENTS` ao registrar seu próprio endpoint.
 
 ```http
 PUT /v1/accounts/{ACCOUNT_ID}/webhooks/subscriptions
@@ -1577,7 +1596,7 @@ O `forceCoversAnnotation="true"` está ligado: uma classe ou método de teste se
 como arriscado. Os testes ao vivo usam a configuração separada `phpunit-sandbox.xml.dist`
 e o bootstrap de testes do WordPress. Passe `ASSINAFY_API_KEY` e `ASSINAFY_ACCOUNT_ID` pelo
 ambiente. A suíte cria e exclui um PDF sem atribuição, verifica consulta e download, e estima
-custos de Email, WhatsApp e DigitalCertificate sem enviar convites. Todos os recursos de
+custos de Email, WhatsApp, DigitalCertificate e IdDocumentFaceMatchBasic sem enviar convites. Todos os recursos de
 precificação precisam estar habilitados na conta de sandbox.
 
 ### Lint e análise estática

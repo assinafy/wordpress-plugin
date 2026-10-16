@@ -7,6 +7,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-16
+
+### Added
+
+- Biometric verification (`IdDocumentFaceMatchBasic`) through the shared send service, with Email or WhatsApp notifications, identity-review events and an awaiting-review status.
+
+### Fixed
+
+- Store webhook signing secrets returned on creation for OAuth and API-key connections, and report secret-storage failures.
+- Refuse webhook deliveries when the configured signing secret cannot be decrypted.
+- Preserve workspace authentication for signer document lists and keep workspace credentials off signer-facing biometric routes.
+- Infer Email or WhatsApp verification when a signer supplies only its notification channel.
+- Resolve the site's current webhook endpoint before disabling deliveries, so stale endpoint IDs cannot disable another integration.
+
+### Changed
+
+- Bundle Assinafy PHP SDK 2.7.0 and update its method and REST payload references.
+- Update development harness dependencies with security fixes.
+
 ## [1.3.1] - 2026-10-12
 
 ### Fixed

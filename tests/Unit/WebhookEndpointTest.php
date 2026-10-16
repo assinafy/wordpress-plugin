@@ -152,17 +152,16 @@ final class WebhookEndpointTest extends TestCase {
 	}
 
 	/**
-	 * A blob the cipher can no longer read — rotated salts — degrades to token-only
-	 * authentication rather than refusing every delivery, and the reason is logged.
+	 * Losing the encryption key must not disable configured signature verification.
 	 */
-	public function test_an_unreadable_stored_secret_degrades_to_the_token(): void {
+	public function test_an_unreadable_stored_secret_fails_closed(): void {
 		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, bin2hex( chr( 1 ) . random_bytes( 64 ) ), false );
 
 		$this->assertSame( '', Route::secret() );
 
 		$result = $this->route()->check_token( new WP_REST_Request( array( 'token' => self::TOKEN ), '{"id":30022}' ) );
 
-		$this->assertTrue( $result );
+		$this->assert_bad_signature( $result );
 
 		$events = array_map(
 			static fn( array $entry ): string => (string) ( $entry['event'] ?? '' ),
@@ -191,18 +190,18 @@ final class WebhookEndpointTest extends TestCase {
 	 * and its id and secret are stored.
 	 */
 	public function test_subscribe_creates_an_endpoint_when_none_matches(): void {
-		$this->queue_envelope( 200, array( $this->foreign_endpoint() ) );
+		$this->queue_endpoints( array( $this->foreign_endpoint() ) );
 		$this->queue_envelope( 200, $this->own_endpoint( array( 'id' => 'ep_new' ) ) );
 		$this->queue_secret();
 
 		$result = Route::subscribe( $this->client(), 'ops@example.com' );
 
 		$this->assertIsArray( $result );
-		$this->assertCount( 3, FakeHttp::$requests );
-		$this->assertStringEndsWith( '/webhooks/endpoints', (string) FakeHttp::$requests[1]['url'] );
+		$this->assertCount( 4, FakeHttp::$requests );
+		$this->assertStringEndsWith( '/webhooks/endpoints', (string) FakeHttp::$requests[2]['url'] );
 
-		$body = $this->request_body( 1 );
-		$this->assertSame( 'POST', strtoupper( (string) FakeHttp::$requests[1]['args']['method'] ) );
+		$body = $this->request_body( 2 );
+		$this->assertSame( 'POST', strtoupper( (string) FakeHttp::$requests[2]['args']['method'] ) );
 		$this->assertSame( Route::url(), $body['url'] );
 		$this->assertSame( 'ops@example.com', $body['email'] );
 		$this->assertSame( Route::DEFAULT_EVENTS, $body['events'] );
@@ -211,7 +210,7 @@ final class WebhookEndpointTest extends TestCase {
 		$this->assertSame( 'example.test', $body['name'] );
 
 		$this->assertSame( 'ep_new', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
-		$this->assertStringEndsWith( '/webhooks/endpoints/ep_new/secret', (string) FakeHttp::$requests[2]['url'] );
+		$this->assertStringEndsWith( '/webhooks/endpoints/ep_new/secret', (string) FakeHttp::$requests[3]['url'] );
 		$this->assertSame( self::whsec(), Route::secret(), 'The fetched secret was not stored decryptably.' );
 	}
 
@@ -220,8 +219,7 @@ final class WebhookEndpointTest extends TestCase {
 	 * updated in place, keeping the events it already had.
 	 */
 	public function test_subscribe_updates_the_matching_endpoint_and_merges_events(): void {
-		$this->queue_envelope(
-			200,
+		$this->queue_endpoints(
 			array(
 				$this->own_endpoint(
 					array(
@@ -238,16 +236,16 @@ final class WebhookEndpointTest extends TestCase {
 		$result = Route::subscribe( $this->client(), 'ops@example.com', Route::DEFAULT_EVENTS );
 
 		$this->assertIsArray( $result );
-		$this->assertStringEndsWith( '/webhooks/endpoints/ep_own', (string) FakeHttp::$requests[1]['url'] );
-		$this->assertSame( 'PUT', strtoupper( (string) FakeHttp::$requests[1]['args']['method'] ) );
+		$this->assertStringEndsWith( '/webhooks/endpoints/ep_own', (string) FakeHttp::$requests[2]['url'] );
+		$this->assertSame( 'PUT', strtoupper( (string) FakeHttp::$requests[2]['args']['method'] ) );
 
-		$body = $this->request_body( 1 );
+		$body = $this->request_body( 2 );
 		$this->assertSame( Route::url(), $body['url'] );
 		$this->assertContains( 'signature_requested', $body['events'] );
 		foreach ( Route::DEFAULT_EVENTS as $wanted ) {
 			$this->assertContains( $wanted, $body['events'] );
 		}
-		$this->assertNotContains( 'template_created', $body['events'], 'An event outside the subscribable fifteen was sent.' );
+		$this->assertNotContains( 'template_created', $body['events'], 'An event outside the supported catalog was sent.' );
 		$this->assertTrue( $body['is_active'] );
 		$this->assertTrue( $body['signing_enabled'] );
 
@@ -259,8 +257,7 @@ final class WebhookEndpointTest extends TestCase {
 	 * the creation of this site's own endpoint.
 	 */
 	public function test_an_endpoint_without_a_url_is_treated_as_absent(): void {
-		$this->queue_envelope(
-			200,
+		$this->queue_endpoints(
 			array(
 				array(
 					'id'     => 'ep_empty',
@@ -275,8 +272,8 @@ final class WebhookEndpointTest extends TestCase {
 		$result = Route::subscribe( $this->client(), 'ops@example.com' );
 
 		$this->assertIsArray( $result );
-		$this->assertSame( 'POST', strtoupper( (string) FakeHttp::$requests[1]['args']['method'] ) );
-		$this->assertSame( Route::url(), $this->request_body( 1 )['url'] );
+		$this->assertSame( 'POST', strtoupper( (string) FakeHttp::$requests[2]['args']['method'] ) );
+		$this->assertSame( Route::url(), $this->request_body( 2 )['url'] );
 	}
 
 	/**
@@ -284,7 +281,7 @@ final class WebhookEndpointTest extends TestCase {
 	 * as a generic failure — and no foreign endpoint is touched to make room.
 	 */
 	public function test_a_full_plan_is_reported_as_the_endpoint_limit(): void {
-		$this->queue_envelope( 200, array( $this->foreign_endpoint(), $this->foreign_endpoint( 'ep_two' ) ) );
+		$this->queue_endpoints( array( $this->foreign_endpoint(), $this->foreign_endpoint( 'ep_two' ) ) );
 		$this->queue_envelope( 403, null );
 
 		$result = Route::subscribe( $this->client(), 'ops@example.com' );
@@ -301,15 +298,37 @@ final class WebhookEndpointTest extends TestCase {
 	public function test_oauth_sites_skip_the_secret_fetch(): void {
 		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
 
-		$this->queue_envelope( 200, array() );
+		$this->queue_endpoints( array() );
 		$this->queue_envelope( 200, $this->own_endpoint( array( 'id' => 'ep_new' ) ) );
 
 		$result = Route::subscribe( $this->client( true ), 'ops@example.com' );
 
 		$this->assertIsArray( $result );
-		$this->assertCount( 2, FakeHttp::$requests, 'An OAuth site asked for the endpoint secret.' );
+		$this->assertCount( 3, FakeHttp::$requests, 'An OAuth site asked for the endpoint secret.' );
 		$this->assertSame( 'ep_new', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
 		$this->assertSame( '', get_option( Settings::OPTION_WEBHOOK_SECRET_ENC, '' ) );
+	}
+
+	/** OAuth creation returns the only API-readable copy of the signing secret. */
+	public function test_oauth_sites_store_the_secret_returned_on_creation(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		$this->queue_endpoints( array() );
+		$this->queue_envelope(
+			200,
+			$this->own_endpoint(
+				array(
+					'id'     => 'ep_new',
+					'secret' => self::whsec(),
+				)
+			)
+		);
+
+		$result = Route::subscribe( $this->client( true ), 'ops@example.com' );
+
+		$this->assertIsArray( $result );
+		$this->assertCount( 3, FakeHttp::$requests );
+		$this->assertSame( self::whsec(), Route::secret() );
+		$this->assertArrayNotHasKey( 'secret', $result );
 	}
 
 	/**
@@ -417,6 +436,45 @@ final class WebhookEndpointTest extends TestCase {
 	 */
 	private function queue_secret(): void {
 		$this->queue_envelope( 200, array( 'secret' => self::whsec() ) );
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $endpoints Existing endpoints.
+	 * @param array<int, string> $events Events deployed on this environment.
+	 */
+	private function queue_endpoints( array $endpoints, array $events = Route::EVENTS ): void {
+		$this->queue_envelope( 200, $endpoints );
+		$this->queue_envelope( 200, array_map( static fn( string $event ): array => array( 'id' => $event ), $events ) );
+	}
+
+	/** A deployment with the original catalog must still accept endpoint registration. */
+	public function test_registration_only_sends_deployed_events(): void {
+		$events = array_values( array_filter( Route::EVENTS, static fn( string $event ): bool => ! str_starts_with( $event, 'signer_identity_' ) ) );
+		$this->queue_endpoints( array(), $events );
+		$this->queue_envelope( 200, $this->own_endpoint( array( 'secret' => self::whsec() ) ) );
+
+		$this->assertIsArray( Route::subscribe( $this->client(), 'ops@example.com' ) );
+		$this->assertSame( array_values( array_intersect( Route::DEFAULT_EVENTS, $events ) ), $this->request_body( 2 )['events'] );
+	}
+
+	/** A failed secret fetch is visible even though the remote endpoint already exists. */
+	public function test_registration_reports_a_secret_fetch_failure(): void {
+		$this->queue_endpoints( array() );
+		$this->queue_envelope( 200, $this->own_endpoint() );
+		$this->queue_envelope( 500, null );
+
+		$result = Route::subscribe( $this->client(), 'ops@example.com' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_webhook_secret_failed', $result->get_error_code() );
+	}
+
+	/** An empty deployed catalog cannot become a default subscription sent by the SDK. */
+	public function test_registration_refuses_an_empty_catalog_without_writing(): void {
+		$this->queue_endpoints( array(), array() );
+		$result = Route::subscribe( $this->client(), 'ops@example.com' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_webhook_events_unavailable', $result->get_error_code() );
+		$this->assertCount( 2, FakeHttp::$requests );
 	}
 
 	/**

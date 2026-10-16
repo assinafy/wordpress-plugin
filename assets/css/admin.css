@@ -5,7 +5,7 @@
  * the core colour palette, 13px admin type, `.form-table` spacing — rather than a
  * visual language of its own.
  *
- * Status badges cover the eleven document status codes the API returns. The class
+ * Status badges cover the document status codes the API returns. The class
  * is the code verbatim, so PHP composes it as
  * 'assinafy-status assinafy-status--' . $status with no translation table.
  *
@@ -77,6 +77,7 @@
 
 /* Work is in flight: signers notified, or the platform is sealing the PDF. */
 .assinafy-status--pending_signature,
+.assinafy-status--pending_identity_review,
 .assinafy-status--certificating {
 	background: var( --assinafy-progress-bg );
 	border-color: var( --assinafy-progress-edge );

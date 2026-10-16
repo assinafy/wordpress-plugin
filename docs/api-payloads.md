@@ -747,17 +747,18 @@ For **virtual**, the document may be in `uploaded`, `metadata_processing` or `me
                     "example": "615605f50e968054a5b7c9b8"
                   },
                   "verification_method": {
-                    "description": "How the signer's identity is verified before signing. `Email` (default) sends a one-time code to the signer's email; `Whatsapp` sends the code over WhatsApp — the verification itself is not billed, but it requires the WhatsApp notification channel, so the signer costs 0.45 credits (available only on paid subscriptions); `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate (A1/A3) — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id`, must be alone in its signing step, and is charged 0.5 credits per signer. A CPF requires that person's certificate (an e-CPF, or an e-CNPJ naming them as legal representative); a CNPJ requires an e-CNPJ for that company, from any of its representatives. Omit to default to `Email`.",
+                    "description": "How the signer's identity is verified before signing. `Email` (default) sends a one-time code to the signer's email; `Whatsapp` sends the code over WhatsApp — the verification itself is not billed, but it requires the WhatsApp notification channel, so the signer costs 0.45 credits (available only on paid subscriptions); `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate (A1/A3) — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id`, must be alone in its signing step, and is charged 0.5 credits per signer. A CPF requires that person's certificate (an e-CPF, or an e-CNPJ naming them as legal representative); a CNPJ requires an e-CNPJ for that company, from any of its representatives. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires the ID Document + Face Match feature, the signer must have a valid CPF in `government_id`, and is charged a per-signer fee. Omit to default to `Email`.",
                     "type": "string",
                     "enum": [
                       "Email",
                       "Whatsapp",
-                      "DigitalCertificate"
+                      "DigitalCertificate",
+                      "IdDocumentFaceMatchBasic"
                     ],
                     "example": "Email"
                   },
                   "notification_methods": {
-                    "description": "How the signer is told a signature is being requested. **Exactly one method per signer** — the array shape is historical, and sending two returns `400`. The method must also be compatible with `verification_method`: `Email` verification takes `Email`, `Whatsapp` verification takes `Whatsapp`, and `DigitalCertificate` takes either. WhatsApp incurs an additional cost and is available only on paid subscriptions. Omit it to have it inferred from `verification_method`, or `{\"Email\"}` when neither is sent. See **Verification & Notification Methods** for the full pairing table.",
+                    "description": "How the signer is told a signature is being requested. **Exactly one method per signer** — the array shape is historical, and sending two returns `400`. The method must also be compatible with `verification_method`: `Email` verification takes `Email`, `Whatsapp` verification takes `Whatsapp`, and `DigitalCertificate` and `IdDocumentFaceMatchBasic` take either. WhatsApp incurs an additional cost and is available only on paid subscriptions. Omit it to have it inferred from `verification_method`, or `{\"Email\"}` when neither is sent. See **Verification & Notification Methods** for the full pairing table.",
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -942,12 +943,13 @@ Verification methods are not priced separately — every line in the `breakdown`
               "items": {
                 "properties": {
                   "verification_method": {
-                    "description": "Verification method to price. `Whatsapp` forces the WhatsApp notification, so it prices at 0.45 credits per signer; `DigitalCertificate` adds the per-signer signature cost on top of its notification.",
+                    "description": "Verification method to price. `Whatsapp` forces the WhatsApp notification, so it prices at 0.45 credits per signer; `DigitalCertificate` adds the per-signer signature cost on top of its notification. `IdDocumentFaceMatchBasic` requires its account feature, requires the signer to have a valid CPF in `government_id`, and is charged a per-signer fee.",
                     "type": "string",
                     "enum": [
                       "Email",
                       "Whatsapp",
-                      "DigitalCertificate"
+                      "DigitalCertificate",
+                      "IdDocumentFaceMatchBasic"
                     ],
                     "example": "Whatsapp"
                   },
@@ -1177,7 +1179,7 @@ Estimate the cost of resending the signature request to a signer.
 
 Reset assignment expiration
 
-Set a new expiration date for an assignment.
+Set a new expiration date for an assignment, or remove its expiration by sending `expires_at: null`. Not allowed once the document is closed.
 
 ```json
 {
@@ -1208,10 +1210,16 @@ Set a new expiration date for an assignment.
     "content": {
       "application/json": {
         "schema": {
+          "required": [
+            "expires_at"
+          ],
           "properties": {
             "expires_at": {
-              "description": "New expiration date (ISO 8601). Must be at least one hour in the future.",
-              "type": "string",
+              "description": "New expiration date (ISO 8601). Must be at least one hour in the future. Send `null` to remove the expiration — the key itself is required.",
+              "type": [
+                "string",
+                "null"
+              ],
               "format": "date-time",
               "example": "2026-12-31T23:59:59Z"
             }
@@ -1250,6 +1258,285 @@ Set a new expiration date for an assignment.
     },
     "404": {
       "$ref": "#/components/responses/NotFound"
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `GET /v1/documents/{documentId}/assignments/{assignmentId}/signers/{signerId}/identity-verification`
+
+Signer identity review
+
+The signer's identity-document verification as the account's reviewer sees it. When the provider sends a verification to review, the account decides it with **Decide signer identity review**. The signer can still view and sign meanwhile; the review holds the document's certification instead (status `pending_identity_review` once every signer has signed).
+Evidence is a summary kept by Assinafy (no images or biometrics). `evidence_available` is false when the provider keeps none or it could not be fetched yet. While the review is open, `images` lists the evidence images the reviewer can open with **Signer identity review image**. A verification the provider approved directly, without a review, shows no evidence here (`evidence_available` is false); its evidence is on the `signer_identity_verified` activity.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/DocumentId"
+    },
+    {
+      "name": "assignmentId",
+      "in": "path",
+      "description": "The assignment ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "signerId",
+      "in": "path",
+      "description": "The signer ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "Identity review",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/SignerIdentityReview"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "404": {
+      "description": "Assignment, signer or verification not found."
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `GET /v1/documents/{documentId}/assignments/{assignmentId}/signers/{signerId}/identity-verification/images/{name}`
+
+Signer identity review image
+
+One evidence image of a signer identity verification that is `InReview`, for the account's reviewer: the document photos (or the digital document PDF) and the face photo. Fetched from the verification provider on each request and never stored by Assinafy. Available only while the review is open; once it is decided, every image returns 404. `name` must be one of the review's `images`.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/DocumentId"
+    },
+    {
+      "name": "assignmentId",
+      "in": "path",
+      "description": "The assignment ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "signerId",
+      "in": "path",
+      "description": "The signer ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "name",
+      "in": "path",
+      "description": "The image, as listed in the review's `images`.",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "enum": [
+          "document_front",
+          "document_back",
+          "document_pdf",
+          "face"
+        ]
+      }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "The image bytes (`image/jpeg`, `image/png`) or the document PDF (`application/pdf`). Sent with `Cache-Control: no-store`.",
+      "content": {
+        "image/jpeg": {
+          "schema": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "image/png": {
+          "schema": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "application/pdf": {
+          "schema": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      }
+    },
+    "404": {
+      "description": "Assignment, signer or verification not found, the review is not open, or there is no such image."
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/documents/{documentId}/assignments/{assignmentId}/signers/{signerId}/identity-verification/review`
+
+Decide signer identity review
+
+Approves or rejects a signer whose identity verification is `InReview`, while the document is `pending_signature` or `pending_identity_review`. Approved: once every signer has signed and no other signer is under review, the document is certificated; the certificate states the approval by review and every difference found. Rejected: the document is cancelled (`rejected_by_user`, with the reviewer as the user) and every signer and copy receiver gets the cancellation notice; the note is never shown to them. The signer gets no message about the decision itself. The decision is also reported to the verification provider.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/DocumentId"
+    },
+    {
+      "name": "assignmentId",
+      "in": "path",
+      "description": "The assignment ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    },
+    {
+      "name": "signerId",
+      "in": "path",
+      "description": "The signer ID.",
+      "required": true,
+      "schema": {
+        "type": "string"
+      }
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "required": [
+            "decision"
+          ],
+          "properties": {
+            "decision": {
+              "type": "string",
+              "enum": [
+                "Approved",
+                "Rejected"
+              ],
+              "example": "Approved"
+            },
+            "note": {
+              "description": "Optional. Recorded in the activity log and sent to the provider; never shown to the signer.",
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 2000,
+              "example": "Conferido por videochamada."
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Decided",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/SignerIdentityReview"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Invalid decision, the verification is not `InReview`, or the document is no longer awaiting signatures."
+    },
+    "404": {
+      "description": "Assignment, signer or verification not found."
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
@@ -1631,7 +1918,8 @@ Exchanges the `mfa_token` returned by login for an access token. `code` is eithe
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "Invalid or already-used code"
     },
     "401": {
       "description": "The challenge expired, was already used, or too many codes were tried"
@@ -1920,6 +2208,7 @@ The supported document statuses and whether a document in each status can be del
 | `certificated` | no | The document is certificated. |
 | `rejected_by_signer` | yes | A signer declined signing the document. |
 | `pending_signature` | yes | The document is waiting for signatures. |
+| `pending_identity_review` | yes | Every signer has signed; the document waits for the account to review a signer's identity before it is certificated. Deleting it cancels it and notifies the signers. |
 | `rejected_by_user` | yes | The signature process was cancelled by a user. |
 | `failed` | yes | The document processing has failed. |
 
@@ -2716,8 +3005,10 @@ Create a field definition in the workspace.
               "example": "text"
             },
             "regex": {
-              "type": "string",
-              "nullable": true
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "is_required": {
               "type": "boolean"
@@ -2872,8 +3163,10 @@ Update a field definition.
               "type": "string"
             },
             "regex": {
-              "type": "string",
-              "nullable": true
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "is_active": {
               "type": "boolean"
@@ -3461,7 +3754,8 @@ Activates the method by proving one live code from the NEW device (`code`). Retu
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "Invalid enrollment code, or — when replacing an existing method — missing or invalid re-authentication."
     },
     "404": {
       "$ref": "#/components/responses/NotFound"
@@ -3830,8 +4124,10 @@ Implements the RFC 6749 §5.1/§5.2 token-endpoint body contract in
               },
               "refresh_token": {
                 "description": "Present only when the `offline_access` scope was requested AND consented on the authorization_code/refresh_token grants. Never present for the token-exchange grant. Without it a client must send the user through the authorization flow again once the access token expires.",
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "scope": {
                 "description": "The scope of the ACCESS token. `offline_access` is a request-time signal rather than a permission, so it never appears here even when it was requested.",
@@ -3840,8 +4136,10 @@ Implements the RFC 6749 §5.1/§5.2 token-endpoint body contract in
               },
               "id_token": {
                 "description": "A signed OIDC id_token (RS256). Present only when the openid scope was granted.",
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "type": "object"
@@ -3987,18 +4285,24 @@ Claims about the user who authorized this token. Requires the openid scope; name
                 "example": "d6zqpbyog2v3xvxerwn8la94"
               },
               "name": {
-                "type": "string",
-                "example": "Maria Silva",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "Maria Silva"
               },
               "email": {
-                "type": "string",
-                "format": "email",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "email"
               },
               "email_verified": {
-                "type": "boolean",
-                "nullable": true
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               }
             },
             "type": "object"
@@ -4215,7 +4519,7 @@ Send a one-time access token to a signer of a public document, so they can view 
             "recipient": {
               "description": "The signer's address on that channel — for `email`, the signer's email address.",
               "type": "string",
-              "example": "person@example.com"
+              "example": "signer@example.com"
             }
           },
           "type": "object"
@@ -4269,7 +4573,7 @@ Send a one-time access token to a signer of a public document, so they can view 
                       },
                       "recipient": {
                         "type": "string",
-                        "example": "person@example.com"
+                        "example": "signer@example.com"
                       }
                     },
                     "type": "object"
@@ -4412,7 +4716,7 @@ Create a signer in the workspace.
               "example": "+5548999990000"
             },
             "government_id": {
-              "description": "Signer's CPF (11 digits) or CNPJ (14 characters; may be alphanumeric). Formatting is accepted and the value is normalized on save.",
+              "description": "Signer's CPF (11 digits) or CNPJ (14 characters; may be alphanumeric). Formatting is accepted and the value is normalized on save. Required before the signer can use a verification method that identifies them by CPF.",
               "type": "string",
               "example": "390.533.447-05"
             }
@@ -4579,9 +4883,9 @@ Update a signer's information.
               "example": "+5548999990000"
             },
             "government_id": {
-              "description": "Signer's CPF/CNPJ; digits only on save.",
+              "description": "Signer's CPF (11 digits) or CNPJ (14 characters; may be alphanumeric). Formatting is accepted and the value is normalized on save.",
               "type": "string",
-              "example": "39053344705"
+              "example": "390.533.447-05"
             }
           },
           "type": "object"
@@ -4702,7 +5006,7 @@ Delete a signer.
 
 Get current signer
 
-Return the signer identified by the signer access code, including the `has_signature`/`has_initial`/`is_signature_reusable` flags.
+Return the signer identified by the signer access code, including the `has_signature`/`has_initial`/`is_signature_reusable` flags and the `verification_method` of this signature request. Available before verification, so the signing page can pick the right first step.
 
 ```json
 {
@@ -4734,6 +5038,187 @@ Return the signer identified by the signer access code, including the `has_signa
           }
         }
       }
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `GET /v1/signers/identity-verification`
+
+Identity document verification status
+
+Current state of the signer's identity document verification. Backfills a pending decision from the provider. Uses the signer access code.
+
+**One live session per signer:** `can_start` is true before a provider session exists, and again once that session is Expired -- the capture link lapsed before anything was submitted, so the signer may open a new one. Once a session is Pending, In Review, Approved, Declined or Abandoned it is false. A signer who reaches Declined or Abandoned cannot restart here; the account must start a whole new process (new document, new assignment).
+
+**In review:** the signer continues -- views, confirms their data and signs -- while the account reviews the result. The document is certificated only after the account approves every signer under review; if it rejects one, the document is cancelled and every signer receives the cancellation notice.
+
+```json
+{
+  "security": [
+    {
+      "signerAccessCode": []
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "Verification state",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "can_start": {
+                        "description": "True when no session exists yet, or the last one Expired.",
+                        "type": "boolean",
+                        "example": false
+                      },
+                      "status": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "example": "Pending"
+                      },
+                      "url": {
+                        "description": "The provider's capture URL while the session is Pending; null otherwise. A bearer link: open it as-is (including any `#t=` fragment); never log it or store it in the browser.",
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "example": "https://verify.assinafy.com.br/c/01a0ed77-2afe-7f4b-bca9-349edcf4bb99#t=token"
+                      },
+                      "expires_at": {
+                        "description": "When the capture link stops working. Verification may still be processed or reviewed after it. Null for providers that do not report it.",
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "example": "2026-10-07T21:18:47Z"
+                      },
+                      "completed_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "example": "2026-08-10T20:32:00Z"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `POST /v1/signers/identity-verification`
+
+Start identity document verification
+
+Records the signer's biometric-processing consent and opens a provider session. Returns the hosted verification URL to redirect to. Uses the signer access code.
+
+**One live session per signer:** this succeeds when no session exists yet, or when the last one Expired (the capture link lapsed before anything was submitted); the expired session is replaced by a new one. Otherwise -- Pending, In Review, Approved, Declined or Abandoned -- it returns `400`. A resend never destroys or replaces a live provider session, and the account is billed once per signer at assignment creation, never again on a restart. Recovering from a Declined or Abandoned verification means the account must start a whole new process (new document, new assignment).
+
+```json
+{
+  "security": [
+    {
+      "signerAccessCode": []
+    }
+  ],
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "required": [
+            "consent"
+          ],
+          "properties": {
+            "consent": {
+              "description": "Must be true. Explicit consent to biometric processing.",
+              "type": "boolean",
+              "example": true
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "Session created",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "6152120297080d55bdd13197"
+                      },
+                      "url": {
+                        "description": "The provider's capture URL for the session just opened. A bearer link: open it as-is (including any `#t=` fragment); never log it or store it in the browser.",
+                        "type": "string",
+                        "example": "https://verify.assinafy.com.br/c/01a0ed77-2afe-7f4b-bca9-349edcf4bb99#t=token"
+                      },
+                      "expires_at": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "example": "2026-10-07T21:18:47Z"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Consent missing, or this signer already has a verification session that is not Expired."
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
@@ -5308,7 +5793,9 @@ The signer confirms or updates their data before signing. Uses the signer access
               "format": "email"
             },
             "government_id": {
-              "type": "string"
+              "description": "Signer's CPF/CNPJ; digits only on save.",
+              "type": "string",
+              "example": "39053344705"
             }
           },
           "type": "object"
@@ -5913,7 +6400,8 @@ Precomputed per-account document-funnel KPIs. `granularity=monthly` (default) re
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "Invalid month"
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
@@ -5992,7 +6480,8 @@ The authenticated user's document-funnel KPIs summed across all accounts they cu
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "Invalid month"
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
@@ -6102,9 +6591,11 @@ Create a tag in the workspace. Names are unique per workspace (case-insensitive)
             },
             "color": {
               "description": "6-char hex (with or without leading #).",
-              "type": "string",
-              "example": "ff8800",
-              "nullable": true
+              "type": [
+                "string",
+                "null"
+              ],
+              "example": "ff8800"
             }
           },
           "type": "object"
@@ -6214,9 +6705,11 @@ Update a tag's name or color.
               "example": "Signed Contracts"
             },
             "color": {
-              "type": "string",
-              "example": "00aa55",
-              "nullable": true
+              "type": [
+                "string",
+                "null"
+              ],
+              "example": "00aa55"
             }
           },
           "type": "object"
@@ -6481,12 +6974,13 @@ Generate a new document from a template, creating its assignment in the same cal
                     "example": "fa8c140cb49b79f940aab95fddd"
                   },
                   "verification_method": {
-                    "description": "Verification method for this signer. If provided without notification_methods, the notification method is inferred. Defaults to Email. `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id` (a CPF requires that person's certificate; a CNPJ requires an e-CNPJ for that company), must be alone in its signing step, and is charged 0.5 credits per signer. Only applies to signers (not copy receivers).",
+                    "description": "Verification method for this signer. If provided without notification_methods, the notification method is inferred. Defaults to Email. `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id` (a CPF requires that person's certificate; a CNPJ requires an e-CNPJ for that company), must be alone in its signing step, and is charged 0.5 credits per signer. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires the ID Document + Face Match feature, the signer must have a valid CPF in `government_id`, and is charged a per-signer fee. Only applies to signers (not copy receivers).",
                     "type": "string",
                     "enum": [
                       "Email",
                       "Whatsapp",
-                      "DigitalCertificate"
+                      "DigitalCertificate",
+                      "IdDocumentFaceMatchBasic"
                     ],
                     "example": "Email"
                   },
@@ -6651,12 +7145,13 @@ Estimate the cost of creating a document from a template without creating it. Co
                     "example": "fa8c14f32d732271e071998246e"
                   },
                   "verification_method": {
-                    "description": "Verification method. If provided without notification_methods, the notification method is inferred. Defaults to Email. Verification is never billed on its own — the cost comes from the notification it is paired with, so `Whatsapp` verification requires the WhatsApp notification and costs 0.45 credits per signer. `DigitalCertificate` adds the per-signer signature cost (0.5 credits) on top of the notification cost.",
+                    "description": "Verification method. If provided without notification_methods, the notification method is inferred. Defaults to Email. Verification is never billed on its own — the cost comes from the notification it is paired with, so `Whatsapp` verification requires the WhatsApp notification and costs 0.45 credits per signer. `DigitalCertificate` adds the per-signer signature cost (0.5 credits) on top of the notification cost. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires its account feature, requires the signer to have a valid CPF in `government_id`, and is charged a per-signer fee.",
                     "type": "string",
                     "enum": [
                       "Email",
                       "Whatsapp",
-                      "DigitalCertificate"
+                      "DigitalCertificate",
+                      "IdDocumentFaceMatchBasic"
                     ],
                     "example": "Whatsapp"
                   },
@@ -7328,7 +7823,7 @@ Retrieve the delivery history for webhooks sent to the account's endpoints — u
 
 Retry webhook delivery
 
-Manually retry a webhook delivery for a specific entry, without waiting for automatic retries. Returns the newly created dispatch entry.
+Manually retry a webhook delivery for a specific entry, without waiting for automatic retries. The event is sent again only to the endpoint of that entry. Returns the newly created dispatch entry.
 
 ```json
 {
@@ -7379,10 +7874,12 @@ Manually retry a webhook delivery for a specific entry, without waiting for auto
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "The webhook subscription is inactive or the event type is not subscribed."
     },
     "404": {
-      "$ref": "#/components/responses/NotFound"
+      "$ref": "#/components/responses/NotFound",
+      "description": "The webhook entry was not found or does not belong to this account."
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
@@ -7413,6 +7910,17 @@ List the account's webhook endpoints, oldest first. Requires the `account:read` 
   "parameters": [
     {
       "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "url",
+      "in": "query",
+      "description": "Only the endpoint registered with exactly this URL.",
+      "required": false,
+      "schema": {
+        "type": "string",
+        "format": "uri"
+      },
+      "example": "https://example.com/webhooks/assinafy"
     }
   ],
   "responses": {
@@ -7456,7 +7964,7 @@ List the account's webhook endpoints, oldest first. Requires the `account:read` 
 
 Create webhook endpoint
 
-Register a URL to receive the account's webhook events. An account can have 1 endpoint, or up to 3 on paid plans; creating one past the limit returns `403`. Each endpoint of a workspace must have a different `url` (`400` otherwise). When `signing_enabled` is `true`, a signing secret is generated: read it with **Get webhook endpoint signing secret**. Requires the `webhooks:write` OAuth scope.
+Register a URL to receive the account's webhook events. An account can have 1 endpoint, or up to 3 on paid plans; creating one past the limit returns `403`. Each endpoint of a workspace must have a different `url` (`400` otherwise). When `signing_enabled` is `true`, a signing secret is generated and returned once, as `secret` in this response — store it, since it is never shown in list or view responses. It can be read again later with **Get webhook endpoint signing secret**, except by OAuth applications: an OAuth application that loses the secret must delete the endpoint and create a new one. Requires the `webhooks:write` OAuth scope.
 
 ```json
 {
@@ -7542,7 +8050,22 @@ Register a URL to receive the account's webhook events. An account can have 1 en
               {
                 "properties": {
                   "data": {
-                    "$ref": "#/components/schemas/WebhookEndpoint"
+                    "type": "object",
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/WebhookEndpoint"
+                      },
+                      {
+                        "properties": {
+                          "secret": {
+                            "description": "Standard Webhooks signing secret: `whsec_` followed by the base64-encoded key. Present only when `signing_enabled` is `true`.",
+                            "type": "string",
+                            "example": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    ]
                   }
                 },
                 "type": "object"
@@ -7556,7 +8079,83 @@ Register a URL to receive the account's webhook events. An account can have 1 en
       "$ref": "#/components/responses/ValidationError"
     },
     "403": {
-      "$ref": "#/components/responses/Forbidden"
+      "$ref": "#/components/responses/Forbidden",
+      "description": "The account already has as many endpoints as its plan allows."
+    },
+    "401": {
+      "$ref": "#/components/responses/Unauthorized"
+    },
+    "500": {
+      "$ref": "#/components/responses/ServerError"
+    }
+  }
+}
+```
+
+## `DELETE /v1/accounts/{accountId}/webhooks/endpoints`
+
+Delete webhook endpoint by URL
+
+Stop delivering events to the endpoint registered with `url` and free its slot, for integrations that keep the URL they registered rather than the endpoint ID. The URL must match exactly as it was registered. Returns `404` when no endpoint of the workspace uses it. Requires the `webhooks:write` OAuth scope.
+
+```json
+{
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "parameters": [
+    {
+      "$ref": "#/components/parameters/AccountId"
+    },
+    {
+      "name": "url",
+      "in": "query",
+      "description": "The endpoint's URL.",
+      "required": true,
+      "schema": {
+        "type": "string",
+        "format": "uri"
+      },
+      "example": "https://example.com/webhooks/assinafy"
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "Endpoint deleted",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Envelope"
+              },
+              {
+                "properties": {
+                  "data": {
+                    "type": "array",
+                    "items": [],
+                    "example": []
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "400": {
+      "$ref": "#/components/responses/ValidationError",
+      "description": "`url` is missing."
+    },
+    "404": {
+      "$ref": "#/components/responses/NotFound"
     },
     "401": {
       "$ref": "#/components/responses/Unauthorized"
@@ -7821,7 +8420,7 @@ Stop delivering events to an endpoint and free its slot. Requires the `webhooks:
 
 Get webhook endpoint signing secret
 
-Return the secret used to sign deliveries to this endpoint (see **Webhook Payloads → Verifying signatures**). Returns `400` when signing is disabled. Not available to OAuth applications.
+Return the secret used to sign deliveries to this endpoint (see **Webhook Payloads → Verifying signatures**). Returns `400` when signing is disabled. Not available to OAuth applications, which receive the secret in the **Create webhook endpoint** response instead.
 
 ```json
 {
@@ -7872,7 +8471,8 @@ Return the secret used to sign deliveries to this endpoint (see **Webhook Payloa
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "Signing is not enabled for this endpoint."
     },
     "404": {
       "$ref": "#/components/responses/NotFound"
@@ -7891,7 +8491,7 @@ Return the secret used to sign deliveries to this endpoint (see **Webhook Payloa
 
 Rotate webhook endpoint signing secret
 
-Replace the endpoint's signing secret and return the new one. The old secret stops working immediately, so update your receiver right away. Returns `400` when signing is disabled. Not available to OAuth applications.
+Replace the endpoint's signing secret and return the new one. The old secret stops working immediately, so update your receiver right away. Returns `400` when signing is disabled. Not available to OAuth applications, which delete the endpoint and create a new one instead.
 
 ```json
 {
@@ -7942,7 +8542,8 @@ Replace the endpoint's signing secret and return the new one. The old secret sto
       }
     },
     "400": {
-      "$ref": "#/components/responses/ValidationError"
+      "$ref": "#/components/responses/ValidationError",
+      "description": "Signing is not enabled for this endpoint."
     },
     "404": {
       "$ref": "#/components/responses/NotFound"
@@ -8086,8 +8687,6 @@ List all WhatsApp notification messages sent for an assignment. The response inc
 
 ## Component dictionary
 
-References use the original OpenAPI `#/components/...` names.
-
 ```json
 {
   "components": {
@@ -8121,9 +8720,11 @@ References use the original OpenAPI `#/components/...` names.
             "example": "Bad request."
           },
           "data": {
-            "type": "object",
-            "example": null,
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ],
+            "example": null
           }
         },
         "type": "object"
@@ -8131,9 +8732,11 @@ References use the original OpenAPI `#/components/...` names.
       "ApiKey": {
         "properties": {
           "api_key": {
-            "type": "string",
-            "example": "mIpe_zdJfKUpMK9Va3XuYgzPXMxz49fIaRCWXseVkpVAX608A9j3i_D67qU5qW3M",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "mIpe_zdJfKUpMK9Va3XuYgzPXMxz49fIaRCWXseVkpVAX608A9j3i_D67qU5qW3M"
           }
         },
         "type": "object"
@@ -8154,14 +8757,18 @@ References use the original OpenAPI `#/components/...` names.
             "example": "example@example.com"
           },
           "telephone": {
-            "type": "string",
-            "example": "17989206641",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "17989206641"
           },
           "government_id": {
-            "type": "string",
-            "example": "15774136604",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "15774136604"
           },
           "is_email_verified": {
             "type": "boolean",
@@ -8177,10 +8784,12 @@ References use the original OpenAPI `#/components/...` names.
             "example": "2023-03-03T11:51:34Z"
           },
           "to_be_deleted_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
-            "example": null,
-            "nullable": true
+            "example": null
           }
         },
         "type": "object"
@@ -8233,22 +8842,28 @@ References use the original OpenAPI `#/components/...` names.
             "example": "John Signer"
           },
           "email": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "email",
-            "example": "person@example.com",
-            "nullable": true
+            "example": "person@example.com"
           },
           "whatsapp_phone_number": {
             "description": "E.164 format; normalized on save.",
-            "type": "string",
-            "example": "+5548999990000",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "+5548999990000"
           },
           "government_id": {
             "description": "Signer's normalized CPF (11 digits) or CNPJ (14 characters; may be alphanumeric).",
-            "type": "string",
-            "example": "39053344705",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "39053344705"
           },
           "has_accepted_terms": {
             "type": "boolean",
@@ -8280,6 +8895,17 @@ References use the original OpenAPI `#/components/...` names.
                 "description": "Whether the signer opted to reuse their saved signature/initials in future processes. When false, clients should not pre-render the saved image even if `has_signature`/`has_initial` is true.",
                 "type": "boolean",
                 "example": false
+              },
+              "verification_method": {
+                "description": "How this signature request verifies the signer. `Email`/`Whatsapp` ask for the 6-digit code; `IdDocumentFaceMatchBasic` runs the identity document check instead (see **Identity document verification status**).",
+                "type": "string",
+                "enum": [
+                  "Email",
+                  "Whatsapp",
+                  "DigitalCertificate",
+                  "IdDocumentFaceMatchBasic"
+                ],
+                "example": "Email"
               }
             },
             "type": "object"
@@ -8339,17 +8965,15 @@ References use the original OpenAPI `#/components/...` names.
             "description": "Width of the placement rectangle, in page-image pixels.",
             "type": "number",
             "format": "float",
-            "exclusiveMinimum": true,
-            "example": 421,
-            "minimum": 0
+            "exclusiveMinimum": 0,
+            "example": 421
           },
           "height": {
             "description": "Height of the placement rectangle, in page-image pixels.",
             "type": "number",
             "format": "float",
-            "exclusiveMinimum": true,
-            "example": 45.86,
-            "minimum": 0
+            "exclusiveMinimum": 0,
+            "example": 45.86
           },
           "fontFamily": {
             "description": "Font-family presentation metadata.",
@@ -8360,9 +8984,8 @@ References use the original OpenAPI `#/components/...` names.
             "description": "Font size in the 150-DPI page-image coordinate system.",
             "type": "number",
             "format": "float",
-            "exclusiveMinimum": true,
-            "example": 22,
-            "minimum": 0
+            "exclusiveMinimum": 0,
+            "example": 22
           },
           "backgroundColor": {
             "description": "CSS-compatible background-color presentation metadata.",
@@ -8402,9 +9025,11 @@ References use the original OpenAPI `#/components/...` names.
             "example": "d199996981dbd199996981db"
           },
           "template_id": {
-            "type": "string",
-            "example": null,
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
           },
           "name": {
             "type": "string",
@@ -8431,17 +9056,21 @@ References use the original OpenAPI `#/components/...` names.
             "example": "https://api.assinafy.com.br/v1/sign/doc1"
           },
           "decline_reason": {
-            "type": "string",
-            "example": null,
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
           },
           "declined_by": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/Signer"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "nullable": true
+            ]
           },
           "tags": {
             "type": "array",
@@ -8459,10 +9088,12 @@ References use the original OpenAPI `#/components/...` names.
           },
           "assignment": {
             "description": "Expanded assignment data when included via ?expand=assignment; null otherwise.",
-            "nullable": true,
-            "allOf": [
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/Assignment"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -8501,14 +9132,18 @@ References use the original OpenAPI `#/components/...` names.
             "example": "Acme Inc."
           },
           "primary_color": {
-            "type": "string",
-            "example": "aabbcc",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "aabbcc"
           },
           "secondary_color": {
-            "type": "string",
-            "example": "112233",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "112233"
           },
           "notification_sender_type": {
             "type": "string",
@@ -8559,8 +9194,10 @@ References use the original OpenAPI `#/components/...` names.
             "example": "signature"
           },
           "regex": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "is_pre_defined": {
             "type": "boolean"
@@ -8600,9 +9237,11 @@ References use the original OpenAPI `#/components/...` names.
           },
           "color": {
             "description": "6-char hex without leading #.",
-            "type": "string",
-            "example": "ff8800",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "ff8800"
           },
           "created_at": {
             "type": "string",
@@ -8639,42 +9278,70 @@ References use the original OpenAPI `#/components/...` names.
           {
             "properties": {
               "verification_method": {
-                "type": "string",
-                "example": "Email",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "Email"
               },
               "notification_methods": {
-                "type": "array",
+                "type": [
+                  "array",
+                  "null"
+                ],
                 "items": {
                   "type": "string"
                 },
                 "example": [
                   "Email"
-                ],
-                "nullable": true
+                ]
               },
               "step": {
                 "description": "Sequential signing step (defaults to 1).",
-                "type": "integer",
-                "example": 1,
-                "nullable": true
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "example": 1
               },
               "notified": {
-                "type": "boolean",
-                "nullable": true
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "identity_verification_status": {
+                "description": "Latest identity-document verification status; `InReview` means the account must decide it before the document can be certificated.",
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "Pending",
+                  "InReview",
+                  "Approved",
+                  "Declined",
+                  "Expired",
+                  "Abandoned"
+                ],
+                "example": "InReview"
               },
               "completed": {
                 "description": "Only present in account-owner contexts.",
-                "type": "boolean",
-                "nullable": true
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "notification_history": {
                 "description": "Per-channel delivery history for this signer (email + WhatsApp), most-recent send order.",
-                "type": "array",
+                "type": [
+                  "array",
+                  "null"
+                ],
                 "items": {
                   "$ref": "#/components/schemas/NotificationHistoryEntry"
-                },
-                "nullable": true
+                }
               }
             },
             "type": "object"
@@ -8697,24 +9364,32 @@ References use the original OpenAPI `#/components/...` names.
             "example": "sent"
           },
           "error_code": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "error_message": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "sent_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
-            "example": "2026-07-07T12:00:00Z",
-            "nullable": true
+            "example": "2026-07-07T12:00:00Z"
           },
           "failed_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
-            "example": null,
-            "nullable": true
+            "example": null
           }
         },
         "type": "object"
@@ -8728,9 +9403,11 @@ References use the original OpenAPI `#/components/...` names.
             "oneOf": [
               {
                 "$ref": "#/components/schemas/DocumentPage"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "nullable": true
+            ]
           },
           "signer": {
             "description": "Signer responsible for this item.",
@@ -8738,15 +9415,16 @@ References use the original OpenAPI `#/components/...` names.
           },
           "field": {
             "description": "Field definition associated with the item.",
-            "type": "object",
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "display_settings": {
             "description": "Rendering metadata for the item. Collect items use the DisplaySettings schema; virtual and legacy items may return an empty or non-object value."
           },
           "value": {
-            "description": "Captured value when completed.",
-            "nullable": true
+            "description": "Captured value when completed; `null` until then."
           },
           "completed": {
             "type": "boolean"
@@ -8796,14 +9474,18 @@ References use the original OpenAPI `#/components/...` names.
             "example": "virtual"
           },
           "expires_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
-            "example": null,
-            "nullable": true
+            "example": null
           },
           "message": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "signers": {
             "type": "array",
@@ -8900,18 +9582,22 @@ References use the original OpenAPI `#/components/...` names.
             "type": "boolean"
           },
           "blocking_reason": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "enum": [
               "PendingPayment",
               "InsufficientDocuments",
               "InsufficientCredits"
             ],
-            "example": null,
-            "nullable": true
+            "example": null
           },
           "message": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "type": "object"
@@ -9014,13 +9700,17 @@ References use the original OpenAPI `#/components/...` names.
           },
           "document_name": {
             "description": "Default name for documents created from this template.",
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "message": {
             "description": "Default invitation message.",
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "description": "One of uploading, uploaded, processing, ready, failed.",
@@ -9100,21 +9790,27 @@ References use the original OpenAPI `#/components/...` names.
           },
           "url": {
             "description": "Webhook endpoint URL.",
-            "type": "string",
-            "example": "http://example.com?test=1",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "http://example.com?test=1"
           },
           "email": {
             "description": "Contact email for delivery notices.",
-            "type": "string",
-            "example": "person@example.com",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "person@example.com"
           },
           "updated_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
-            "example": "2023-05-10T14:58:24Z",
-            "nullable": true
+            "example": "2023-05-10T14:58:24Z"
           }
         },
         "type": "object"
@@ -9129,9 +9825,11 @@ References use the original OpenAPI `#/components/...` names.
           },
           "name": {
             "description": "Label to tell endpoints apart.",
-            "type": "string",
-            "example": "ERP",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "ERP"
           },
           "url": {
             "description": "URL that receives the events (http or https).",
@@ -9215,20 +9913,26 @@ References use the original OpenAPI `#/components/...` names.
           },
           "endpoint_id": {
             "description": "ID of the webhook endpoint the delivery was sent to (`null` once that endpoint is deleted).",
-            "type": "string",
-            "example": "65f1c2a9b3e4d5f60718293a4b5c6d7e",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "65f1c2a9b3e4d5f60718293a4b5c6d7e"
           },
           "endpoint": {
             "description": "URL that received the request.",
-            "type": "string",
-            "example": "https://example.com/webhook",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "https://example.com/webhook"
           },
           "payload": {
             "description": "JSON payload sent to the endpoint.",
-            "type": "object",
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "delivered": {
             "description": "Whether delivery succeeded.",
@@ -9237,21 +9941,27 @@ References use the original OpenAPI `#/components/...` names.
           },
           "http_status": {
             "description": "HTTP status returned (null if connection failed).",
-            "type": "integer",
-            "example": 200,
-            "nullable": true
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 200
           },
           "response_body": {
             "description": "Endpoint response body, truncated to 2000 chars.",
-            "type": "string",
-            "example": "OK",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "OK"
           },
           "error": {
             "description": "Delivery error message, if any.",
-            "type": "string",
-            "example": null,
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
           },
           "created_at": {
             "type": "string",
@@ -9289,14 +9999,19 @@ References use the original OpenAPI `#/components/...` names.
           },
           "message": {
             "description": "Reserved; currently always `null`.",
-            "type": "string",
-            "example": null,
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
           },
           "payload": {
             "description": "Event-specific parameters; keys vary per event.",
-            "type": "object",
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
           },
           "origin": {
             "description": "Where the action came from, when it was triggered by a request.",
@@ -9310,8 +10025,10 @@ References use the original OpenAPI `#/components/...` names.
                 "example": "Mozilla/5.0"
               }
             },
-            "type": "object",
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "created_at": {
             "description": "When the event was recorded (Unix timestamp, seconds).",
@@ -9365,9 +10082,11 @@ References use the original OpenAPI `#/components/...` names.
             "example": "aabbcc"
           },
           "secondary_color": {
-            "type": "string",
-            "example": "aabbcc",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "aabbcc"
           },
           "logo": {
             "description": "URL to the account logo.",
@@ -9441,41 +10160,55 @@ References use the original OpenAPI `#/components/...` names.
             "example": "FE32EDDADE7CBDDCBB934E7402047450B0E59C02"
           },
           "id": {
-            "type": "string",
-            "example": "63ddb172402799bfc991d10d",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "63ddb172402799bfc991d10d"
           },
           "agreement_code": {
             "description": "Agreement code printed on the document certificate.",
-            "type": "string",
-            "example": "550E8400-E29B-41D4-A716-446655440000",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "550E8400-E29B-41D4-A716-446655440000"
           },
           "status": {
-            "type": "string",
-            "example": "certificated",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "certificated"
           },
           "page_count": {
-            "type": "string",
-            "example": "1",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "1"
           },
           "signer_count": {
-            "type": "string",
-            "example": "1",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "1"
           },
           "completed_count": {
-            "type": "integer",
-            "example": 1,
-            "nullable": true
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 1
           },
           "completed_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
-            "example": "2023-01-27T19:27:44Z",
-            "nullable": true
+            "example": "2023-01-27T19:27:44Z"
           },
           "verified_at": {
             "type": "string",
@@ -9495,7 +10228,7 @@ References use the original OpenAPI `#/components/...` names.
         "type": "object"
       },
       "DocumentActivity": {
-        "description": "A document activity event.",
+        "description": "A document activity/audit event.",
         "properties": {
           "id": {
             "type": "integer",
@@ -9512,8 +10245,10 @@ References use the original OpenAPI `#/components/...` names.
           },
           "payload": {
             "description": "Event-specific payload snapshot. Keys vary per event.",
-            "type": "object",
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "origin": {
             "description": "Request origin when available.",
@@ -9526,8 +10261,10 @@ References use the original OpenAPI `#/components/...` names.
                 "type": "string"
               }
             },
-            "type": "object",
-            "nullable": true
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "created_at": {
             "type": "string",
@@ -9592,6 +10329,249 @@ References use the original OpenAPI `#/components/...` names.
             "items": {
               "$ref": "#/components/schemas/AuthAccount"
             }
+          }
+        },
+        "type": "object"
+      },
+      "SignerIdentityReview": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "104c267f8e1e8c6855d7788b76a8"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "InReview",
+              "Approved",
+              "Declined",
+              "Expired",
+              "Abandoned"
+            ],
+            "example": "InReview"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "AssinafyVerify"
+            ],
+            "example": "AssinafyVerify"
+          },
+          "verification_method": {
+            "type": "string",
+            "enum": [
+              "IdDocumentFaceMatchBasic"
+            ],
+            "example": "IdDocumentFaceMatchBasic"
+          },
+          "reason_codes": {
+            "description": "Why the provider sent it to review, in its order. Unknown codes have the code as description.",
+            "type": "array",
+            "items": {
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "example": "NAME_MISMATCH"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Nome no documento difere do cadastrado (similaridade 52%)"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "evidence_available": {
+            "type": "boolean",
+            "example": true
+          },
+          "expected": {
+            "description": "What the signer was registered with.",
+            "properties": {
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "Maria da Silva"
+              },
+              "cpf": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "52998224725"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "document": {
+            "description": "What was read from the document.",
+            "properties": {
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "CNH"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "MARIA SILVA"
+              },
+              "cpf": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "52998224725"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "matches": {
+            "properties": {
+              "cpf": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "example": true
+              },
+              "name": {
+                "description": "Name similarity, 0-1.",
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "example": 0.5217
+              },
+              "birth_date": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "example": null
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "name"
+                },
+                "result": {
+                  "description": "pass, review, skipped, or a failure result.",
+                  "type": "string",
+                  "example": "review"
+                },
+                "score": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "example": 0.5217
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "NAME_MISMATCH"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "images": {
+            "description": "The evidence images the reviewer can open with **Signer identity review image**, in display order: `document_front`, `document_back`, `document_pdf`, `face`. Only while `status` is `InReview`; empty once decided.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "document_front",
+                "document_back",
+                "document_pdf",
+                "face"
+              ]
+            },
+            "example": [
+              "document_front",
+              "document_back",
+              "face"
+            ]
+          },
+          "ruleset_version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12.2"
+          },
+          "evidence_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "9f2c0d6e4b1a8c3f5e7d9b0a2c4e6f8a1b3d5f7091e2c4a6b8d0f2e4a6c8e0b2"
+          },
+          "reviewed_by": {
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "Kx9pQ2"
+              },
+              "name": {
+                "type": "string",
+                "example": "Ana Souza"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "reviewed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-10-13T21:05:00Z"
+          },
+          "review_note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Conferido por videochamada."
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-10-13T21:05:00Z"
           }
         },
         "type": "object"
@@ -10422,11 +11402,11 @@ References use the original OpenAPI `#/components/...` names.
             "signing_urls": [
               {
                 "signer_id": "61521202f665dffcef5f6b24",
-                "url": "https://api.assinafy.com.br/v1/sign/615213edf8a58f132e1b2384?email=person@example.com"
+                "url": "https:person@example.com"
               },
               {
                 "signer_id": "615212039529a822e24b6913",
-                "url": "https://api.assinafy.com.br/v1/sign/615213edf8a58f132e1b2384?email=person@example.com"
+                "url": "https:person@example.com"
               }
             ]
           }

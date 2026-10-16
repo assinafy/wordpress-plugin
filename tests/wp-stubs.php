@@ -213,6 +213,13 @@ if ( ! function_exists( 'wp_parse_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_parse_str' ) ) {
+	/** @param array<string, mixed> $result Decoded query parameters. */
+	function wp_parse_str( string $input, array &$result ): void {
+		parse_str( $input, $result );
+	}
+}
+
 if ( ! function_exists( 'add_query_arg' ) ) {
 	/**
 	 * @param array<string, scalar> $args Query arguments.

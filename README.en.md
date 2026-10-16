@@ -97,7 +97,7 @@ Three consequences fall straight out of the model and shape the whole plugin:
 
 ### The state machine
 
-A document moves through exactly eleven statuses. `is_closed: true` marks every terminal
+A document moves through twelve statuses, including `pending_identity_review`. `is_closed: true` marks every terminal
 one — drive "is this finished?" from that flag, not from a hand-maintained list.
 
 ```mermaid
@@ -113,7 +113,10 @@ stateDiagram-v2
     uploaded --> pending_signature: virtual assignment<br/>(promoted automatically)
     metadata_ready --> pending_signature: collect assignment
 
-    pending_signature --> certificating: last signer signs
+    pending_signature --> certificating: all signed, no review
+    pending_signature --> pending_identity_review: all signed, review required
+    pending_identity_review --> certificating: review approved
+    pending_identity_review --> rejected_by_user: review rejected
     certificating --> certificated
 
     pending_signature --> rejected_by_signer: a signer declines
@@ -134,6 +137,7 @@ stateDiagram-v2
 | `metadata_processing` | no | Pages rendering. `pages[]` fills in during this state. |
 | `metadata_ready` | **yes** | Pages rendered, thumbnail available. |
 | `pending_signature` | **yes** | Signers notified. Deleting is the only cancel the API offers. |
+| `pending_identity_review` | yes | All signers signed; awaits account review of biometric verification. |
 | `certificating` | no | Last signer signed; the platform is sealing the PDF. |
 | `certificated` | no | Terminal success; marked not deletable in the current status catalogue. |
 | `rejected_by_signer` | **yes** | A signer declined. Terminal. |
@@ -149,7 +153,7 @@ Subsequent API responses and reconciliation supply the document's processing/sig
 
 ### Verification and notification methods
 
-The plugin supports three verification methods and one notification channel per signer.
+The plugin supports four verification methods and one notification channel per signer.
 Values are PascalCase; incompatible method/channel combinations are rejected locally.
 
 | `verification_method` | `notification_methods` | Cost | Requires |
@@ -157,13 +161,19 @@ Values are PascalCase; incompatible method/channel combinations are rejected loc
 | `Email` | `["Email"]` | Account estimate | Email, or an existing signer ID |
 | `Whatsapp` | `["Whatsapp"]` | Account estimate; plan restrictions may apply | Phone number, or an existing signer ID |
 | `DigitalCertificate` | `["Email"]` or `["Whatsapp"]` | Account estimate; feature must be enabled | Existing signer ID with government ID configured in Assinafy; signer alone in its step |
+| `IdDocumentFaceMatchBasic` | `["Email"]` or `["Whatsapp"]` | Account estimate; biometric feature enabled | Existing signer ID with a valid CPF configured in Assinafy |
 
 [`Signers`](src/Documents/Signers.php) validates the pairing. Omitting the method and channel
 defaults to `Email` when an email is present or no phone is supplied, and otherwise to
-`Whatsapp`. Supported explicit channels are preserved.
+`Whatsapp`. Supplying only a notification channel infers its matching verification method.
+Supported explicit channels are preserved.
 
-These three are the whole verification vocabulary. The plugin offers no method the API does
-not implement.
+A1 and A3 both use `DigitalCertificate`. Biometric verification uses `IdDocumentFaceMatchBasic`:
+the signer gives consent on the hosted page and submits ID photos and a liveness check.
+When verification requires review, the account approves or rejects it in the Assinafy dashboard;
+signing can continue, but certification waits for approval (`pending_identity_review`).
+The admin compose form and WP-CLI send command use Email. All four methods are available
+through `assinafy_send_document` and the shared send service.
 
 ---
 
@@ -478,8 +488,8 @@ Each signer row takes:
 | `email` | `string` | Required for Email verification unless an existing signer ID is supplied. Phone-only rows default to Whatsapp. |
 | `whatsapp_phone_number` (or `phone`) | `string` | E.164. Bare 10/11-digit national numbers get `+55`. |
 | `step` | `int` | Supply for every signer or omit for every signer. Defaults to 1; explicit steps start at 1 without gaps. DigitalCertificate signers need their own step. |
-| `verification_method` | `string` | `Email`, `Whatsapp` or `DigitalCertificate`. DigitalCertificate requires an existing signer ID with government ID configured in Assinafy. |
-| `notification_methods` | `array<string>` | Exactly one `Email` or `Whatsapp` channel. Email/Whatsapp verification requires the matching channel; DigitalCertificate supports either. |
+| `verification_method` | `string` | `Email`, `Whatsapp`, `DigitalCertificate` or `IdDocumentFaceMatchBasic`. The last two require an existing signer ID with government ID configured; biometric verification requires a valid CPF. |
+| `notification_methods` | `array<string>` | Exactly one `Email` or `Whatsapp` channel. Email/Whatsapp verification requires the matching channel; DigitalCertificate and IdDocumentFaceMatchBasic support either. |
 | `id` | `string` | An existing Assinafy signer id, used as-is instead of the look-up-then-create. |
 
 Optional top-level keys:
@@ -649,7 +659,7 @@ one is [`DocumentIndex`](src/Documents/DocumentIndex.php).
 $records = new Assinafy\WP\Documents\DocumentRecord();
 
 $records->document_id( $post_id );    // string, '' when not yet sent
-$records->status( $post_id );         // one of the eleven status codes
+$records->status( $post_id );         // one of the document status codes
 $records->is_closed( $post_id );      // bool
 $records->assignment_id( $post_id );  // string
 $records->artifacts( $post_id );      // array<int, string> — NAMES, never URLs
@@ -859,7 +869,7 @@ with webhook acceptance switched off answers 200 with `reason: disabled`:
 | `disabled` | `false` | This site is not accepting deliveries. Nothing was read or written. |
 | `duplicate` | `false` | This delivery id was already processed. |
 | `account_mismatch` | `false` | The envelope names a different Assinafy account. |
-| `unknown_event` | `false` | The event is not one of the fifteen. |
+| `unknown_event` | `false` | The event is not one of the twenty. |
 | `not_a_document` | `false` | `object` is a Signer, User or Account — nothing to re-fetch. |
 | `unknown_document` | `false` | This site has no record of that document. |
 | `sync_failed` | `false` | The re-fetch failed. Reconciliation can retry open mirrored records. |
@@ -893,7 +903,7 @@ or control the remote service's delivery retry schedule or circuit-breaker behav
   under the virtual pre-metadata flow `assignment_created` can arrive first. Re-fetching makes
   the handler order-independent for free.
 
-### The fifteen event types
+### The twenty event types
 
 ```
 document_uploaded          document_metadata_ready    document_prepared
@@ -901,16 +911,22 @@ assignment_created         signature_requested        document_ready
 signer_created             signer_email_verified      signer_whatsapp_verified
 signer_data_confirmed      signer_signed_document     signer_viewed_document
 signer_rejected_document   user_rejected_document     document_processing_failed
+signer_identity_verified   signer_identity_verification_failed
+signer_identity_review_required   signer_identity_review_approved
+signer_identity_review_rejected
 ```
 
-The plugin allow-list contains these fifteen events. SDK template-event constants, including
+The plugin allow-list contains these twenty events. SDK template-event constants, including
 `template_created`, `template_processed` and `template_processing_failed`, are not included
 in that allow-list and are filtered out of registration requests.
 
-The plugin subscribes to seven by default: `document_metadata_ready`, `document_ready`,
+The plugin subscribes to twelve by default: `document_metadata_ready`, `document_ready`,
 `signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
-`user_rejected_document` and `document_processing_failed`. Reconciliation can recover the
-latest document state, but not a complete history of intermediate events.
+`user_rejected_document`, `document_processing_failed` and the five `signer_identity_*` events.
+Reconciliation can recover the latest document state, but not a complete history of intermediate events.
+
+Registration reads `GET /webhooks/event-types` on the selected environment and sends only
+events available there. Environments with a smaller catalog keep working.
 
 ### This site's own endpoint
 
@@ -922,13 +938,13 @@ integrations coexist and are never replaced. When the plan's endpoint limit is a
 registration fails with an error asking you to remove an endpoint in the Assinafy dashboard
 first.
 
-Endpoints are registered with `signing_enabled: true`. On API-key sites, registration also reads
-the endpoint's `whsec_` secret from the API and stores it encrypted with the same cipher as the
-API key — the settings screen shows this row as managed automatically. The secret routes are not
-available to OAuth applications, so an OAuth site pastes the `whsec_` value the Assinafy
-dashboard shows for the endpoint into the **Signing secret** field; it is stored encrypted and
-the field keeps the stored value when submitted blank. With no secret configured, the URL token
-alone authenticates deliveries, as before.
+Endpoints are registered with `signing_enabled: true`. The `whsec_` secret returned by creation
+is stored encrypted, including for OAuth connections. API-key sites can also retrieve it from
+the API when registering again. OAuth cannot re-read or rotate the secret through the API:
+if it is lost, delete the endpoint in the Assinafy dashboard and register this site again
+to create a new one, or restore a saved copy through **Signing secret**. Submitting the field
+blank keeps its stored value. A stored secret that cannot be decrypted makes deliveries fail with 401 until restored; the URL token
+alone authenticates only when no signing secret has been configured.
 
 ### Programmatic webhook API
 
@@ -968,8 +984,8 @@ currently stored on the Assinafy account.
 
 | Member | Returns |
 |---|---|
-| `Route::EVENTS` | The fifteen subscribable events, in the order the API returns them. |
-| `Route::DEFAULT_EVENTS` | The seven events explicitly requested by the settings screen and WP-CLI. |
+| `Route::EVENTS` | The twenty documented document/signer events understood by the receiver. |
+| `Route::DEFAULT_EVENTS` | The twelve default events; registration sends the subset available on the selected environment. |
 | `Route::token()` | The stored endpoint token, `''` before one exists. |
 | `Route::url()` | This site's full endpoint, `''` when there is no token. |
 | `Route::rotate_token()` | A new token, already stored. |
@@ -1294,7 +1310,7 @@ The subscription response carries no signing secret.
 
 The SDK sends all four HTTP body fields. URL and email are required arguments; the SDK
 provides defaults for events and active state. Its default event list contains four events,
-while the plugin explicitly supplies the seven in `Route::DEFAULT_EVENTS`.
+while the plugin selects from the twelve in `Route::DEFAULT_EVENTS` when registering its own endpoint.
 
 ```http
 PUT /v1/accounts/{ACCOUNT_ID}/webhooks/subscriptions
@@ -1535,7 +1551,7 @@ hard-fails without it.
 risky. Live sandbox checks use the separate `phpunit-sandbox.xml.dist` configuration and
 WordPress test bootstrap. Supply `ASSINAFY_API_KEY` and `ASSINAFY_ACCOUNT_ID` through the
 environment. The suite creates and deletes one unassigned PDF, checks retrieval and download,
-and estimates Email, WhatsApp and DigitalCertificate costs without sending invitations.
+and estimates Email, WhatsApp, DigitalCertificate and IdDocumentFaceMatchBasic costs without sending invitations.
 All pricing features must be enabled on the sandbox account.
 
 ### Linting and static analysis

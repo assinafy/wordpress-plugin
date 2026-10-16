@@ -1,6 +1,6 @@
 # Bundled PHP SDK reference
 
-This reference describes the SDK installed by the plugin (2.6.2). Obtain the configured client through `ClientFactory::client()`. WordPress uses `WpHttpClient`, including credential isolation and encrypted OAuth renewal. The SDK default Guzzle transport is unavailable in the plugin distribution.
+This reference describes the SDK installed by the plugin (2.7.0). Obtain the configured client through `ClientFactory::client()`. WordPress uses `WpHttpClient`, including credential isolation and encrypted OAuth renewal. The SDK default Guzzle transport is unavailable in the plugin distribution.
 
 For OAuth discovery, obtain the resource through `OAuthTokens::oauth()`. It supplies a credential-free WordPress transport for each discovery origin; constructing the SDK OAuth resource without this discovery factory would use the unavailable default transport.
 
@@ -31,7 +31,7 @@ public static function create(
         #[\SensitiveParameter] string $apiKey,
         string $accountId,
         string $baseUrl = Configuration::DEFAULT_BASE_URL
-    ) : self
+    ): self
 ```
 
 Create a workspace client using an API key; no network request is made.
@@ -43,7 +43,7 @@ InvalidArgumentException through Configuration validation.
 ### `fromArray()`
 
 ```php
-public static function fromArray(#[\SensitiveParameter] array $config) : self
+public static function fromArray(#[\SensitiveParameter] array $config): self
 ```
 
 Build a client from the keys accepted by Configuration::fromArray(), without HTTP I/O.
@@ -57,7 +57,7 @@ Returns a configured client; the configuration validates types and required valu
 ### `forAuth()`
 
 ```php
-public static function forAuth(string $baseUrl = Configuration::DEFAULT_BASE_URL) : self
+public static function forAuth(string $baseUrl = Configuration::DEFAULT_BASE_URL): self
 ```
 
 Build a client for the unauthenticated surface of the API — the place where
@@ -78,7 +78,7 @@ public static function forBearer(
         #[\SensitiveParameter] string $accessToken,
         string $accountId,
         string $baseUrl = Configuration::DEFAULT_BASE_URL
-    ) : self
+    ): self
 ```
 
 Build an account-scoped client authenticated with a Bearer access token.
@@ -86,7 +86,7 @@ Build an account-scoped client authenticated with a Bearer access token.
 ### `accounts()`
 
 ```php
-public function accounts() : AccountResource
+public function accounts(): AccountResource
 ```
 
 Accounts (workspaces).
@@ -98,7 +98,7 @@ remaining methods act on the configured account using its API key or global Bear
 ### `documents()`
 
 ```php
-public function documents() : DocumentResource
+public function documents(): DocumentResource
 ```
 
 Documents: upload, list, search, rename, download, tag, and delete.
@@ -109,7 +109,7 @@ then assigned for signature via {@see self::assignments()}. Account-scoped.
 ### `signers()`
 
 ```php
-public function signers() : SignerResource
+public function signers(): SignerResource
 ```
 
 Signers: the address book of people who can be asked to sign.
@@ -120,7 +120,7 @@ reference its id in every assignment. Account-scoped.
 ### `assignments()`
 
 ```php
-public function assignments() : AssignmentResource
+public function assignments(): AssignmentResource
 ```
 
 Assignments: request signatures on a document and manage those requests.
@@ -131,7 +131,7 @@ estimates cost, resends notifications, and extends deadlines.
 ### `templates()`
 
 ```php
-public function templates() : TemplateResource
+public function templates(): TemplateResource
 ```
 
 Templates: reusable documents with named roles bound to signers at creation time.
@@ -142,7 +142,7 @@ signing roles are configured in the web app. Account-scoped.
 ### `tags()`
 
 ```php
-public function tags() : TagResource
+public function tags(): TagResource
 ```
 
 Tags: workspace labels that can be attached to documents for filtering.
@@ -153,7 +153,7 @@ Account-scoped.
 ### `fields()`
 
 ```php
-public function fields() : FieldResource
+public function fields(): FieldResource
 ```
 
 Fields: custom and standard data captured from signers during signing.
@@ -164,26 +164,21 @@ Account-scoped.
 ### `webhooks()`
 
 ```php
-public function webhooks() : WebhookResource
+public function webhooks(): WebhookResource
 ```
 
-Webhooks: the workspace's webhook endpoints, the legacy single-subscription
-routes, the event catalog and the delivery history.
+Webhooks: the workspace's endpoints (1, or up to 3 on paid plans), their signing
+secrets, the legacy subscription routes and the delivery history.
 
-An account can register 1 endpoint, or up to 3 on paid plans. Each endpoint has
-its own URL, events, active flag and optional Standard Webhooks signing; every
-active endpoint subscribed to an event receives it independently. The
-subscription methods act on the account's oldest endpoint. See
-{@see self::webhookEvents()} for verifying signed deliveries. Account-scoped.
+Verify signed deliveries with {@see self::webhookEvents()}. Account-scoped.
 
 ### `auth()`
 
 ```php
-public function auth() : AuthResource
+public function auth(): AuthResource
 ```
 
-Authentication: login (including two-factor completion), social login, API-key
-management, and password flows.
+Authentication: login, social login, API-key management, and password flows.
 
 Mostly used on a client built with {@see self::forAuth()}, before any workspace
 credential exists.
@@ -194,7 +189,7 @@ credential exists.
 public function oauth(
         string $clientId,
         #[\SensitiveParameter] ?string $clientSecret = null
-    ) : OAuthResource
+    ): OAuthResource
 ```
 
 Marketplace OAuth: the authorization-code + PKCE flow for acting on **another**
@@ -221,7 +216,7 @@ create a stale-secret footgun.
 ### `signerSession()`
 
 ```php
-public function signerSession() : SignerSessionResource
+public function signerSession(): SignerSessionResource
 ```
 
 The signer's own session: everything a recipient does with their access code.
@@ -232,7 +227,7 @@ then sign or decline. Authenticated by the signer access code, not the API key.
 ### `signerDocuments()`
 
 ```php
-public function signerDocuments() : SignerDocumentResource
+public function signerDocuments(): SignerDocumentResource
 ```
 
 A signer's view of the documents assigned to them.
@@ -243,24 +238,21 @@ the signer access code, not the API key.
 ### `users()`
 
 ```php
-public function users() : UserResource
+public function users(): UserResource
 ```
 
-Authenticated user profile, cross-account KPI endpoints, notification preferences,
-and two-factor enrollment (authenticator methods and recovery codes).
+Authenticated user profile and cross-account KPI endpoints.
 
 ### `webhookEvents()`
 
 ```php
-public function webhookEvents() : WebhookEventParser
+public function webhookEvents(): WebhookEventParser
 ```
 
 Helpers for verifying and decoding incoming webhook deliveries.
 
-An endpoint created with `signing_enabled: true` signs every delivery following
-the Standard Webhooks specification; check the signature with
-{@see WebhookEventParser::verifySignature()} before decoding the body. Unsigned
-endpoints send `webhook-id` and `webhook-timestamp` only.
+Check signed deliveries with {@see WebhookEventParser::verifySignature()} before
+decoding them. Local only; makes no HTTP request.
 
 ### `uploadAndRequestSignatures()`
 
@@ -271,7 +263,7 @@ public function uploadAndRequestSignatures(
         #[\SensitiveParameter] ?string $message = null,
         ?string $expiresAt = null,
         bool $waitForReady = true
-    ) : array
+    ): array
 ```
 
 High-level helper: upload a PDF, create signers if needed, then dispatch a virtual
@@ -283,15 +275,15 @@ Each entry in `$signers` may be either:
     (or phone)?, verification_method?, notification_methods?, step? }`
 
 Signers without an `id` are created via the API; signers found by email (when an email
-is supplied) are reused. DigitalCertificate entries must instead supply an existing
-signer ID whose government_id was set first. Returns the created document, the assignment,
-and the resolved signer IDs.
+is supplied) are reused. DigitalCertificate and IdDocumentFaceMatchBasic entries must
+instead supply an existing signer ID whose government_id was set first. Returns the
+created document, the assignment, and the resolved signer IDs.
 
-SDK input (the helper composes multipart and JSON requests):
+Example call (the helper composes the multipart upload and JSON requests):
 ```php
-[
-    'filePath' => '/absolute/path/agreement.pdf',
-    'signers' => [
+$result = $client->uploadAndRequestSignatures(
+    '/absolute/path/agreement.pdf',
+    [
         [
             'full_name' => 'Example Signer',
             'email' => 'person@example.com',
@@ -300,10 +292,10 @@ SDK input (the helper composes multipart and JSON requests):
             'step' => 1,
         ],
     ],
-    'message' => null,
-    'expiresAt' => null,
-    'waitForReady' => true,
-]
+    message: 'Please sign this contract',
+    expiresAt: '2026-12-31T23:59:59Z',
+    waitForReady: true,
+);
 ```
 
 Full return example:
@@ -432,11 +424,15 @@ created by earlier steps; use separate calls when each ID must be saved for reco
 
 @param array<int, string|array<string, mixed>> $signers
 @return array{document: array<string, mixed>, assignment: array<string, mixed>, signer_ids: array<int, string>}
+@throws \InvalidArgumentException on an invalid signer description or expiration
+@throws \RuntimeException when an upload or signer creation returns no usable ID
+@throws \Assinafy\SDK\Exceptions\ApiException on an API error from the composed calls
+@throws \Assinafy\SDK\Exceptions\NetworkException on a transport failure from the composed calls
 
 ### `getConfig()`
 
 ```php
-public function getConfig() : Configuration
+public function getConfig(): Configuration
 ```
 
 The immutable configuration this client was built with.
@@ -444,7 +440,7 @@ The immutable configuration this client was built with.
 ### `getHttpClient()`
 
 ```php
-public function getHttpClient() : HttpClientInterface
+public function getHttpClient(): HttpClientInterface
 ```
 
 The transport in use — the injected client, or the SDK's Guzzle default.
@@ -452,7 +448,7 @@ The transport in use — the injected client, or the SDK's Guzzle default.
 ### `getLogger()`
 
 ```php
-public function getLogger() : LoggerInterface
+public function getLogger(): LoggerInterface
 ```
 
 The PSR-3 logger currently receiving request and error diagnostics.
@@ -460,7 +456,7 @@ The PSR-3 logger currently receiving request and error diagnostics.
 ### `setLogger()`
 
 ```php
-public function setLogger(LoggerInterface $logger) : self
+public function setLogger(LoggerInterface $logger): self
 ```
 
 Swap the logger after construction.
@@ -495,7 +491,7 @@ owns authentication and User-Agent headers. Example input:
 ### `fromArray()`
 
 ```php
-public static function fromArray(#[\SensitiveParameter] array $config) : self
+public static function fromArray(#[\SensitiveParameter] array $config): self
 ```
 
 @param array<string, mixed> $config keys: `api_key`/`apiKey`, `account_id`/`accountId`,
@@ -506,7 +502,7 @@ public static function fromArray(#[\SensitiveParameter] array $config) : self
 ### `forPublic()`
 
 ```php
-public static function forPublic(string $baseUrl = self::DEFAULT_BASE_URL) : self
+public static function forPublic(string $baseUrl = self::DEFAULT_BASE_URL): self
 ```
 
 Configuration for the unauthenticated surface of the API.
@@ -530,7 +526,7 @@ public static function forBearer(
         string $baseUrl = self::DEFAULT_BASE_URL,
         int $timeout = 30,
         int $connectTimeout = 10
-    ) : self
+    ): self
 ```
 
 Configure all workspace resources with OAuth/Bearer authentication instead
@@ -539,7 +535,7 @@ of an API key.
 ### `isPublic()`
 
 ```php
-public function isPublic() : bool
+public function isPublic(): bool
 ```
 
 True when built by {@see self::forPublic()} — no credential is sent.
@@ -547,7 +543,7 @@ True when built by {@see self::forPublic()} — no credential is sent.
 ### `isBearerAuthenticated()`
 
 ```php
-public function isBearerAuthenticated() : bool
+public function isBearerAuthenticated(): bool
 ```
 
 True when requests carry an `Authorization: Bearer` header instead of `X-Api-Key`.
@@ -555,7 +551,7 @@ True when requests carry an `Authorization: Bearer` header instead of `X-Api-Key
 ### `getBaseUrl()`
 
 ```php
-public function getBaseUrl() : string
+public function getBaseUrl(): string
 ```
 
 The API root, without a trailing slash (e.g. `https://api.assinafy.com.br/v1`).
@@ -563,7 +559,7 @@ The API root, without a trailing slash (e.g. `https://api.assinafy.com.br/v1`).
 ### `getApiKey()`
 
 ```php
-public function getApiKey() : string
+public function getApiKey(): string
 ```
 
 The raw API key. Empty on a Bearer configuration; a sentinel on a public one.
@@ -571,7 +567,7 @@ The raw API key. Empty on a Bearer configuration; a sentinel on a public one.
 ### `getAccessToken()`
 
 ```php
-public function getAccessToken() : ?string
+public function getAccessToken(): ?string
 ```
 
 The Bearer access token, or null when authenticating with an API key.
@@ -579,7 +575,7 @@ The Bearer access token, or null when authenticating with an API key.
 ### `getAccountId()`
 
 ```php
-public function getAccountId() : string
+public function getAccountId(): string
 ```
 
 The workspace id account-scoped routes are built from.
@@ -587,7 +583,7 @@ The workspace id account-scoped routes are built from.
 ### `getTimeout()`
 
 ```php
-public function getTimeout() : int
+public function getTimeout(): int
 ```
 
 Total per-request timeout, in seconds.
@@ -595,7 +591,7 @@ Total per-request timeout, in seconds.
 ### `getConnectTimeout()`
 
 ```php
-public function getConnectTimeout() : int
+public function getConnectTimeout(): int
 ```
 
 Connection-establishment timeout, in seconds.
@@ -603,7 +599,7 @@ Connection-establishment timeout, in seconds.
 ### `getHeaders()`
 
 ```php
-public function getHeaders() : array
+public function getHeaders(): array
 ```
 
 Default transport headers.
@@ -613,7 +609,7 @@ Default transport headers.
 ### `__debugInfo()`
 
 ```php
-public function __debugInfo() : array
+public function __debugInfo(): array
 ```
 
 Keep credentials and workspace identifiers out of diagnostic object dumps.
@@ -641,7 +637,7 @@ public function __construct(
 ### `getStatusCode()`
 
 ```php
-public function getStatusCode() : int
+public function getStatusCode(): int
 ```
 
 The HTTP status code the API answered with.
@@ -649,7 +645,7 @@ The HTTP status code the API answered with.
 ### `getResponseData()`
 
 ```php
-public function getResponseData() : ?array
+public function getResponseData(): ?array
 ```
 
 @return array<string, mixed>|null
@@ -657,7 +653,7 @@ public function getResponseData() : ?array
 ### `getResponseHeaders()`
 
 ```php
-public function getResponseHeaders() : array
+public function getResponseHeaders(): array
 ```
 
 Response headers retained for request IDs, pagination diagnostics, rate limits,
@@ -668,7 +664,7 @@ and `Retry-After` handling.
 ### `getResponseHeaderLine()`
 
 ```php
-public function getResponseHeaderLine(string $name) : string
+public function getResponseHeaderLine(string $name): string
 ```
 
 One response header, comma-joined, matched case-insensitively; `''` when absent.
@@ -676,7 +672,7 @@ One response header, comma-joined, matched case-insensitively; `''` when absent.
 ### `isRateLimited()`
 
 ```php
-public function isRateLimited() : bool
+public function isRateLimited(): bool
 ```
 
 True for `429 Too Many Requests`; wait {@see self::getRetryAfter()} seconds before retrying.
@@ -684,7 +680,7 @@ True for `429 Too Many Requests`; wait {@see self::getRetryAfter()} seconds befo
 ### `getRetryAfter()`
 
 ```php
-public function getRetryAfter() : ?int
+public function getRetryAfter(): ?int
 ```
 
 Seconds to wait before retrying, from the `Retry-After` header the API sends with `429`.
@@ -695,7 +691,7 @@ An HTTP-date value is converted to the remaining seconds (never negative).
 ### `getRateLimit()`
 
 ```php
-public function getRateLimit() : ?array
+public function getRateLimit(): ?array
 ```
 
 The rate-limit window reported by the `X-Rate-Limit-*` response headers.
@@ -715,7 +711,7 @@ public static function fromResponse(
         #[\SensitiveParameter] array $responseData,
         ?\Throwable $previous = null,
         array $responseHeaders = []
-    ) : self
+    ): self
 ```
 
 @param array<string, mixed> $responseData
@@ -739,7 +735,7 @@ public function __construct(
 ### `getContext()`
 
 ```php
-public function getContext() : array
+public function getContext(): array
 ```
 
 @return array<string, mixed>
@@ -747,22 +743,12 @@ public function getContext() : array
 ### `setContext()`
 
 ```php
-public function setContext(#[\SensitiveParameter] array $context) : self
+public function setContext(#[\SensitiveParameter] array $context): self
 ```
 
 @param array<string, mixed> $context
 
 ## `Exceptions/NetworkException`
-
-```php
-class NetworkException extends AssinafyException
-```
-
-A transport- or payload-level failure rather than an API error response: connection
-errors and timeouts from the HTTP layer, and successful-looking responses whose body
-is unusable (an invalid data envelope, invalid pagination headers, or a webhook secret
-route answering without a secret). Adds no members beyond
-{@see \Assinafy\SDK\Exceptions\AssinafyException}.
 
 ## `Exceptions/ValidationException`
 
@@ -781,7 +767,7 @@ public function __construct(
 ### `getErrors()`
 
 ```php
-public function getErrors() : array
+public function getErrors(): array
 ```
 
 @return array<array-key, mixed>
@@ -789,7 +775,7 @@ public function getErrors() : array
 ### `fromArray()`
 
 ```php
-public static function fromArray(#[\SensitiveParameter] array $errors) : self
+public static function fromArray(#[\SensitiveParameter] array $errors): self
 ```
 
 @param array<array-key, mixed> $errors
@@ -813,7 +799,7 @@ public function __construct(
 ### `__debugInfo()`
 
 ```php
-public function __debugInfo() : array
+public function __debugInfo(): array
 ```
 
 Keep credentials out of diagnostic object dumps.
@@ -827,7 +813,7 @@ public function get(
         string $uri,
         #[\SensitiveParameter] array $params = [],
         #[\SensitiveParameter] array $headers = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -840,7 +826,7 @@ public function post(
         #[\SensitiveParameter] ?array $data = null,
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -853,7 +839,7 @@ public function put(
         #[\SensitiveParameter] ?array $data = null,
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -866,7 +852,7 @@ public function patch(
         #[\SensitiveParameter] ?array $data = null,
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -879,7 +865,7 @@ public function delete(
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = [],
         #[\SensitiveParameter] array $data = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -892,7 +878,7 @@ public function uploadFile(
         #[\SensitiveParameter] string $filePath,
         #[\SensitiveParameter] array $data = [],
         #[\SensitiveParameter] array $headers = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -906,7 +892,7 @@ public function postRaw(
         string $contentType,
         #[\SensitiveParameter] array $query = [],
         #[\SensitiveParameter] array $headers = []
-    ) : Response
+    ): Response
 ```
 
 {@inheritDoc}
@@ -916,7 +902,7 @@ public function postRaw(
 ### `get()`
 
 ```php
-public function get(string $uri, array $params = [], array $headers = []) : Response
+public function get(string $uri, array $params = [], array $headers = []): Response
 ```
 
 @param array<string, scalar> $params
@@ -925,7 +911,7 @@ public function get(string $uri, array $params = [], array $headers = []) : Resp
 ### `post()`
 
 ```php
-public function post(string $uri, ?array $data = null, array $headers = [], array $query = []) : Response
+public function post(string $uri, ?array $data = null, array $headers = [], array $query = []): Response
 ```
 
 @param array<array-key, mixed>|null $data JSON body; `null` sends no body, while
@@ -936,7 +922,7 @@ public function post(string $uri, ?array $data = null, array $headers = [], arra
 ### `put()`
 
 ```php
-public function put(string $uri, ?array $data = null, array $headers = [], array $query = []) : Response
+public function put(string $uri, ?array $data = null, array $headers = [], array $query = []): Response
 ```
 
 @param array<array-key, mixed>|null $data JSON body; `null` sends no body, while
@@ -947,7 +933,7 @@ public function put(string $uri, ?array $data = null, array $headers = [], array
 ### `patch()`
 
 ```php
-public function patch(string $uri, ?array $data = null, array $headers = [], array $query = []) : Response
+public function patch(string $uri, ?array $data = null, array $headers = [], array $query = []): Response
 ```
 
 @param array<array-key, mixed>|null $data JSON body; `null` sends no body
@@ -957,18 +943,19 @@ public function patch(string $uri, ?array $data = null, array $headers = [], arr
 ### `delete()`
 
 ```php
-public function delete(string $uri, array $headers = [], array $query = [], array $data = []) : Response
+public function delete(string $uri, array $headers = [], array $query = [], array $data = []): Response
 ```
 
 @param array<string, string>   $headers
-@param array<string, scalar>   $query   optional query-string parameters (e.g. `force`)
+@param array<string, scalar>   $query
 @param array<array-key, mixed> $data    optional JSON body — a few DELETE endpoints
-                                         (e.g. `DELETE /accounts/{id}`) document one
+                                         document one (e.g. `DELETE /accounts/{id}`
+                                         takes `force` in the body)
 
 ### `uploadFile()`
 
 ```php
-public function uploadFile(string $uri, string $filePath, array $data = [], array $headers = []) : Response
+public function uploadFile(string $uri, string $filePath, array $data = [], array $headers = []): Response
 ```
 
 @param array<string, mixed>  $data
@@ -983,7 +970,7 @@ public function postRaw(
         string $contentType,
         array $query = [],
         array $headers = []
-    ) : Response
+    ): Response
 ```
 
 Send a raw request body (e.g. a binary image) with a custom Content-Type.
@@ -994,10 +981,16 @@ Used by the signer-facing `/signature` endpoint which expects `image/png` or `im
 
 ## `Http/LogRedactor`
 
+Strips credentials from diagnostic text and can produce PII-safe request summaries.
+
+The default transport deliberately logs structure rather than payload values. The
+recursive redaction helpers remain available for applications that explicitly choose
+to inspect their own data, but the SDK itself never writes request/response bodies.
+
 ### `redact()`
 
 ```php
-public static function redact(array $data) : array
+public static function redact(array $data): array
 ```
 
 Recursively replace credential values with a placeholder.
@@ -1012,7 +1005,7 @@ rather than walked, so nothing leaks from inside it.
 ### `redactRequestOptions()`
 
 ```php
-public static function redactRequestOptions(array $options) : array
+public static function redactRequestOptions(array $options): array
 ```
 
 Redact Guzzle request options, including payloads that are not JSON.
@@ -1026,7 +1019,7 @@ may be an open file stream. Neither belongs in application logs.
 ### `summarizeRequestOptions()`
 
 ```php
-public static function summarizeRequestOptions(array $options) : array
+public static function summarizeRequestOptions(array $options): array
 ```
 
 Summarize Guzzle request options without retaining payload or query values.
@@ -1037,7 +1030,7 @@ Summarize Guzzle request options without retaining payload or query values.
 ### `redactBody()`
 
 ```php
-public static function redactBody(string $body) : string
+public static function redactBody(string $body): string
 ```
 
 Redact secrets from a raw JSON body, returning it re-encoded.
@@ -1048,7 +1041,7 @@ placeholder instead — logging a PDF byte-for-byte helps nobody.
 ### `redactText()`
 
 ```php
-public static function redactText(string $text) : string
+public static function redactText(string $text): string
 ```
 
 Redact credentials embedded in URLs and exception messages.
@@ -1070,7 +1063,7 @@ public function __construct(int $statusCode, array $headers, string $body)
 ### `getStatusCode()`
 
 ```php
-public function getStatusCode() : int
+public function getStatusCode(): int
 ```
 
 The HTTP status line code, e.g. `200`.
@@ -1078,7 +1071,7 @@ The HTTP status line code, e.g. `200`.
 ### `getHeaders()`
 
 ```php
-public function getHeaders() : array
+public function getHeaders(): array
 ```
 
 @return array<string, array<int, string>|string>
@@ -1086,7 +1079,7 @@ public function getHeaders() : array
 ### `getBody()`
 
 ```php
-public function getBody() : string
+public function getBody(): string
 ```
 
 The raw response body — JSON text, or bytes for a download.
@@ -1094,7 +1087,7 @@ The raw response body — JSON text, or bytes for a download.
 ### `getData()`
 
 ```php
-public function getData() : ?array
+public function getData(): ?array
 ```
 
 @return array<array-key, mixed>|null
@@ -1102,7 +1095,7 @@ public function getData() : ?array
 ### `isSuccess()`
 
 ```php
-public function isSuccess() : bool
+public function isSuccess(): bool
 ```
 
 True for any 2xx status.
@@ -1110,7 +1103,7 @@ True for any 2xx status.
 ### `isClientError()`
 
 ```php
-public function isClientError() : bool
+public function isClientError(): bool
 ```
 
 True for any 4xx status.
@@ -1118,7 +1111,7 @@ True for any 4xx status.
 ### `isServerError()`
 
 ```php
-public function isServerError() : bool
+public function isServerError(): bool
 ```
 
 True for any 5xx status.
@@ -1140,10 +1133,20 @@ No request is made. Consumers normally obtain resources from AssinafyClient.
 
 ## `Resources/AccountResource`
 
+Accounts (workspaces) resource — the workspace endpoints under `/accounts`, excluding
+the webhook routes under `/accounts/{account_id}/webhooks`, which live in
+{@see WebhookResource}.
+
+An "account" is a workspace: the container every document, signer, tag and field belongs to.
+Each account-scoped resource in this SDK sends the account ID configured on
+{@see \Assinafy\SDK\Configuration}; this resource is how you discover and manage those IDs.
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `list()`
 
 ```php
-public function list(#[\SensitiveParameter] ?string $accessToken = null) : array
+public function list(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
 List the accounts the authenticated credential belongs to.
@@ -1181,7 +1184,7 @@ Example response (SDK return; optional fields depend on state):
 ### `get()`
 
 ```php
-public function get() : array
+public function get(): array
 ```
 
 Retrieve the account this client is configured against.
@@ -1213,7 +1216,7 @@ public function create(
         string $name,
         ?string $notificationSenderType = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Create a new account (workspace).
@@ -1246,12 +1249,12 @@ Example response (SDK return; optional fields depend on state):
 
 @param string|null $notificationSenderType one of the `NOTIFICATION_SENDER_*` constants
 @return array<string, mixed> the created account
-@throws \Assinafy\SDK\Exceptions\ValidationException on an empty name or unknown sender type
+@throws ValidationException on an empty name or unknown sender type
 
 ### `update()`
 
 ```php
-public function update(?string $name = null, ?string $notificationSenderType = null) : array
+public function update(?string $name = null, ?string $notificationSenderType = null): array
 ```
 
 Update the configured account.
@@ -1282,12 +1285,12 @@ Example response (SDK return; optional fields depend on state):
 
 @param string|null $notificationSenderType one of the `NOTIFICATION_SENDER_*` constants
 @return array<string, mixed> the updated account
-@throws \Assinafy\SDK\Exceptions\ValidationException when nothing was supplied to update
+@throws ValidationException when nothing was supplied to update
 
 ### `delete()`
 
 ```php
-public function delete(bool $force = false) : array
+public function delete(bool $force = false): array
 ```
 
 Delete the configured account.
@@ -1325,7 +1328,7 @@ blocking `restrictions`:
 ### `theme()`
 
 ```php
-public function theme() : array
+public function theme(): array
 ```
 
 Retrieve the account's branding theme.
@@ -1351,7 +1354,7 @@ Example response (SDK return; optional fields depend on state):
 public function stats(
         string $granularity = self::GRANULARITY_MONTHLY,
         ?string $month = null
-    ) : array
+    ): array
 ```
 
 Return the configured account's document-funnel KPI series.
@@ -1397,7 +1400,7 @@ Example response (SDK return; optional fields depend on state):
 
 Available in production and sandbox; access depends on the authenticated account.
 
-@throws \Assinafy\SDK\Exceptions\ValidationException on an unknown granularity, or on
+@throws ValidationException on an unknown granularity, or on
     `daily` without a `YYYY-MM` month
 @return array<int, array{period: string, documents_uploaded: int, documents_sent: int,
     signature_requests: int, signature_requests_notification_email: int,
@@ -1413,7 +1416,7 @@ Available in production and sandbox; access depends on the authenticated account
 ### `downloadLogo()`
 
 ```php
-public function downloadLogo() : string
+public function downloadLogo(): string
 ```
 
 Download the account logo.
@@ -1434,7 +1437,7 @@ file_put_contents('logo.png', $client->accounts()->downloadLogo());
 ### `uploadLogo()`
 
 ```php
-public function uploadLogo(#[\SensitiveParameter] string $filePath) : array
+public function uploadLogo(#[\SensitiveParameter] string $filePath): array
 ```
 
 Upload (or replace) the account logo.
@@ -1451,13 +1454,13 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
-@return array<string, mixed> empty on success
+@return array<string, mixed> the raw envelope
 @throws \InvalidArgumentException when the file does not exist or is unreadable
 
 ### `deleteLogo()`
 
 ```php
-public function deleteLogo() : array
+public function deleteLogo(): array
 ```
 
 Remove the account logo.
@@ -1477,6 +1480,11 @@ Example response (SDK return; optional fields depend on state):
 
 ## `Resources/AssignmentResource`
 
+Assignments resource — the endpoints under `/documents/{document_id}/assignments`
+plus the cross-document `GET /assignments` listing.
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `create()`
 
 ```php
@@ -1485,33 +1493,36 @@ public function create(
         #[\SensitiveParameter] array $signers,
         string $method = self::METHOD_VIRTUAL,
         #[\SensitiveParameter] array $options = []
-    ) : array
+    ): array
 ```
 
 Create an assignment (signature request).
 `POST /documents/{document_id}/assignments`
 
-This is the call that actually notifies signers. `virtual` accepts uploaded or processing documents; `collect` requires
-`metadata_ready` because it refers to rendered pages.
+This is the call that actually notifies signers. A `virtual` assignment may be created
+while the document is in `uploaded`, `metadata_processing` or `metadata_ready` — it is
+promoted to `pending_signature` automatically once metadata processing completes. Only
+`collect` requires `metadata_ready`, because its fields reference specific pages — see
+{@see DocumentResource::waitUntilReady()}.
 
 `virtual` collects a click-to-sign consent from each signer. `collect` additionally
 places named input fields on the pages, so it requires `entries`.
 
 Request body:
-```
+```php
 [
-  'method'  => 'virtual',                       // 'virtual' | 'collect'
-  'signers' => [
-    [
-      'id'                   => 'signer-id',   // required
-      'verification_method'  => 'Email',        // Email | Whatsapp | DigitalCertificate
-      'notification_methods' => ['Email'],      // exactly one: Email | Whatsapp
-      'step'                 => 1,              // 1-based signing order
+    'method' => 'virtual',                        // 'virtual' | 'collect'
+    'signers' => [
+        [
+            'id' => 'signer-id',                  // required
+            'verification_method' => 'Email',     // See VERIFICATION_METHODS
+            'notification_methods' => ['Email'],  // exactly one: Email | Whatsapp
+            'step' => 1,                          // 1-based signing order
+        ],
     ],
-  ],
-  'message'        => 'Please sign this contract',
-  'expires_at'     => '2026-12-31T23:59:59Z',   // ISO 8601, must carry Z or ±HH:MM
-  'copy_receivers' => [],  // signer IDs CC'd on completion
+    'message' => 'Please sign this contract',
+    'expires_at' => '2026-12-31T23:59:59Z',       // ISO 8601, must carry Z or ±HH:MM
+    'copy_receivers' => [],  // signer IDs CC'd on completion
 ]
 ```
 
@@ -1645,7 +1656,7 @@ the signer access code — that is delivered separately by the notification chan
 ### `list()`
 
 ```php
-public function list(int $page = 1, int $perPage = 20, array $filters = []) : array
+public function list(int $page = 1, int $perPage = 20, array $filters = []): array
 ```
 
 List the assignments belonging to the configured account.
@@ -1774,7 +1785,7 @@ public function estimateCost(
         #[\SensitiveParameter] array $signers,
         string $method = self::METHOD_VIRTUAL,
         #[\SensitiveParameter] array $options = []
-    ) : array
+    ): array
 ```
 
 Estimate the credit cost of creating an assignment, without creating it.
@@ -1820,13 +1831,14 @@ Example response (SDK return; optional fields depend on state):
 
 @param array<int, string|array<string, mixed>> $signers signer IDs or objects; entries
     may omit `id` and carry only `verification_method` / `notification_methods`
-@param array<string, mixed> $options extra body fields forwarded verbatim
+@param array<string, mixed> $options
+    Optional keys: `entries` (required for collect), `message`, `expires_at`, `copy_receivers`.
 @return array<string, mixed>
 
 ### `resend()`
 
 ```php
-public function resend(string $documentId, string $assignmentId, string $signerId) : array
+public function resend(string $documentId, string $assignmentId, string $signerId): array
 ```
 
 Resend the signing-notification to a single signer.
@@ -1853,7 +1865,7 @@ Example response (SDK return; optional fields depend on state):
 ### `estimateResendCost()`
 
 ```php
-public function estimateResendCost(string $documentId, string $assignmentId, string $signerId) : array
+public function estimateResendCost(string $documentId, string $assignmentId, string $signerId): array
 ```
 
 Estimate the credit cost of resending a notification to one signer.
@@ -1876,6 +1888,9 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
+Breakdown items may also carry `quantity` and `unit_cost` (per the published
+`CostEstimateBreakdownItem`), e.g. two WhatsApp notifications at 0.45 each.
+
 The live-verified resend response uses `total` and `has_sufficient_credits`;
 the published `CostEstimate` schema describes assignment creation instead.
 
@@ -1885,19 +1900,23 @@ the published `CostEstimate` schema describes assignment creation instead.
 ### `resetExpiration()`
 
 ```php
-public function resetExpiration(string $documentId, string $assignmentId, string $expiresAt) : array
+public function resetExpiration(string $documentId, string $assignmentId, ?string $expiresAt): array
 ```
 
 Reset the expiration date of an assignment.
 `PUT /documents/{document_id}/assignments/{assignment_id}/reset-expiration`
 
-Use this to revive an assignment whose deadline has passed, or to extend one still
-running. `$expiresAt` is validated locally before the request is sent, so a malformed
-value never reaches the API.
+Use this to revive an assignment whose deadline has passed, to extend one still
+running, or — by passing `null` — to remove the expiration entirely (the `expires_at`
+key itself is always required by the API). A new expiration must be at least one hour
+in the future, and the route is not allowed once the document is closed. A non-null
+`$expiresAt` is validated locally before the request is sent, so a malformed value
+never reaches the API.
 
 Request body:
 ```
 ['expires_at' => '2026-12-31T23:59:59Z']  // ISO 8601; a Z or ±HH:MM offset is mandatory
+['expires_at' => null]                    // removes the expiration
 ```
 
 Example response (SDK return; optional fields depend on state):
@@ -1988,14 +2007,15 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
-@param string $expiresAt ISO 8601 date-time ending in `Z` or an explicit `±HH:MM` offset
+@param string|null $expiresAt ISO 8601 date-time ending in `Z` or an explicit `±HH:MM`
+    offset, or null to remove the expiration
 @return array<string, mixed>
 @throws ValidationException when `$expiresAt` is not a valid ISO 8601 date-time
 
 ### `whatsappNotifications()`
 
 ```php
-public function whatsappNotifications(string $documentId, string $assignmentId) : array
+public function whatsappNotifications(string $documentId, string $assignmentId): array
 ```
 
 List the WhatsApp notification messages sent for an assignment, with the rendered
@@ -2028,7 +2048,132 @@ Example response (SDK return; optional fields depend on state):
 @return array<int, array<string, mixed>> empty when nothing was sent over WhatsApp
 @throws ValidationException when any identifier is empty
 
+### `identityVerification()`
+
+```php
+public function identityVerification(string $documentId, string $assignmentId, string $signerId): array
+```
+
+Read a signer's identity-document verification as the workspace reviewer.
+`GET /documents/{documentId}/assignments/{assignmentId}/signers/{signerId}/identity-verification`
+
+Authentication: configured API key or workspace Bearer token. Request: the three IDs
+in the path; no query or body. Requires an identity verification for this assignment.
+An InReview signer may continue signing; certification waits for the account's decision.
+Provider-approved verifications may have no evidence here; read their activity instead.
+
+Example SDK response:
+```php
+[
+    'id' => 'verification-id', 'status' => 'InReview', 'provider' => 'AssinafyVerify',
+    'verification_method' => 'IdDocumentFaceMatchBasic',
+    'reason_codes' => [['code' => 'NAME_MISMATCH', 'description' => 'Name differs']],
+    'evidence_available' => true,
+    'expected' => ['name' => 'Example Signer', 'cpf' => '52998224725'],
+    'document' => ['type' => 'CNH', 'name' => 'EXAMPLE SIGNER', 'cpf' => '52998224725'],
+    'matches' => ['cpf' => true, 'name' => 0.52, 'birth_date' => null],
+    'checks' => [['name' => 'name', 'result' => 'review', 'score' => 0.52, 'reasons' => ['NAME_MISMATCH']]],
+    'images' => ['document_front', 'document_back', 'face'],
+    'ruleset_version' => '2026-10-12.2', 'evidence_sha256' => '<sha256-digest>',
+    'reviewed_by' => null, 'reviewed_at' => null, 'review_note' => null, 'completed_at' => null,
+]
+```
+
+@param string $documentId the document ID
+@param string $assignmentId the document's assignment ID
+@param string $signerId the assigned signer ID
+@return array<string, mixed> the unwrapped SignerIdentityReview
+@throws ValidationException when an ID is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when the assignment, signer or verification is missing
+
+### `identityVerificationImage()`
+
+```php
+public function identityVerificationImage(
+        string $documentId,
+        string $assignmentId,
+        string $signerId,
+        string $name
+    ): string
+```
+
+Download one identity-review evidence image or PDF as raw bytes.
+`GET /documents/{documentId}/assignments/{assignmentId}/signers/{signerId}/identity-verification/images/{name}`
+
+Authentication: configured API key or workspace Bearer token. No query or body.
+Requires an InReview verification and a name from its images list. Evidence is fetched
+from the provider, never stored by Assinafy, and unavailable after the review is decided.
+The response is image/jpeg, image/png or application/pdf, with Cache-Control: no-store.
+```php
+$bytes = $client->assignments()->identityVerificationImage('document-id', 'assignment-id', 'signer-id', 'face');
+// The complete image byte string, without a JSON envelope.
+```
+
+@param string $documentId the document ID
+@param string $assignmentId the assignment ID
+@param string $signerId the assigned signer ID
+@param string $name document_front, document_back, document_pdf or face, from the review's images
+@return string the image or PDF bytes
+@throws ValidationException when an ID is empty or the image name is unknown
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when the image or open review is unavailable
+
+### `reviewIdentityVerification()`
+
+```php
+public function reviewIdentityVerification(
+        string $documentId,
+        string $assignmentId,
+        string $signerId,
+        string $decision,
+        #[\SensitiveParameter] ?string $note = null
+    ): array
+```
+
+Approve or reject an InReview identity verification.
+`POST /documents/{documentId}/assignments/{assignmentId}/signers/{signerId}/identity-verification/review`
+
+Authentication: configured API key or workspace Bearer token. The document must be
+pending_signature or pending_identity_review. Approval releases certification once all
+signers have signed and all reviews are approved. Rejection cancels the document and
+notifies signers and copy receivers; the note is never shown to them. The decision and
+note are sent to the provider and recorded in activity. Evidence images then become unavailable.
+
+Request body: ['decision' => 'Approved', 'note' => 'Checked by reviewer']; note is optional.
+Example SDK response:
+```php
+[
+    'id' => 'verification-id', 'status' => 'Approved', 'provider' => 'AssinafyVerify',
+    'verification_method' => 'IdDocumentFaceMatchBasic', 'reason_codes' => [],
+    'evidence_available' => false, 'expected' => null, 'document' => null, 'matches' => null,
+    'checks' => [], 'images' => [], 'ruleset_version' => null, 'evidence_sha256' => null,
+    'reviewed_by' => ['id' => 'user-id', 'name' => 'Reviewer'],
+    'reviewed_at' => '2026-10-16T12:00:00Z', 'review_note' => 'Checked by reviewer',
+    'completed_at' => '2026-10-16T12:00:00Z',
+]
+```
+
+@param string $documentId the document ID
+@param string $assignmentId the assignment ID
+@param string $signerId the assigned signer ID
+@param string $decision Approved or Rejected (case-sensitive)
+@param string|null $note optional reviewer note, at most 2000 characters
+@return array<string, mixed> the unwrapped SignerIdentityReview after the decision
+@throws ValidationException on an empty ID, invalid decision or oversized note
+@throws \Assinafy\SDK\Exceptions\ApiException 400 when the review/document is not open; 404 when missing
+
 ## `Resources/AuthResource`
+
+Authentication resource — every endpoint under `/login`, `/authentication/*` (including
+the two-factor login step)
+and `/users/api-keys`.
+
+These endpoints are mostly used to bootstrap a user session. The Assinafy
+API supports three concurrent auth schemes:
+  1. `X-Api-Key` header (the SDK's default — see {@see Configuration})
+  2. `Authorization: Bearer <token>` header (configured globally or per call here)
+  3. `?access-token=<token>` query parameter
+
+@see https://api.assinafy.com.br/v1/docs
 
 ### `login()`
 
@@ -2036,7 +2181,7 @@ Example response (SDK return; optional fields depend on state):
 public function login(
         #[\SensitiveParameter] string $email,
         #[\SensitiveParameter] string $password
-    ) : array
+    ): array
 ```
 
 Sign in with email + password.
@@ -2096,7 +2241,7 @@ When the user has two-factor authentication enabled, the response carries an
 public function verifyMfa(
         #[\SensitiveParameter] string $mfaToken,
         #[\SensitiveParameter] string $code
-    ) : array
+    ): array
 ```
 
 Complete a two-factor login.
@@ -2108,7 +2253,7 @@ issued at enrollment (consumed on use). The challenge is single-use and expires 
 minutes after login. Credentialless: no workspace key or Bearer token is sent.
 
 Request body:
-```
+```php
 ['mfa_token' => '<mfa-token>', 'code' => '123456']
 ```
 
@@ -2151,7 +2296,7 @@ public function socialLogin(
         string $provider,
         #[\SensitiveParameter] string $token,
         bool $hasAcceptedTerms = false
-    ) : array
+    ): array
 ```
 
 Sign in with a social provider.
@@ -2203,7 +2348,7 @@ public function linkSocialLogin(
         string $provider,
         #[\SensitiveParameter] string $token,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Link a social provider account to the authenticated Assinafy user.
@@ -2235,7 +2380,7 @@ Example response (SDK return; optional fields depend on state):
 ### `socialLoginUrl()`
 
 ```php
-public function socialLoginUrl(string $provider = self::PROVIDER_GOOGLE) : string
+public function socialLoginUrl(string $provider = self::PROVIDER_GOOGLE): string
 ```
 
 Build the legacy browser OAuth start URL without requesting it.
@@ -2261,7 +2406,7 @@ OAuth uses the separate authorization server and PKCE flow in docs/OAUTH.md.
 ### `socialLoginCallbackUrl()`
 
 ```php
-public function socialLoginCallbackUrl() : string
+public function socialLoginCallbackUrl(): string
 ```
 
 Return the legacy browser callback URL without requesting it.
@@ -2287,7 +2432,7 @@ than JSON, so it is a redirect target rather than an endpoint to call.
 public function generateApiKey(
         #[\SensitiveParameter] ?string $accessToken,
         #[\SensitiveParameter] string $password
-    ) : array
+    ): array
 ```
 
 Generate (or regenerate) the API key for the authenticated user.
@@ -2319,7 +2464,7 @@ Example response (SDK return; optional fields depend on state):
 ### `getApiKey()`
 
 ```php
-public function getApiKey(#[\SensitiveParameter] ?string $accessToken = null) : array
+public function getApiKey(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
 Retrieve the masked API key for the authenticated user.
@@ -2345,7 +2490,7 @@ Example response (SDK return; optional fields depend on state):
 ### `deleteApiKey()`
 
 ```php
-public function deleteApiKey(#[\SensitiveParameter] ?string $accessToken = null) : array
+public function deleteApiKey(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
 Delete the API key for the authenticated user.
@@ -2378,7 +2523,7 @@ public function changePassword(
         #[\SensitiveParameter] string $email,
         #[\SensitiveParameter] string $password,
         #[\SensitiveParameter] string $newPassword
-    ) : array
+    ): array
 ```
 
 Change the password of the authenticated user.
@@ -2411,7 +2556,7 @@ Example response (SDK return; optional fields depend on state):
 ### `requestPasswordReset()`
 
 ```php
-public function requestPasswordReset(#[\SensitiveParameter] string $email) : array
+public function requestPasswordReset(#[\SensitiveParameter] string $email): array
 ```
 
 Trigger a password-reset email.
@@ -2446,7 +2591,7 @@ public function resetPassword(
         #[\SensitiveParameter] string $email,
         #[\SensitiveParameter] string $token,
         #[\SensitiveParameter] string $newPassword
-    ) : array
+    ): array
 ```
 
 Complete a password reset using the token emailed to the user.
@@ -2478,10 +2623,15 @@ Example response (SDK return; optional fields depend on state):
 
 ## `Resources/DocumentResource`
 
+Documents resource — covers every documented endpoint under `/documents`
+and `/accounts/{account_id}/documents`.
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `upload()`
 
 ```php
-public function upload(#[\SensitiveParameter] string $filePath) : array
+public function upload(#[\SensitiveParameter] string $filePath): array
 ```
 
 Upload a PDF and create a new document.
@@ -2524,7 +2674,7 @@ Example response (SDK return; optional fields depend on state):
 ### `get()`
 
 ```php
-public function get(string $documentId) : array
+public function get(string $documentId): array
 ```
 
 Retrieve a document, including its pages and current assignment.
@@ -2576,7 +2726,7 @@ Example response (SDK return; optional fields depend on state):
 ### `list()`
 
 ```php
-public function list(int $page = 1, int $perPage = 20, array $filters = []) : array
+public function list(int $page = 1, int $perPage = 20, array $filters = []): array
 ```
 
 List documents in the workspace.
@@ -2632,14 +2782,15 @@ Example response (SDK return; optional fields depend on state):
 ```
 
 @param array<string, scalar> $filters optional `status`, `method`, `search`, `tags`,
-    and `sort` (`sort` accepts `name` or `updated_at`)
+    and `sort` (`sort` accepts `name` or `updated_at`; `tags` takes comma-separated tag
+    IDs and returns documents having ALL listed tags)
 @return array{status?: int, message?: string, data?: array<int, array<string, mixed>>,
     pagination?: array{current_page: int, page_count: int, per_page: int, total_count: int}}
 
 ### `search()`
 
 ```php
-public function search(string $term, int $page = 1, int $perPage = 20, array $filters = []) : array
+public function search(string $term, int $page = 1, int $perPage = 20, array $filters = []): array
 ```
 
 Search documents, returning a lighter representation than {@see self::list()}.
@@ -2679,16 +2830,6 @@ Example response (SDK return; optional fields depend on state):
             'tags' => [],
             'created_at' => '2026-09-01T12:00:00Z',
             'updated_at' => '2026-09-01T12:00:00Z',
-            'assignment' => null,
-            'pages' => [
-                [
-                    'id' => 'page-id',
-                    'number' => 1,
-                    'height' => 1651,
-                    'width' => 1275,
-                    'download_url' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/pages/page-id/download',
-                ],
-            ],
         ],
     ],
     'pagination' => [
@@ -2708,7 +2849,7 @@ Example response (SDK return; optional fields depend on state):
 ### `rename()`
 
 ```php
-public function rename(string $documentId, #[\SensitiveParameter] string $name) : array
+public function rename(string $documentId, #[\SensitiveParameter] string $name): array
 ```
 
 Rename a document.
@@ -2768,7 +2909,7 @@ Example response (SDK return; optional fields depend on state):
 ### `delete()`
 
 ```php
-public function delete(string $documentId) : array
+public function delete(string $documentId): array
 ```
 
 Delete a document.
@@ -2796,7 +2937,7 @@ Example response (SDK return; optional fields depend on state):
 ### `download()`
 
 ```php
-public function download(string $documentId, string $artifact = self::ARTIFACT_CERTIFICATED) : string
+public function download(string $documentId, string $artifact = self::ARTIFACT_CERTIFICATED): string
 ```
 
 Download an artifact for a document.
@@ -2813,6 +2954,9 @@ Artifacts, via the `ARTIFACT_*` constants:
 | `ARTIFACT_BUNDLE`           | `bundle`           | ZIP of every artifact above               |
 
 Everything except `original` exists only once the document reaches `certificated`.
+Use `pades` to preserve ICP-Brasil A1/A3 cryptographic signatures; `certificated`
+contains their flattened representation.
+Authentication: configured API key or workspace Bearer token (`documents:read` for OAuth).
 
 Request: no parameters — the artifact is a path segment.
 
@@ -2829,7 +2973,7 @@ file_put_contents('signed.pdf', $client->documents()->download($id));
 ### `downloadThumbnail()`
 
 ```php
-public function downloadThumbnail(string $documentId) : string
+public function downloadThumbnail(string $documentId): string
 ```
 
 Download the JPEG thumbnail for a document.
@@ -2841,6 +2985,13 @@ Request: no parameters.
 
 Response: raw `image/jpeg` bytes — not the JSON envelope.
 
+Authentication: configured API key or workspace Bearer token (`documents:read` for OAuth).
+```php
+$jpeg = $client->documents()->downloadThumbnail('document-id');
+// $jpeg is the complete JPEG byte string; no query or request body is sent.
+```
+
+@param string $documentId the prepared document ID
 @return string raw JPEG bytes
 @throws ValidationException when `$documentId` is empty
 @throws \Assinafy\SDK\Exceptions\ApiException 404 before page rendering finishes
@@ -2848,7 +2999,7 @@ Response: raw `image/jpeg` bytes — not the JSON envelope.
 ### `downloadPage()`
 
 ```php
-public function downloadPage(string $documentId, string $pageId) : string
+public function downloadPage(string $documentId, string $pageId): string
 ```
 
 Download a rendered page as JPEG.
@@ -2862,13 +3013,21 @@ Request: no parameters.
 
 Response: raw `image/jpeg` bytes — not the JSON envelope.
 
+Authentication: configured API key or workspace Bearer token (`documents:read` for OAuth).
+```php
+$jpeg = $client->documents()->downloadPage('document-id', 'page-id');
+// $jpeg is the complete JPEG byte string; no query or request body is sent.
+```
+
+@param string $documentId the prepared document ID
+@param string $pageId an ID from the document's pages array
 @return string raw JPEG bytes
 @throws ValidationException when either identifier is empty
 
 ### `activities()`
 
 ```php
-public function activities(string $documentId) : array
+public function activities(string $documentId): array
 ```
 
 List activity events for a document.
@@ -2914,7 +3073,7 @@ Example response (SDK return; optional fields depend on state):
 ### `statuses()`
 
 ```php
-public function statuses() : array
+public function statuses(): array
 ```
 
 List all possible document statuses, with their `deletable` flag.
@@ -2981,7 +3140,7 @@ Example response (SDK return; optional fields depend on state):
 ### `verify()`
 
 ```php
-public function verify(string $signatureHash) : array
+public function verify(string $signatureHash): array
 ```
 
 Verify a certificated document by its signature hash. Public endpoint, no auth.
@@ -3029,7 +3188,7 @@ An unknown or unsigned hash answers **200, not 404** — always branch on `is_va
 ### `publicInfo()`
 
 ```php
-public function publicInfo(string $documentId) : array
+public function publicInfo(string $documentId): array
 ```
 
 Public document info (no auth).
@@ -3064,7 +3223,7 @@ public function sendToken(
         string $documentId,
         #[\SensitiveParameter] string $recipient,
         string $channel = self::SEND_TOKEN_CHANNEL_EMAIL
-    ) : array
+    ): array
 ```
 
 Request an access token to be sent to a signer through email.
@@ -3075,9 +3234,9 @@ strings are rejected up front so a typo never reaches the API. The recipient is 
 as an email address locally for the same reason.
 
 The published OpenAPI schema matches the contract below: `channel` (required, enum
-`["email"]`, "Only `email` is supported") and `recipient` (required). Live-verified:
-`whatsapp` draws `400 "Canal inválido"` from the API — the same error a nonsense
-channel gets — and a lowercase `sms` passes the channel check but always fails with
+`["email"]`, "Only email is supported") and `recipient` (required). Live-verified:
+`whatsapp` draws `400 "Canal inválido"` from the API — the same error a nonsense channel
+gets — and a lowercase `sms` passes the channel check but always fails with
 `404 "Solicitação de entrada do signatário não encontrada."`: it needs an SMS signer
 entry, and none can be created, because `verification_method` accepts only
 Email/Whatsapp/DigitalCertificate and `notification_methods` only Email/Whatsapp.
@@ -3114,7 +3273,7 @@ Example response (SDK return; optional fields depend on state):
 ### `listTags()`
 
 ```php
-public function listTags(string $documentId) : array
+public function listTags(string $documentId): array
 ```
 
 List the tags currently attached to a document.
@@ -3141,7 +3300,7 @@ Example response (SDK return; optional fields depend on state):
 ### `replaceTags()`
 
 ```php
-public function replaceTags(string $documentId, array $tagNames) : array
+public function replaceTags(string $documentId, array $tagNames): array
 ```
 
 Replace the document's entire tag set with the given names.
@@ -3178,7 +3337,7 @@ Example response (SDK return; optional fields depend on state):
 ### `appendTags()`
 
 ```php
-public function appendTags(string $documentId, array $tagNames) : array
+public function appendTags(string $documentId, array $tagNames): array
 ```
 
 Attach tags to a document without removing existing ones (idempotent).
@@ -3214,7 +3373,7 @@ Example response (SDK return; optional fields depend on state):
 ### `detachTag()`
 
 ```php
-public function detachTag(string $documentId, string $tagId) : array
+public function detachTag(string $documentId, string $tagId): array
 ```
 
 Detach a single tag from a document (the tag itself is not deleted).
@@ -3243,7 +3402,7 @@ public function createFromTemplate(
         string $templateId,
         #[\SensitiveParameter] array $signers,
         #[\SensitiveParameter] array $options = []
-    ) : array
+    ): array
 ```
 
 Create a document from a template.
@@ -3325,7 +3484,7 @@ Example response shape (SDK return; relationship expansion depends on document s
 public function estimateCostFromTemplate(
         string $templateId,
         #[\SensitiveParameter] array $signers
-    ) : array
+    ): array
 ```
 
 Estimate cost of creating a document from a template.
@@ -3376,14 +3535,14 @@ machine-readable code and `message` is localised for display.
 ### `waitUntilReady()`
 
 ```php
-public function waitUntilReady(string $documentId, int $maxWaitSeconds = 60, int $pollIntervalSeconds = 2) : array
+public function waitUntilReady(string $documentId, int $maxWaitSeconds = 60, int $pollIntervalSeconds = 2): array
 ```
 
 Poll `GET /documents/{id}` until the document reaches a usable status.
 
 Client-side helper, not an API endpoint. Page rendering after {@see self::upload()}
-is asynchronous, and an assignment cannot be created until it finishes — this bridges
-that gap:
+is asynchronous. Collect assignments need prepared pages; virtual assignments can
+also be created before metadata processing finishes:
 ```php
 $document = $client->documents()->upload('/path/contract.pdf');
 $ready    = $client->documents()->waitUntilReady($document['id']);
@@ -3442,25 +3601,34 @@ Example response (SDK return; optional fields depend on state):
 ### `isFullySigned()`
 
 ```php
-public function isFullySigned(string $documentId) : bool
+public function isFullySigned(string $documentId): bool
 ```
 
 `true` once every signer has completed, including while certification is in progress.
 
-Client-side helper over {@see self::get()} — costs one API call. True for `ready`,
+Client-side helper over {@see self::get()} — costs one API call. True for
+`pending_identity_review`, `ready`,
 `certificating` and `certificated`, so it answers "is everyone done signing?" rather
 than "is the certified PDF downloadable?". For the latter, compare `status` against
 {@see self::STATUS_CERTIFICATED} directly.
 
 Request/Response: as {@see self::get()}; only `status` is read.
 
+Authentication: configured API key or workspace Bearer token (`documents:read` for OAuth).
+```php
+$fullySigned = $client->documents()->isFullySigned('document-id');
+// true while identity review or certification remains, after everyone has signed.
+```
+
+@param string $documentId the document ID to read
+@return bool whether all signers have completed
 @throws ValidationException when `$documentId` is empty
 @throws \Assinafy\SDK\Exceptions\ApiException 404 when the document does not exist
 
 ### `getSigningProgress()`
 
 ```php
-public function getSigningProgress(string $documentId) : array
+public function getSigningProgress(string $documentId): array
 ```
 
 Return a signed/total/percentage summary derived from the document's assignment.
@@ -3471,7 +3639,7 @@ counts from the assignment's `items`/`signers` rather than a dedicated endpoint.
 Request: as {@see self::get()}; only `status` and `assignment` are read.
 
 Response (computed locally, ready for a progress bar):
-```
+```php
 ['signed' => 1, 'total' => 3, 'pending' => 2, 'percentage' => 33.33]
 ```
 
@@ -3479,40 +3647,70 @@ Once the document reaches a fully-signed status the counts are forced to 100% �
 the API prunes assignment items after certification, so counting them would
 otherwise regress to 0%.
 
-A document with no assignment yields `total => 0` and `percentage => 0.0`.
+Before a fully-signed status, a document without an assignment yields `total => 0`
+and `percentage => 0.0`. Identity review can hold certification after signing reaches 100%.
 
+Authentication: configured API key or workspace Bearer token (`documents:read` for OAuth).
+@param string $documentId the document ID to read
 @return array{signed:int,total:int,pending:int,percentage:float}
 @throws ValidationException when `$documentId` is empty
 
 ### `assertUploadable()`
 
 ```php
-public static function assertUploadable(#[\SensitiveParameter] string $filePath) : void
+public static function assertUploadable(#[\SensitiveParameter] string $filePath): void
 ```
 
 Assert a file can be uploaded as a document or template: it must be a readable
 PDF with a header and end marker, and not exceed the 25 MB API limit. Shared with
 {@see TemplateResource::create()} so both upload paths enforce identical constraints.
 
+Local only: no authentication, request or response body.
+```php
+DocumentResource::assertUploadable('/private/documents/agreement.pdf');
+// Returns normally for a readable PDF within the limit; otherwise throws.
+```
+
+@param string $filePath the local regular PDF file
+@return void
 @throws ValidationException when the file is missing, unreadable, invalid, or too large
 
 ### `assertArtifact()`
 
 ```php
-public static function assertArtifact(string $artifact) : void
+public static function assertArtifact(string $artifact): void
 ```
 
 Assert that `$artifact` is one of the documented artifact names. Shared with
 {@see SignerDocumentResource::download()} so both download paths validate identically.
 
+Local only: no authentication, request or response body.
+```php
+DocumentResource::assertArtifact(DocumentResource::ARTIFACT_PADES);
+// Returns normally for an allowed name; otherwise throws.
+```
+
+@param string $artifact original, certificated, certificate-page, pades or bundle
+@return void
 @throws ValidationException on an unknown artifact name
 
 ## `Resources/FieldResource`
 
+Field definitions resource — `/accounts/{account_id}/fields` plus the global
+`/field-types` catalog.
+
+Field definitions describe the inputs (text, CPF, e-mail, date, …) that can be
+placed on a document when building a `collect` assignment. The `validate` and
+`validateMultiple` endpoints remain workspace-authenticated in the published
+OpenAPI contract. Pass `$signerAccessCode` only when the workflow also needs
+signer context; it does not replace API-key or bearer authentication.
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `create()`
 
 ```php
-public function create(string $type, string $name, array $options = []) : array
+public function create(string $type, string $name, array $options = []): array
 ```
 
 Create a field definition.
@@ -3561,7 +3759,7 @@ Example response (SDK return; optional fields depend on state):
 ### `list()`
 
 ```php
-public function list(bool $includeInactive = false, bool $includeStandard = false) : array
+public function list(bool $includeInactive = false, bool $includeStandard = false): array
 ```
 
 List field definitions.
@@ -3608,7 +3806,7 @@ Example response (SDK return; optional fields depend on state):
 ### `get()`
 
 ```php
-public function get(string $fieldId) : array
+public function get(string $fieldId): array
 ```
 
 Retrieve a single field definition.
@@ -3640,7 +3838,7 @@ Example response (SDK return; optional fields depend on state):
 ### `update()`
 
 ```php
-public function update(string $fieldId, array $data) : array
+public function update(string $fieldId, array $data): array
 ```
 
 Update a field definition.
@@ -3679,7 +3877,7 @@ Example response (SDK return; optional fields depend on state):
 ### `delete()`
 
 ```php
-public function delete(string $fieldId) : array
+public function delete(string $fieldId): array
 ```
 
 Delete a field definition. A field already used in a document cannot be deleted.
@@ -3706,7 +3904,7 @@ public function validate(
         string $fieldId,
         #[\SensitiveParameter] mixed $value,
         #[\SensitiveParameter] ?string $signerAccessCode = null
-    ) : array
+    ): array
 ```
 
 Validate a single input value against a field definition.
@@ -3749,7 +3947,7 @@ Example response (SDK return; optional fields depend on state):
 public function validateMultiple(
         #[\SensitiveParameter] array $values,
         #[\SensitiveParameter] ?string $signerAccessCode = null
-    ) : array
+    ): array
 ```
 
 Validate several input values at once.
@@ -3791,7 +3989,7 @@ Example response (SDK return; optional fields depend on state):
 ### `types()`
 
 ```php
-public function types() : array
+public function types(): array
 ```
 
 List the field types supported by the platform.
@@ -3862,6 +4060,54 @@ The live list repeats `email`; de-duplicate on `type` before rendering a picker.
 
 ## `Resources/OAuthResource`
 
+Marketplace OAuth 2.1 resource — the authorization-code + PKCE flow an application
+uses to act on **another** workspace, plus `/oauth/token`, `/oauth/revoke`,
+`/oauth/userinfo` and the two discovery documents.
+
+Automating your own workspace needs none of this: keep using an API key.
+
+Two hosts are involved on purpose. The browser-facing authorization page lives on
+the authorization server (`https://auth.assinafy.com.br`); the token, revocation and
+userinfo endpoints live on this API under `/v1`. The discovery documents sit at the
+origin of each host, outside `/v1`, so they are fetched with short-lived public
+clients built for that origin — see {@see self::authorizationServerMetadata()}.
+
+Every response on this resource is **flat JSON**: RFC 6749 §5.1/§5.2, RFC 8414 and
+OIDC Core §5.3.2 all forbid the `{ status, message, data }` envelope the rest of the
+API uses, so these methods return the decoded body as-is rather than unwrapping it.
+
+Failures raise {@see ApiException}. On the token and revocation endpoints — and on a
+callback error surfaced by {@see self::handleCallback()} — `getMessage()` is the RFC
+error code (`invalid_grant`, `invalid_client`, `access_denied`, …) and
+`getResponseData()` carries `error_description`, so branch on the message. Userinfo is
+the exception: it authenticates like any other API route, so its `401`/`403` arrive in
+the ordinary `{ status, message, data }` envelope and `getMessage()` is the API's own
+message. Log neither.
+
+```php
+$oauth = AssinafyClient::forAuth()->oauth($clientId, $clientSecret);
+
+// 1. Send the browser to Assinafy, keeping the transaction in the user's session.
+$start = $oauth->startAuthorization('https://app.example.com/callback', [
+    OAuthResource::SCOPE_DOCUMENTS_READ,
+    OAuthResource::SCOPE_DOCUMENTS_WRITE,
+    OAuthResource::SCOPE_OFFLINE_ACCESS,
+]);
+$_SESSION['assinafy_oauth'] = $start;
+header('Location: ' . $start['authorization_url']);
+
+// 2. On the redirect URI, validate the callback and exchange the code.
+$transaction = $_SESSION['assinafy_oauth'];
+unset($_SESSION['assinafy_oauth']);
+$code = $oauth->handleCallback($_GET, $transaction);
+$tokens = $oauth->exchangeCode($code, $transaction);
+```
+
+The SDK does not store tokens, hold refresh locks, or renew anything automatically.
+Those are application concerns — see `docs/OAUTH.md`.
+
+@see https://api.assinafy.com.br/v1/docs#tag/OAuth-Integration-Guide
+
 ### `__construct()`
 
 ```php
@@ -3887,7 +4133,7 @@ public function __construct(
 ### `__debugInfo()`
 
 ```php
-public function __debugInfo() : array
+public function __debugInfo(): array
 ```
 
 Keep the client secret out of diagnostic object dumps.
@@ -3901,7 +4147,7 @@ public function startAuthorization(
         string $redirectUri,
         array $scopes,
         #[\SensitiveParameter] array $options = []
-    ) : array
+    ): array
 ```
 
 Begin a connection: mint PKCE material and build the authorization URL.
@@ -3942,7 +4188,7 @@ Feed the same array back into {@see self::handleCallback()} and
     {@see self::authorizationServerMetadata()} to avoid hardcoding them.
 @return array<string, string> the transaction to persist
 @throws ValidationException on a non-HTTPS or fragment-bearing redirect URI, an
-    empty scope list, a scope containing a space, or an out-of-grammar verifier
+    empty scope list, an invalid RFC 6749 scope token, or an out-of-grammar verifier
 
 ### `handleCallback()`
 
@@ -3950,7 +4196,7 @@ Feed the same array back into {@see self::handleCallback()} and
 public function handleCallback(
         #[\SensitiveParameter] array $query,
         #[\SensitiveParameter] array $transaction
-    ) : string
+    ): string
 ```
 
 Validate the browser's return to your redirect URI and return the authorization code.
@@ -3990,7 +4236,7 @@ Declined callback, which raises `ApiException` with message `access_denied`:
 public function exchangeCode(
         #[\SensitiveParameter] string $code,
         #[\SensitiveParameter] array $transaction
-    ) : array
+    ): array
 ```
 
 Exchange an authorization code for tokens.
@@ -4041,12 +4287,13 @@ whose `data[0].id` belongs in the connection record next to the tokens.
 @throws ValidationException on an empty code or a transaction missing its verifier
     or redirect URI
 @throws ApiException `invalid_grant` (expired, replayed, or mismatched code),
-    `invalid_client`, `invalid_target`
+    `invalid_client`, `invalid_target`; 429 when rate-limited — wait the `Retry-After`
+    seconds, readable via {@see ApiException::getRetryAfter()}
 
 ### `refresh()`
 
 ```php
-public function refresh(#[\SensitiveParameter] string $refreshToken) : array
+public function refresh(#[\SensitiveParameter] string $refreshToken): array
 ```
 
 Renew an access token without the user.
@@ -4088,7 +4335,8 @@ Example response (flat JSON — no `data` envelope):
 @throws ValidationException on an empty refresh token
 @throws ApiException `invalid_grant` when the token was already used, has expired,
     lost `offline_access`, or the user reconnected with different permissions —
-    reconnect rather than retry
+    reconnect rather than retry; 429 when rate-limited — wait the `Retry-After`
+    seconds, readable via {@see ApiException::getRetryAfter()}
 
 ### `revoke()`
 
@@ -4096,7 +4344,7 @@ Example response (flat JSON — no `data` envelope):
 public function revoke(
         #[\SensitiveParameter] string $token,
         ?string $tokenTypeHint = null
-    ) : array
+    ): array
 ```
 
 Disconnect: revoke an access or refresh token.
@@ -4131,7 +4379,7 @@ Response: `200` with an empty body, returned as `[]`.
 ### `userinfo()`
 
 ```php
-public function userinfo(#[\SensitiveParameter] string $accessToken) : array
+public function userinfo(#[\SensitiveParameter] string $accessToken): array
 ```
 
 Read the OpenID Connect claims of the user who authorized the token.
@@ -4167,7 +4415,7 @@ the matching scope was not granted.
 ### `protectedResourceMetadata()`
 
 ```php
-public function protectedResourceMetadata() : array
+public function protectedResourceMetadata(): array
 ```
 
 Read this API's protected-resource metadata.
@@ -4202,12 +4450,12 @@ is a client concern, not something this resource is protected by.
 
 @return array<string, mixed> `{ resource, authorization_servers, scopes_supported,
     bearer_methods_supported }`
-@throws ApiException when the deployment does not serve OAuth — sandbox does not
+@throws ApiException when the deployment does not serve OAuth
 
 ### `authorizationServerMetadata()`
 
 ```php
-public function authorizationServerMetadata(?string $issuer = null) : array
+public function authorizationServerMetadata(?string $issuer = null): array
 ```
 
 Read the authorization server's metadata.
@@ -4227,6 +4475,7 @@ Example response (flat JSON — no `data` envelope):
     'issuer' => 'https://auth.assinafy.com.br',
     'authorization_endpoint' => 'https://auth.assinafy.com.br/oauth/authorize',
     'token_endpoint' => 'https://api.assinafy.com.br/v1/oauth/token',
+    'introspection_endpoint' => 'https://api.assinafy.com.br/v1/oauth/introspect',
     'revocation_endpoint' => 'https://api.assinafy.com.br/v1/oauth/revoke',
     'userinfo_endpoint' => 'https://api.assinafy.com.br/v1/oauth/userinfo',
     'jwks_uri' => 'https://auth.assinafy.com.br/.well-known/jwks.json',
@@ -4235,13 +4484,20 @@ Example response (flat JSON — no `data` envelope):
         'account:read', 'webhooks:write', 'openid', 'profile', 'email', 'offline_access',
     ],
     'response_types_supported' => ['code'],
-    'grant_types_supported' => ['authorization_code', 'refresh_token'],
+    'grant_types_supported' => [
+        'authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:token-exchange',
+    ],
     'code_challenge_methods_supported' => ['S256'],
     'token_endpoint_auth_methods_supported' => ['client_secret_post', 'none'],
+    'introspection_endpoint_auth_methods_supported' => ['client_secret_post'],
     'authorization_response_iss_parameter_supported' => true,
     'client_id_metadata_document_supported' => true,
 ]
 ```
+
+The introspection endpoint and the token-exchange grant serve internal service
+clients — an ordinary client authenticating there gets `invalid_client` — so the
+SDK exposes neither.
 
 Validate the returned `issuer` against the one you expect before sending a secret
 to any endpoint it names.
@@ -4256,46 +4512,79 @@ to any endpoint it names.
 ### `createCodeVerifier()`
 
 ```php
-public static function createCodeVerifier() : string
+public static function createCodeVerifier(): string
 ```
 
 Generate an RFC 7636 code verifier: 43 characters from the unreserved set.
 
 A new one is required for every connection attempt. {@see self::startAuthorization()}
 calls this for you; use it directly only when your framework owns the session material.
+No authentication or HTTP request is involved.
+```php
+$verifier = OAuthResource::createCodeVerifier();
+// A cryptographically random 43-character base64url string.
+```
+
+@return string the verifier to store in the authorization transaction
 
 ### `codeChallenge()`
 
 ```php
-public static function codeChallenge(#[\SensitiveParameter] string $codeVerifier) : string
+public static function codeChallenge(#[\SensitiveParameter] string $codeVerifier): string
 ```
 
-Derive the S256 challenge sent to the authorization server from a verifier.
+Derive the RFC 7636 S256 challenge locally, without authentication or an HTTP call.
+```php
+OAuthResource::codeChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+// 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'
+```
+
+@param string $codeVerifier the verifier saved for this connection attempt
+@return string the base64url-encoded SHA-256 digest, without padding
 
 ### `createState()`
 
 ```php
-public static function createState() : string
+public static function createState(): string
 ```
 
-Generate the random per-attempt `state` that protects the callback against CSRF.
+Generate the per-attempt state locally, without authentication or an HTTP call.
+```php
+$state = OAuthResource::createState();
+// A cryptographically random 43-character base64url string.
+```
+
+@return string the state to store and compare with the callback
 
 ## `Resources/SignerDocumentResource`
+
+Signer Documents resource — the signer-facing document list/sign/decline/download
+endpoints under `/signers/{signer_id}/...` and `/signers/documents/...`.
+
+Calls are authenticated by a `signer-access-code` (the code embedded in the link a
+signer receives), not by the workspace API key — so these work on a
+{@see \Assinafy\SDK\Configuration::forPublic()} client too. {@see self::list()} and
+{@see self::search()} also accept the workspace credentials (API key or Bearer token)
+when no access code is given; the signer must then belong to that workspace.
+
+@see https://api.assinafy.com.br/v1/docs
 
 ### `current()`
 
 ```php
-public function current(string $signerId, #[\SensitiveParameter] string $accessCode) : array
+public function current(string $signerId, #[\SensitiveParameter] string $accessCode): array
 ```
 
-Get the document tied to the signer's access code, without page content.
+Get the document tied to the signer's access code, with the signer's assignment items.
 `GET /signers/{signer_id}/document?signer-access-code={code}`
 
-Useful right after the signer opens the link, to show which document is about
-to be signed before asking them to verify their code. Does not require the
-signer to have verified or confirmed their data yet — that is what distinguishes it
-from {@see SignerSessionResource::currentDocument()}, which needs a verified session
-and returns the assignment items too.
+Returns the full document record, including the assignment `items` the signer must
+complete and the page list. Useful right after the signer opens the link, to show
+which document is about to be signed before asking them to verify their code. Does
+not require the signer to have verified or confirmed their data yet — that is what
+distinguishes it from {@see SignerSessionResource::currentDocument()}, which needs a
+verified session, marks the document as viewed, and enforces the DigitalCertificate
+confirm-data gate.
 
 Request (query string): `signer-access-code`.
 
@@ -4437,17 +4726,20 @@ public function list(
         string $signerId,
         #[\SensitiveParameter] string $accessCode,
         array $filters = []
-    ) : array
+    ): array
 ```
 
 List the signer's documents.
 `GET /signers/{signer_id}/documents?signer-access-code={code}`
 
+Authentication: the signer access code. To list with the workspace API key or Bearer
+token instead, call {@see self::listAsWorkspace()}.
+
 Everything this signer has been asked to sign across the workspace — the backing call
 for a "my documents" inbox. Combine with {@see self::signMultiple()} to let a signer
 clear several at once.
 
-Request (query string): `page`, `per-page`, `signer-access-code`.
+Request (query string): `page`, `per-page`, and `signer-access-code`.
 
 Example query (no request body):
 ```php
@@ -4498,16 +4790,18 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
+@param string                $accessCode signer access code
 @param array<string, scalar> $filters optional `page` and `per-page`
 @return array{status?: int, message?: string, data?: array<int, array<string, mixed>>,
     pagination?: array{current_page: int, page_count: int, per_page: int, total_count: int}}
-@throws ValidationException when `page`/`per-page` are not integers, or the access
-    code is blank
+@throws ValidationException when `page`/`per-page` are not integers or the access code
+    is blank
+@throws \Assinafy\SDK\Exceptions\ApiException 401 on invalid credentials
 
 ### `listAsWorkspace()`
 
 ```php
-public function listAsWorkspace(string $signerId, array $filters = []) : array
+public function listAsWorkspace(string $signerId, array $filters = []): array
 ```
 
 List a workspace signer's documents with the workspace API key or Bearer token.
@@ -4517,6 +4811,19 @@ Same request and response as {@see self::list()}, authenticated with the client'
 workspace credentials instead of a signer access code. The signer must belong to the
 configured workspace.
 
+Request: no body; query `['page' => 1, 'per-page' => 20]`.
+```php
+$result = $client->signerDocuments()->listAsWorkspace('signer-id', ['per-page' => 20]);
+// Complete SDK response when this signer has no documents:
+[
+    'status' => 200, 'message' => 'Success', 'data' => [],
+    'pagination' => ['current_page' => 1, 'page_count' => 0, 'per_page' => 20, 'total_count' => 0],
+]
+```
+Non-empty `data` contains the complete document arrays shown in {@see self::list()}.
+OAuth requires `documents:read`.
+
+@param string $signerId the workspace signer ID
 @param array<string, scalar> $filters optional `page` and `per-page`
 @return array{status?: int, message?: string, data?: array<int, array<string, mixed>>,
     pagination?: array{current_page: int, page_count: int, per_page: int, total_count: int}}
@@ -4532,7 +4839,7 @@ public function search(
         string $signerId,
         #[\SensitiveParameter] string $accessCode,
         string $term
-    ) : array
+    ): array
 ```
 
 Search the signer's documents using the API's compact representation.
@@ -4541,7 +4848,10 @@ Search the signer's documents using the API's compact representation.
 Matches `$term` against the document name. Unlike {@see self::list()} this route is
 not paginated and returns a flat array rather than the paginated envelope.
 
-Request (query string): `search`, `signer-access-code`.
+Authentication: the signer access code. To search with the workspace API key or
+Bearer token instead, call {@see self::searchAsWorkspace()}.
+
+Request (query string): `search` and `signer-access-code`.
 
 Example query (no request body):
 ```php
@@ -4571,30 +4881,22 @@ Example response (SDK return; optional fields depend on state):
                 'name' => 'Example',
             ],
         ],
-        'assignment' => null,
-        'pages' => [
-            [
-                'id' => 'document-page-id',
-                'number' => 1,
-                'height' => 2100,
-                'width' => 1275,
-                'download_url' => 'https://api.assinafy.com.br/v1/documents/document-id/pages/1a/download',
-            ],
-        ],
         'created_at' => '2026-06-03T03:54:16Z',
         'updated_at' => '2026-06-03T03:54:16Z',
     ],
 ]
 ```
 
-@param string $term substring to match against the document name
+@param string $accessCode signer access code
+@param string $term       substring to match against the document name
 @return array<int, array<string, mixed>>
 @throws ValidationException when the signer ID or access code is blank
+@throws \Assinafy\SDK\Exceptions\ApiException 401 on invalid credentials
 
 ### `searchAsWorkspace()`
 
 ```php
-public function searchAsWorkspace(string $signerId, string $term) : array
+public function searchAsWorkspace(string $signerId, string $term): array
 ```
 
 Search a workspace signer's documents with the workspace API key or Bearer token.
@@ -4604,6 +4906,16 @@ Same request and response as {@see self::search()}, authenticated with the clien
 workspace credentials instead of a signer access code. The signer must belong to the
 configured workspace.
 
+Request: no body; query `['search' => 'agreement']`.
+```php
+$result = $client->signerDocuments()->searchAsWorkspace('signer-id', 'agreement');
+// Complete SDK response when there are no matches:
+[]
+```
+Matching document arrays have the shape shown in {@see self::search()}.
+OAuth requires `documents:read`.
+
+@param string $signerId the workspace signer ID
 @param string $term substring to match against the document name
 @return array<int, array<string, mixed>>
 @throws ValidationException when the signer ID is blank, or the client was built with
@@ -4614,7 +4926,7 @@ configured workspace.
 ### `signMultiple()`
 
 ```php
-public function signMultiple(#[\SensitiveParameter] string $accessCode, array $documentIds) : array
+public function signMultiple(#[\SensitiveParameter] string $accessCode, array $documentIds): array
 ```
 
 Sign several virtual-method documents in one call.
@@ -4648,7 +4960,7 @@ public function declineMultiple(
         #[\SensitiveParameter] string $accessCode,
         array $documentIds,
         #[\SensitiveParameter] string $reason
-    ) : array
+    ): array
 ```
 
 Decline several documents in one call.
@@ -4674,11 +4986,12 @@ Example response (SDK return; optional fields depend on state):
 
 @param array<int, string> $documentIds documents to decline; re-indexed so a filtered
     PHP array still encodes as a JSON list
-@param string             $reason      applied to every document in the batch
+@param string             $reason      applied to every document in the batch;
+    required, non-empty, and at most 2000 characters (the API answers 400 beyond that)
 @return array<array-key, mixed>
 
-@throws ValidationException when no document IDs or no reason is provided, or the
-    access code is blank
+@throws ValidationException when no document IDs or no reason is provided, the reason
+    exceeds 2000 characters, or the access code is blank
 
 ### `download()`
 
@@ -4688,7 +5001,7 @@ public function download(
         string $documentId,
         #[\SensitiveParameter] string $accessCode,
         string $artifact = DocumentResource::ARTIFACT_ORIGINAL
-    ) : string
+    ): string
 ```
 
 Download one of the signer's document artifacts (raw binary body).
@@ -4719,6 +5032,12 @@ file_put_contents('my-copy.pdf', $client->signerDocuments()->download(
 
 ## `Resources/SignerResource`
 
+Signers resource — every endpoint under `/accounts/{account_id}/signers`.
+
+Signer-facing endpoints (the ones consumed by the end-signer in the browser, e.g.
+`/signers/self`, `/signers/accept-terms`, `/signature`) are intentionally NOT exposed
+here: they require a `signer-access-code` rather than an account API key.
+
 ### `create()`
 
 ```php
@@ -4727,7 +5046,7 @@ public function create(
         #[\SensitiveParameter] ?string $email = null,
         #[\SensitiveParameter] ?string $whatsappPhoneNumber = null,
         #[\SensitiveParameter] ?string $governmentId = null
-    ) : array
+    ): array
 ```
 
 Create a signer.
@@ -4778,7 +5097,7 @@ assignment is created for the signer.
 ### `get()`
 
 ```php
-public function get(string $signerId) : array
+public function get(string $signerId): array
 ```
 
 Retrieve a signer.
@@ -4810,7 +5129,7 @@ public function list(
         int $page = 1,
         int $perPage = 20,
         #[\SensitiveParameter] ?string $search = null
-    ) : array
+    ): array
 ```
 
 List signers in the workspace.
@@ -4858,15 +5177,20 @@ Example response (SDK return; optional fields depend on state):
 ### `update()`
 
 ```php
-public function update(string $signerId, #[\SensitiveParameter] array $data) : array
+public function update(string $signerId, #[\SensitiveParameter] array $data): array
 ```
 
 Update a signer.
 `PUT /accounts/{account_id}/signers/{signer_id}`
 
-Send only the keys you want to change. This is the only way to set `government_id`,
-which must be present **before** a digital-certificate assignment can be created for
-this signer.
+Send only the keys you want to change. `government_id` may be supplied here or at
+{@see self::create()} time; either way it must be present **before** a
+digital-certificate assignment can be created for this signer.
+
+Verification integrity: changing `email` or `whatsapp_phone_number` returns `400` while
+the signer has verified that channel on an in-flight (not yet certificated) document;
+changing a channel that has only unverified in-flight requests rotates their
+access/verification codes, invalidating previously sent links and OTPs.
 
 `whatsapp_phone_number` is normalised to E.164 locally, exactly as in
 {@see self::create()}.
@@ -4904,7 +5228,7 @@ Example response (SDK return; optional fields depend on state):
 ### `delete()`
 
 ```php
-public function delete(string $signerId) : array
+public function delete(string $signerId): array
 ```
 
 Delete a signer.
@@ -4931,7 +5255,7 @@ Example response (SDK return; optional fields depend on state):
 ### `findByEmail()`
 
 ```php
-public function findByEmail(#[\SensitiveParameter] string $email) : ?array
+public function findByEmail(#[\SensitiveParameter] string $email): ?array
 ```
 
 Find a signer by email by searching the workspace.
@@ -4974,19 +5298,45 @@ Example response (SDK return; optional fields depend on state):
 ### `normalizePhoneNumber()`
 
 ```php
-public static function normalizePhoneNumber(#[\SensitiveParameter] string $phone) : string
+public static function normalizePhoneNumber(#[\SensitiveParameter] string $phone): string
 ```
 
 Normalize explicitly international phone input into E.164 (e.g. `+5548999990000`).
 Common visual separators are removed, but a leading `+` and country code are
 mandatory so a local number is never silently assigned to the wrong country.
 
+Local only: no authentication, request or response body.
+```php
+SignerResource::normalizePhoneNumber('+55 (48) 99999-0000');
+// '+5548999990000'
+```
+
+@param string $phone international number with an explicit country code
+@return string the normalized phone number
+@throws ValidationException on an invalid or ambiguous phone number
+
 ## `Resources/SignerSessionResource`
+
+Signer-facing session resource — endpoints consumed by the end-signer in the
+browser, authenticated by a `signer-access-code` (not by the workspace API key).
+
+Covers:
+  - GET  /signers/self
+  - PUT  /signers/accept-terms
+  - POST /verify
+  - PUT  /documents/{documentId}/signers/confirm-data
+  - POST /signature
+  - GET  /signature/{type}
+  - GET  /sign                                       (current document/assignment view)
+  - POST /documents/{documentId}/assignments/{id}    (sign — collect method)
+  - PUT  /documents/{documentId}/assignments/{id}/reject (decline)
+
+The access code is required for every call.
 
 ### `self()`
 
 ```php
-public function self(#[\SensitiveParameter] string $accessCode) : array
+public function self(#[\SensitiveParameter] string $accessCode): array
 ```
 
 Get the signer's own profile.
@@ -5019,7 +5369,7 @@ Example response (SDK return; optional fields depend on state):
 ### `acceptTerms()`
 
 ```php
-public function acceptTerms(#[\SensitiveParameter] string $accessCode) : array
+public function acceptTerms(#[\SensitiveParameter] string $accessCode): array
 ```
 
 Accept terms of use.
@@ -5049,7 +5399,7 @@ Example response (SDK return; optional fields depend on state):
 public function verifyCode(
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] string $verificationCode
-    ) : array
+    ): array
 ```
 
 Verify the one-time code sent to the signer's email/WhatsApp.
@@ -5085,7 +5435,7 @@ public function confirmData(
         string $documentId,
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] array $data
-    ) : array
+    ): array
 ```
 
 Confirm the signer's name, email, government ID, or terms acceptance.
@@ -5094,9 +5444,11 @@ Confirm the signer's name, email, government ID, or terms acceptance.
 The `signer-access-code` is sent as a query parameter, the rest of the data
 goes in the JSON body.
 
-Current API prose also requires `has_accepted_terms: true` here before a
-digital-certificate signer can open the document, although that field is absent
-from this operation's request schema.
+A digital-certificate signer must send `has_accepted_terms: true` here before it
+can open the document. The published `/sign` narrative documents the field as part of
+the confirm-data body even though the published OpenAPI body schema for this operation
+lists only `full_name`, `email` and `government_id`; the SDK forwards it in the JSON
+request body.
 
 The signer confirms the identity details that will be printed on the certificate page.
 
@@ -5137,7 +5489,7 @@ public function uploadSignature(
         #[\SensitiveParameter] string $imageBytes,
         string $mimeType = 'image/png',
         ?bool $reuse = null
-    ) : array
+    ): array
 ```
 
 Upload a signature or initial image (PNG/JPEG bytes).
@@ -5179,7 +5531,7 @@ Example response (SDK return; optional fields depend on state):
 ### `downloadSignature()`
 
 ```php
-public function downloadSignature(#[\SensitiveParameter] string $accessCode, string $type) : string
+public function downloadSignature(#[\SensitiveParameter] string $accessCode, string $type): string
 ```
 
 Download the signer's saved signature or initial image (raw PNG/JPEG bytes).
@@ -5193,6 +5545,15 @@ Request (query string): `signer-access-code`. The type is a path segment.
 
 Response: raw image bytes — not the JSON envelope.
 
+Authentication: signer access code only, with no workspace credential.
+Example query and result:
+```php
+['signer-access-code' => '<signer-access-code>']
+// downloadSignature($accessCode, 'signature') returns the stored image bytes.
+// Content-Type is image/png or image/jpeg; no request body is sent.
+```
+
+@param string $accessCode the current signer access code
 @param string $type {@see self::TYPE_SIGNATURE} or {@see self::TYPE_INITIAL}
 @return string raw PNG/JPEG bytes
 @throws ValidationException on an unknown type or a blank access code
@@ -5204,7 +5565,7 @@ Response: raw image bytes — not the JSON envelope.
 public function currentDocument(
         #[\SensitiveParameter] string $accessCode,
         ?bool $hasAcceptedTerms = null
-    ) : array
+    ): array
 ```
 
 Retrieve the document/assignment the signer currently has access to.
@@ -5216,6 +5577,11 @@ the signer's `current_signer` and the assignment `items` they must complete — 
 `items[].id` values are the `itemId`s {@see self::sign()} expects.
 
 Request (query string): `signer-access-code`, plus `has_accepted_terms` when supplied.
+
+DigitalCertificate signers must first call {@see self::confirmData()} with
+`has_accepted_terms: true` before opening the document — the query flag here alone
+is too late, and the API answers 400 while that gate is unmet. A 409 means the
+document is still being prepared; retry with backoff.
 
 Example response (SDK return; optional fields depend on state):
 ```php
@@ -5344,10 +5710,13 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
-@param bool|null $hasAcceptedTerms sent as a query flag when supplied
+@param bool|null $hasAcceptedTerms sent as a query flag when supplied; it does not
+    satisfy the DigitalCertificate confirm-data gate — see above
 @return array<string, mixed>
 @throws ValidationException when the access code is blank
-@throws \Assinafy\SDK\Exceptions\ApiException 401 before the code is verified
+@throws \Assinafy\SDK\Exceptions\ApiException 400 when the confirm-data gate is unmet;
+    401 before the code is verified; 409 while the document is still being prepared
+    (retry with backoff)
 
 ### `sign()`
 
@@ -5357,7 +5726,7 @@ public function sign(
         string $assignmentId,
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] array $fields
-    ) : array
+    ): array
 ```
 
 Sign a document with input fields (collect method).
@@ -5392,6 +5761,7 @@ When this signer is the last one outstanding, the document moves to `ready` and
 certification begins.
 
 @param array<int, array{itemId: string, fieldId: string, pageId: string, value: string}> $fields
+    empty for a virtual assignment, which carries no collect fields
 @return array<array-key, mixed>
 @throws ValidationException when an identifier or the access code is blank
 @throws \Assinafy\SDK\Exceptions\ApiException 400 when an item is missing or invalid
@@ -5404,7 +5774,7 @@ public function decline(
         string $assignmentId,
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] string $reason
-    ) : array
+    ): array
 ```
 
 Decline (reject) an assignment as a signer.
@@ -5425,16 +5795,87 @@ Example response (SDK return; optional fields depend on state):
 []
 ```
 
-@param string $reason why the signer refuses; required and non-empty
+@param string $reason why the signer refuses; required, non-empty, and at most 2000
+    characters (the API answers 400 beyond that)
 @return array<array-key, mixed>
-@throws ValidationException when no reason is provided, or an identifier is blank
+@throws ValidationException when no reason is provided, the reason exceeds 2000
+    characters, or an identifier is blank
+
+### `identityVerification()`
+
+```php
+public function identityVerification(#[\SensitiveParameter] string $accessCode): array
+```
+
+Read the current signer's identity-document verification state.
+`GET /signers/identity-verification`
+
+Authentication: signer access code only. Query: ['signer-access-code' => '<access-code>'];
+no body. Requires an IdDocumentFaceMatchBasic assignment. can_start is true before a
+session exists or after it expires. Pending, InReview, Approved, Declined and Abandoned
+sessions cannot be restarted here. InReview signers may continue signing while review
+holds certification. The API synchronizes pending provider decisions on this read.
+Example SDK response:
+```php
+[
+    'can_start' => false, 'status' => 'Pending',
+    'url' => 'https://verify.assinafy.com.br/c/session-id#t=<capture-token>',
+    'expires_at' => '2026-10-16T13:00:00Z', 'completed_at' => null,
+]
+```
+Open the capture URL unchanged, including its fragment. It is a bearer credential;
+keep it out of logs and browser storage. It is null outside Pending.
+
+@param string $accessCode the current signer access code
+@return array<string, mixed> the unwrapped can_start/status/url/expires_at/completed_at object
+@throws ValidationException when the access code is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 401 on invalid signer credentials
+
+### `startIdentityVerification()`
+
+```php
+public function startIdentityVerification(#[\SensitiveParameter] string $accessCode, bool $consent): array
+```
+
+Record explicit biometric-processing consent and open a hosted provider session.
+`POST /signers/identity-verification`
+
+Authentication: signer access code only, as ['signer-access-code' => '<access-code>'].
+Request body: ['consent' => true]. The caller must obtain the signer's consent first.
+Allowed before a session exists or after it Expires; other existing states return 400.
+A resend preserves a live session. A restart has no extra charge; billing is once per
+signer at assignment creation. Declined/Abandoned require a new document and assignment.
+Example SDK response:
+```php
+[
+    'id' => 'verification-id',
+    'url' => 'https://verify.assinafy.com.br/c/session-id#t=<capture-token>',
+    'expires_at' => '2026-10-16T13:00:00Z',
+]
+```
+Redirect to the exact returned URL, including #t=. Never log or store this bearer link
+in browser storage. expires_at can be null; review/processing may outlive link expiry.
+
+@param string $accessCode the current signer access code
+@param bool $consent explicit consent to biometric processing; must be true
+@return array<string, mixed> the unwrapped id/url/expires_at object
+@throws ValidationException on an empty access code or missing consent
+@throws \Assinafy\SDK\Exceptions\ApiException 400 when a non-expired session exists; 401 on invalid credentials
 
 ## `Resources/TagResource`
+
+Tags resource — workspace-scoped labels under `/accounts/{account_id}/tags`.
+
+Tags are attached to documents (see {@see DocumentResource::appendTags()}) and
+templates to make them easier to find. Tag names are unique per workspace,
+case-insensitive; the API trims and collapses internal whitespace before storage.
+
+@see https://api.assinafy.com.br/v1/docs
 
 ### `list()`
 
 ```php
-public function list(?string $search = null) : array
+public function list(?string $search = null): array
 ```
 
 List the workspace's tags, ordered alphabetically by name.
@@ -5469,7 +5910,7 @@ Example response (SDK return; optional fields depend on state):
 ### `create()`
 
 ```php
-public function create(string $name, ?string $color = null) : array
+public function create(string $name, ?string $color = null): array
 ```
 
 Create a new tag in the workspace.
@@ -5506,7 +5947,7 @@ Example response (SDK return; optional fields depend on state):
 ### `update()`
 
 ```php
-public function update(string $tagId, array $data) : array
+public function update(string $tagId, array $data): array
 ```
 
 Update a tag's name and/or color.
@@ -5544,7 +5985,7 @@ Example response (SDK return; optional fields depend on state):
 ### `delete()`
 
 ```php
-public function delete(string $tagId, bool $force = false) : array
+public function delete(string $tagId, bool $force = false): array
 ```
 
 Delete a tag.
@@ -5574,10 +6015,22 @@ Example response (SDK return; optional fields depend on state):
 
 ## `Resources/TemplateResource`
 
+Templates resource — every endpoint under `/accounts/{account_id}/templates`.
+
+Covers the full template-management surface: create (PDF upload), list, get,
+update, delete, the per-page render download, and the `documents`/`estimate-cost`
+sub-resources used to instantiate documents from a template
+(see {@see DocumentResource::createFromTemplate()}).
+
+Signer roles and field placements are configured in the Assinafy web app after
+upload — a freshly created template carries only the default `Editor` role.
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `create()`
 
 ```php
-public function create(#[\SensitiveParameter] string $filePath) : array
+public function create(#[\SensitiveParameter] string $filePath): array
 ```
 
 Create a template by uploading a PDF.
@@ -5624,7 +6077,7 @@ This route is not part of the published OpenAPI contract but exists on the live 
 ### `list()`
 
 ```php
-public function list(int $page = 1, int $perPage = 20, array $filters = []) : array
+public function list(int $page = 1, int $perPage = 20, array $filters = []): array
 ```
 
 List templates in the workspace.
@@ -5692,7 +6145,7 @@ Example response (SDK return; optional fields depend on state):
 ### `get()`
 
 ```php
-public function get(string $templateId) : array
+public function get(string $templateId): array
 ```
 
 Retrieve a template, including roles and per-page field placements.
@@ -5751,7 +6204,7 @@ This route is not part of the published OpenAPI contract but exists on the live 
 ### `update()`
 
 ```php
-public function update(string $templateId, #[\SensitiveParameter] array $data) : array
+public function update(string $templateId, #[\SensitiveParameter] array $data): array
 ```
 
 Update a template's editable metadata.
@@ -5814,7 +6267,7 @@ This route is not part of the published OpenAPI contract but exists on the live 
 ### `delete()`
 
 ```php
-public function delete(string $templateId) : array
+public function delete(string $templateId): array
 ```
 
 Delete a template.
@@ -5839,7 +6292,7 @@ This route is not part of the published OpenAPI contract but exists on the live 
 ### `downloadPage()`
 
 ```php
-public function downloadPage(string $templateId, string $pageId) : string
+public function downloadPage(string $templateId, string $pageId): string
 ```
 
 Download a rendered template page as JPEG (raw binary body).
@@ -5852,8 +6305,16 @@ Request: no parameters.
 
 Response: raw `image/jpeg` bytes — not the JSON envelope.
 
+Authentication: configured API key or workspace Bearer token (`templates:read` for OAuth).
+```php
+$jpeg = $client->templates()->downloadPage('template-id', 'page-id');
+// $jpeg is the complete JPEG byte string; no query or request body is sent.
+```
+
 This route is not part of the published OpenAPI contract but exists on the live API.
 
+@param string $templateId the ready template ID
+@param string $pageId an ID from the template's pages array
 @return string raw JPEG bytes
 @throws ValidationException when either identifier is empty
 @throws \Assinafy\SDK\Exceptions\ApiException 404 before rendering finishes
@@ -5865,7 +6326,7 @@ public function waitUntilReady(
         string $templateId,
         int $maxWaitSeconds = 60,
         int $pollIntervalSeconds = 2
-    ) : array
+    ): array
 ```
 
 Poll {@see self::get()} until the template finishes processing.
@@ -5927,10 +6388,15 @@ Example response (SDK return; optional fields depend on state):
 
 ## `Resources/UserResource`
 
+Authenticated user profile, cross-account statistics, notification preferences and
+two-factor authentication (TOTP authenticator plus recovery codes).
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `get()`
 
 ```php
-public function get(#[\SensitiveParameter] ?string $accessToken = null) : array
+public function get(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
 Get the user represented by the configured API key or a Bearer token.
@@ -5978,6 +6444,7 @@ Example response (SDK return; optional fields depend on state):
     'government_id' => null,
     'is_email_verified' => false,
     'has_accepted_terms' => true,
+    'is_password_set' => true,
     'created_at' => '2023-03-03T11:51:34Z',
     'to_be_deleted_at' => null,
 ]
@@ -5987,7 +6454,7 @@ Example response (SDK return; optional fields depend on state):
 
 @return array{id?: string, name?: string, email?: string, telephone?: string|null,
     government_id?: string|null, is_email_verified?: bool, has_accepted_terms?: bool,
-    created_at?: string, to_be_deleted_at?: string|null}
+    is_password_set?: bool, created_at?: string, to_be_deleted_at?: string|null}
 
 ### `stats()`
 
@@ -5996,7 +6463,7 @@ public function stats(
         string $granularity = self::GRANULARITY_MONTHLY,
         ?string $month = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Get document-funnel KPIs summed over every account the user belongs to.
@@ -6054,7 +6521,7 @@ Available in production and sandbox; access depends on the authenticated account
 ### `notificationPreferences()`
 
 ```php
-public function notificationPreferences(#[\SensitiveParameter] ?string $accessToken = null) : array
+public function notificationPreferences(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
 Get all owner-facing document email preferences.
@@ -6100,7 +6567,7 @@ Available in production and sandbox; access depends on the authenticated account
 public function updateNotificationPreferences(
         array $preferences,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Merge selected owner-facing document email preferences.
@@ -6148,7 +6615,7 @@ Available in production and sandbox; access depends on the authenticated account
 ### `mfaMethods()`
 
 ```php
-public function mfaMethods(#[\SensitiveParameter] ?string $accessToken = null) : array
+public function mfaMethods(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
 List the user's enrolled two-factor methods and remaining recovery codes.
@@ -6181,7 +6648,7 @@ Example response (SDK return):
 public function startTotpEnrollment(
         ?string $label = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Start enrolling an authenticator app.
@@ -6217,7 +6684,7 @@ public function confirmTotpEnrollment(
         #[\SensitiveParameter] ?string $password = null,
         #[\SensitiveParameter] ?string $reauthCode = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Confirm an authenticator enrollment and receive the recovery codes.
@@ -6253,7 +6720,7 @@ public function regenerateRecoveryCodes(
         #[\SensitiveParameter] ?string $password = null,
         #[\SensitiveParameter] ?string $code = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Issue ten new recovery codes, invalidating the previous set.
@@ -6283,7 +6750,7 @@ public function removeMfaMethod(
         #[\SensitiveParameter] ?string $password = null,
         #[\SensitiveParameter] ?string $code = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) : array
+    ): array
 ```
 
 Remove an enrolled two-factor method.
@@ -6309,6 +6776,22 @@ Example response (SDK return):
 
 ## `Resources/WebhookResource`
 
+Webhooks resource — the workspace's webhook endpoints, the legacy single-subscription
+routes, the event catalog and the delivery history (dispatches).
+
+An account can register 1 endpoint, or up to 3 on paid plans. Each endpoint has its own
+URL, events, active flag and optional Standard Webhooks signing; every active endpoint
+subscribed to an event receives it independently. Manage them with
+{@see listEndpoints()}, {@see createEndpoint()}, {@see getEndpoint()},
+{@see updateEndpoint()} and {@see deleteEndpoint()}; read or rotate the signing secret with
+{@see endpointSecret()} and {@see rotateEndpointSecret()}, and check deliveries with
+{@see \Assinafy\SDK\Support\WebhookEventParser::verifySignature()}.
+
+The subscription methods ({@see register()}, {@see get()}, {@see deactivate()},
+{@see activate()}) keep working and act on the account's oldest endpoint.
+
+@see https://api.assinafy.com.br/v1/docs
+
 ### `register()`
 
 ```php
@@ -6317,7 +6800,7 @@ public function register(
         #[\SensitiveParameter] string $email,
         array $events = [],
         bool $isActive = true
-    ) : array
+    ): array
 ```
 
 Register or replace the workspace webhook subscription (the oldest endpoint).
@@ -6367,13 +6850,13 @@ The subscription body has no signing field; enable signing on the endpoint with
 ### `get()`
 
 ```php
-public function get() : ?array
+public function get(): ?array
 ```
 
-Get the current webhook subscription — the oldest endpoint (or null if none has ever been configured).
+Get the current webhook subscription — the oldest endpoint (or null if none exists).
 `GET /accounts/{account_id}/webhooks/subscriptions`
 
-Request: no parameters.
+Request: no parameters. OAuth scope: `account:read`.
 
 Example response (SDK return; optional fields depend on state):
 ```php
@@ -6386,15 +6869,17 @@ Example response (SDK return; optional fields depend on state):
 ]
 ```
 
-Returns `null` — not an empty array — when the workspace has never configured one, so
-`if ($client->webhooks()->get() === null)` is the way to test for absence.
+Returns `null` — not an empty array — when the workspace has never configured one,
+although a never-configured workspace may instead answer with an inactive subscription
+carrying an empty `url`; {@see self::activate()} rejects both shapes.
 
-@return array<string, mixed>|null the subscription, or null when none exists
+@return array<string, mixed>|null the subscription, or null when none exists; a new
+    account can instead return an inactive subscription with an empty `url`
 
 ### `deactivate()`
 
 ```php
-public function deactivate() : array
+public function deactivate(): array
 ```
 
 Disable delivery without losing the subscription configuration.
@@ -6404,13 +6889,13 @@ The URL / email / events stay on file so the subscription can be re-enabled
 later with {@see activate()} without re-supplying them. This is the only way to stop
 deliveries — the API has no `DELETE` route for subscriptions.
 
-Request: no body.
+Request: no body. OAuth scope: `webhooks:write`.
 
 Example response (SDK return; optional fields depend on state):
 ```php
 [
     'events' => ['document_ready', 'document_prepared'],
-    'is_active' => true,
+    'is_active' => false,
     'url' => 'https://example.com/hooks/assinafy',
     'email' => 'person@example.com',
     'updated_at' => '2023-05-10T14:58:24Z',
@@ -6422,7 +6907,7 @@ Example response (SDK return; optional fields depend on state):
 ### `activate()`
 
 ```php
-public function activate() : array
+public function activate(): array
 ```
 
 Re-enable delivery on the existing subscription.
@@ -6434,7 +6919,7 @@ email / events through {@see self::register()} with `is_active = true` — two r
 Request/Response: as {@see self::get()} then {@see self::register()}.
 
 Response (unwrapped `data` from the register call):
-```
+```php
 [
   'events'     => ['document_ready', 'signer_signed_document'],
   'is_active'  => true,
@@ -6450,13 +6935,14 @@ Response (unwrapped `data` from the register call):
 ### `listEndpoints()`
 
 ```php
-public function listEndpoints() : array
+public function listEndpoints(#[\SensitiveParameter] ?string $url = null): array
 ```
 
 List the account's webhook endpoints, oldest first.
 `GET /accounts/{account_id}/webhooks/endpoints`
 
-Request: no parameters. OAuth scope: `account:read`.
+Authentication: configured API key or workspace Bearer token (OAuth scope account:read).
+Request: no body. Optional exact-URL filter: ['url' => 'https://example.com/webhooks/assinafy'].
 
 Example response (SDK return; a direct list, no pagination):
 ```php
@@ -6475,7 +6961,9 @@ Example response (SDK return; a direct list, no pagination):
 ]
 ```
 
+@param string|null $url return only the endpoint with this exact URL; null lists every endpoint
 @return array<int, array<string, mixed>>
+@throws ValidationException when the optional URL is invalid
 
 ### `createEndpoint()`
 
@@ -6487,7 +6975,7 @@ public function createEndpoint(
         ?string $name = null,
         bool $isActive = true,
         bool $signingEnabled = false
-    ) : array
+    ): array
 ```
 
 Register an additional webhook endpoint.
@@ -6495,7 +6983,8 @@ Register an additional webhook endpoint.
 
 An account holds 1 endpoint, or up to 3 on paid plans; one past the limit returns
 `403`. Each endpoint needs a distinct `url` (`400` otherwise). With `$signingEnabled`,
-the API generates a `whsec_` secret — read it with {@see self::endpointSecret()}.
+the API generates a `whsec_` secret. The published create response includes `secret`;
+store it immediately for OAuth apps, which cannot call {@see self::endpointSecret()}.
 OAuth scope: `webhooks:write`.
 
 Request body:
@@ -6522,6 +7011,7 @@ Example response (SDK return):
     'signing_enabled' => true,
     'created_at' => '2026-10-01T12:00:00Z',
     'updated_at' => '2026-10-01T12:00:00Z',
+    'secret' => 'whsec_<base64-key>', // present when signing_enabled is true
 ]
 ```
 
@@ -6529,6 +7019,8 @@ Example response (SDK return):
 @param string            $email  address alerted when deliveries fail
 @param array<int, mixed> $events event type IDs; when empty, {@see DEFAULT_EVENTS} is sent
 @param string|null       $name   label telling endpoints apart
+@param bool              $isActive whether to deliver subscribed events
+@param bool              $signingEnabled whether deliveries carry an HMAC signature
 @return array<string, mixed> the created endpoint
 @throws ValidationException on a non-absolute URL, a malformed email or a non-string event
 @throws \Assinafy\SDK\Exceptions\ApiException 403 past the plan's endpoint limit,
@@ -6537,7 +7029,7 @@ Example response (SDK return):
 ### `getEndpoint()`
 
 ```php
-public function getEndpoint(string $endpointId) : array
+public function getEndpoint(string $endpointId): array
 ```
 
 Retrieve one webhook endpoint.
@@ -6566,7 +7058,7 @@ Example response (SDK return):
 ### `updateEndpoint()`
 
 ```php
-public function updateEndpoint(string $endpointId, #[\SensitiveParameter] array $changes) : array
+public function updateEndpoint(string $endpointId, #[\SensitiveParameter] array $changes): array
 ```
 
 Change selected fields of a webhook endpoint.
@@ -6613,7 +7105,7 @@ Example response (SDK return, the updated endpoint):
 ### `deleteEndpoint()`
 
 ```php
-public function deleteEndpoint(string $endpointId) : array
+public function deleteEndpoint(string $endpointId): array
 ```
 
 Delete a webhook endpoint, stopping its deliveries and freeing its slot.
@@ -6629,10 +7121,32 @@ Example response (SDK return, the unwrapped empty `data`):
 @return array<array-key, mixed>
 @throws \Assinafy\SDK\Exceptions\ApiException 404 when the endpoint does not exist
 
+### `deleteEndpointByUrl()`
+
+```php
+public function deleteEndpointByUrl(#[\SensitiveParameter] string $url): array
+```
+
+Delete the endpoint whose registered URL matches exactly and free its slot.
+`DELETE /accounts/{accountId}/webhooks/endpoints`
+
+Authentication: API key or workspace Bearer token (OAuth scope webhooks:write).
+Query: ['url' => 'https://example.com/hooks/assinafy']; no request body.
+The endpoint must belong to the configured workspace. Query strings are part of the URL.
+```php
+$client->webhooks()->deleteEndpointByUrl('https://example.com/hooks/assinafy');
+// SDK response: [] (the unwrapped data array).
+```
+
+@param string $url the exact registered HTTP(S) URL
+@return array<array-key, mixed> the unwrapped empty data array
+@throws ValidationException when the URL is invalid
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when no endpoint uses this URL
+
 ### `endpointSecret()`
 
 ```php
-public function endpointSecret(string $endpointId) : string
+public function endpointSecret(string $endpointId): string
 ```
 
 Read the secret that signs deliveries to an endpoint.
@@ -6659,7 +7173,7 @@ Example response (SDK return, the secret itself):
 ### `rotateEndpointSecret()`
 
 ```php
-public function rotateEndpointSecret(string $endpointId) : string
+public function rotateEndpointSecret(string $endpointId): string
 ```
 
 Replace an endpoint's signing secret and return the new one.
@@ -6684,7 +7198,7 @@ Example response (SDK return, the new secret):
 ### `eventTypes()`
 
 ```php
-public function eventTypes() : array
+public function eventTypes(): array
 ```
 
 List the available webhook event types and their descriptions.
@@ -6692,7 +7206,7 @@ List the available webhook event types and their descriptions.
 
 The authoritative vocabulary for the `events` array of {@see self::register()}. The
 `EVENT_*` constants mirror these IDs; prefer this call over hard-coding if you render
-a picker, since the platform can add types.
+a picker, since the platform can add types. OAuth scope: `documents:read`.
 
 Request: no parameters.
 
@@ -6770,7 +7284,7 @@ Example response (SDK return; optional fields depend on state):
 ### `dispatches()`
 
 ```php
-public function dispatches(array $filters = []) : array
+public function dispatches(array $filters = []): array
 ```
 
 List the webhook delivery history (dispatches) for the workspace.
@@ -6780,13 +7294,13 @@ The delivery log — what was sent, where, and whether it landed. Each entry emb
 exact `payload` that was POSTed, so a failed delivery can be replayed or inspected
 without reproducing the original event.
 
-Request (query string): `event`, `delivered` (`true`/`false`), `from` and `to` (Unix
-timestamps), `page`, `per-page`.
+Request (query string): `endpoint_id`, `event`, `delivered` (`true`/`false`), `from`
+and `to` (Unix timestamps), `page`, `per-page`. OAuth scope: `documents:read`.
 
 Example query (no request body):
 ```php
 [
-    'event' => 'document_ready', 'delivered' => 'false',
+    'endpoint_id' => 'endpoint-id', 'event' => 'document_ready', 'delivered' => 'false',
     'from' => 1788220800, 'to' => 1790812800, 'page' => 1, 'per-page' => 20,
 ]
 ```
@@ -6801,7 +7315,7 @@ Example response (SDK return; optional fields depend on state):
             'resource' => 'activity_dispatching_history',
             'id' => 'webhook-dispatch-id',
             'event' => 'document_ready',
-            'activity_id' => 'activity-id',
+            'activity_id' => 456,
             'endpoint' => 'https://example.com/webhook',
             'payload' => null,
             'delivered' => true,
@@ -6825,8 +7339,8 @@ Example response (SDK return; optional fields depend on state):
 they record what your endpoint actually answered. On a successful delivery `delivered`
 is true and `error` is empty.
 
-@param array<string, scalar> $filters optional `event`, `delivered`, `from`, `to`,
-    `page`, `per-page`
+@param array<string, scalar> $filters optional `endpoint_id`, `event`, `delivered`,
+    `from`, `to`, `page`, `per-page`
 @return array{status?: int, message?: string, data?: array<int, array<string, mixed>>,
     pagination?: array{current_page: int, page_count: int, per_page: int, total_count: int}}
     full envelope with pagination lifted from response headers
@@ -6836,7 +7350,7 @@ is true and `error` is empty.
 ### `retryDispatch()`
 
 ```php
-public function retryDispatch(string $dispatchId) : array
+public function retryDispatch(string $dispatchId): array
 ```
 
 Manually retry a single webhook dispatch.
@@ -6857,7 +7371,7 @@ Example response (SDK return; optional fields depend on state):
     'resource' => 'activity_dispatching_history',
     'id' => 'webhook-dispatch-id',
     'event' => 'document_ready',
-    'activity_id' => 'activity-id',
+    'activity_id' => 456,
     'endpoint' => 'https://example.com/webhook',
     'payload' => null,
     'delivered' => true,
@@ -6871,14 +7385,27 @@ Example response (SDK return; optional fields depend on state):
 
 @return array<string, mixed> the new dispatch record
 @throws ValidationException when `$dispatchId` is empty
-@throws \Assinafy\SDK\Exceptions\ApiException 404 when the dispatch does not exist
+@throws \Assinafy\SDK\Exceptions\ApiException 400 when the webhook subscription is
+    inactive or the event type is not subscribed; 404 when the dispatch does not exist
 
 ## `Support/Iso8601`
+
+Validation for the ISO 8601 / RFC 3339 date-times the API accepts in `expires_at`.
+
+The API rejects a bare local date-time: the value must end in `Z` or an explicit
+`±HH:MM` UTC offset, so an expiry is never interpreted in the server's timezone.
+
+Shared by {@see \Assinafy\SDK\AssinafyClient::uploadAndRequestSignatures()} and
+{@see \Assinafy\SDK\Resources\AssignmentResource}, which apply the same rule but
+raise different exception types — this class returns the reason and lets each
+caller throw in its own idiom.
+
+@internal
 
 ### `reasonInvalid()`
 
 ```php
-public static function reasonInvalid(string $value) : ?string
+public static function reasonInvalid(string $value): ?string
 ```
 
 Explain why `$value` is not an acceptable date-time, or `null` when it is.
@@ -6886,6 +7413,10 @@ Explain why `$value` is not an acceptable date-time, or `null` when it is.
 @return self::REASON_*|null
 
 ## `Support/MutableLogger`
+
+Shared logger proxy used by already-created resources and the default transport.
+
+@internal
 
 ### `__construct()`
 
@@ -6898,7 +7429,7 @@ Store the application logger; construction does not emit a log message.
 ### `setLogger()`
 
 ```php
-public function setLogger(LoggerInterface $logger) : void
+public function setLogger(LoggerInterface $logger): void
 ```
 
 Redirect every holder of this proxy to a new logger.
@@ -6906,7 +7437,7 @@ Redirect every holder of this proxy to a new logger.
 ### `getLogger()`
 
 ```php
-public function getLogger() : LoggerInterface
+public function getLogger(): LoggerInterface
 ```
 
 The logger currently being proxied to.
@@ -6914,7 +7445,7 @@ The logger currently being proxied to.
 ### `log()`
 
 ```php
-public function log($level, $message, array $context = []) : void
+public function log($level, $message, array $context = []): void
 ```
 
 @param mixed                $level
@@ -6923,12 +7454,19 @@ public function log($level, $message, array $context = []) : void
 
 ## `Support/WebhookEventParser`
 
-Verifies and parses Assinafy webhook deliveries. An endpoint created with
-`signing_enabled: true` signs every delivery following the Standard Webhooks
-specification: the `webhook-id`, `webhook-timestamp` and `webhook-signature` headers
-carry an HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the endpoint's
-`whsec_` secret. Deduplicate by the `webhook-id` header: it is identical on every
-attempt of the same event to the same endpoint, and distinct per endpoint.
+Verifies and parses Assinafy webhook deliveries.
+
+An endpoint created with `signing_enabled: true` signs every delivery following the
+Standard Webhooks specification: the `webhook-id`, `webhook-timestamp` and
+`webhook-signature` headers carry an HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed
+by the endpoint's `whsec_` secret. Check it with {@see self::verifySignature()} before
+decoding the body. Unsigned endpoints send `webhook-id` and `webhook-timestamp` only.
+
+Deduplicate by the `webhook-id` header: it is identical on every attempt of the same event
+to the same endpoint, and distinct per endpoint.
+
+@see https://api.assinafy.com.br/v1/docs
+@see https://www.standardwebhooks.com
 
 ### `verifySignature()`
 
@@ -6939,7 +7477,7 @@ public function verifySignature(
         #[\SensitiveParameter] string $secret,
         int $toleranceSeconds = self::SIGNATURE_TOLERANCE_SECONDS,
         ?int $now = null
-    ) : bool
+    ): bool
 ```
 
 Check a signed delivery's `webhook-signature` against the endpoint secret.
@@ -6974,10 +7512,7 @@ if (!$parser->verifySignature($raw, getallheaders(), $secret)) {
 $event = $parser->extractEvent($raw);
 ```
 
-The secret is the `whsec_` value issued for the endpoint: the key is the base64-decoded
-part after the prefix, and anything else throws. The default tolerance is
-`SIGNATURE_TOLERANCE_SECONDS` (300 seconds), rejecting replayed old deliveries. A
-rotated secret takes effect immediately, so read it from your configuration on each
+A rotated secret takes effect immediately, so read it from your configuration on each
 request rather than caching it for the process lifetime.
 
 @param string $payload raw request body, exactly as received
@@ -6992,7 +7527,7 @@ request rather than caching it for the process lifetime.
 ### `extractEvent()`
 
 ```php
-public function extractEvent(#[\SensitiveParameter] string $payload) : ?array
+public function extractEvent(#[\SensitiveParameter] string $payload): ?array
 ```
 
 Decode a raw webhook body into an event array, or null when it is not valid JSON.
@@ -7043,7 +7578,7 @@ if ($event === null) {
 ### `getEventType()`
 
 ```php
-public function getEventType(?array $event) : ?string
+public function getEventType(?array $event): ?string
 ```
 
 The event name, e.g. `signature_requested`.
@@ -7066,7 +7601,7 @@ Response: one of the `EVENT_*` values, e.g. `'document_ready'`.
 ### `getEventData()`
 
 ```php
-public function getEventData(?array $event) : array
+public function getEventData(?array $event): array
 ```
 
 The entity the event is about — the `object` key of the envelope.
@@ -7090,9 +7625,8 @@ Example for signer_created:
 ```
 
 Returns `[]` rather than null when the key is missing, so the result is always safe to
-iterate. Treat it as a hint, not as truth: the snapshot reflects the moment the event
-fired, so re-fetch the entity through the API before acting on state that may have
-changed since.
+iterate. The snapshot reflects the moment the event fired; re-fetch the entity through the API
+before acting on state that may have changed since.
 
 @param array<string, mixed>|null $event the decoded envelope
 @return array<string, mixed> the `object` entity, or `[]` when absent
@@ -7100,7 +7634,7 @@ changed since.
 ### `getEventPayload()`
 
 ```php
-public function getEventPayload(?array $event) : array
+public function getEventPayload(?array $event): array
 ```
 
 The event-specific parameters — the `payload` key of the envelope.
@@ -7127,7 +7661,7 @@ rather than null when the key is missing, so the result is always safe to iterat
 ### `getAccountId()`
 
 ```php
-public function getAccountId(?array $event) : ?string
+public function getAccountId(?array $event): ?string
 ```
 
 The account the event belongs to — useful when one endpoint serves several workspaces.

@@ -566,14 +566,14 @@ final class WebhookRouteTest extends AssinafyTestCase {
 	/**
 	 * Every event `GET /webhooks/event-types` offers reaches the re-fetch.
 	 *
-	 * Fifteen deliveries, fifteen distinct ids, fifteen documents read back. A vocabulary
+	 * Distinct delivery ids produce one authoritative document read per event. A vocabulary
 	 * that drifts from the platform's shows up here as a delivery the plugin silently drops.
 	 */
 	public function test_every_subscribable_event_drives_a_re_fetch(): void {
 		$this->create_document( self::DOCUMENT_ID, 'pending_signature' );
 		$this->fake_document( 'certificated' );
 
-		$this->assertCount( 15, Route::EVENTS );
+		$this->assertCount( 20, Route::EVENTS );
 
 		foreach ( Route::EVENTS as $index => $event ) {
 			$response = $this->deliver(
@@ -589,7 +589,7 @@ final class WebhookRouteTest extends AssinafyTestCase {
 			$this->assertSame( 'synced', $response->get_data()['reason'], $event . ' was not accepted.' );
 		}
 
-		$this->assertCount( 15, $this->requests );
+		$this->assertCount( 20, $this->requests );
 	}
 
 	/**

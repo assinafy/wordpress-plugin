@@ -129,22 +129,19 @@ final class WebhookCli {
 	 * @param AssinafyClient $client Connected client.
 	 */
 	private function stop( AssinafyClient $client ): void {
-		$id = (string) Settings::get( Settings::OPTION_WEBHOOK_ENDPOINT_ID );
+		try {
+			$endpoints = $client->webhooks()->listEndpoints();
+		} catch ( \Throwable $e ) {
+			WP_CLI::error( $e->getMessage() );
 
-		if ( '' === $id ) {
-			try {
-				$endpoints = $client->webhooks()->listEndpoints();
-			} catch ( \Throwable $e ) {
-				WP_CLI::error( $e->getMessage() );
+			return;
+		}
 
-				return;
-			}
-
-			foreach ( $endpoints as $endpoint ) {
-				if ( Route::is_ours( $endpoint ) && is_string( $endpoint['id'] ?? null ) ) {
-					$id = $endpoint['id'];
-					break;
-				}
+		$id = '';
+		foreach ( $endpoints as $endpoint ) {
+			if ( Route::is_ours( $endpoint ) && is_string( $endpoint['id'] ?? null ) ) {
+				$id = $endpoint['id'];
+				break;
 			}
 		}
 

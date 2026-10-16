@@ -41,7 +41,7 @@ final class DocumentRecord {
 	private const META_SOURCE = '_assinafy_source';
 
 	/**
-	 * One of the eleven codes from `GET /documents/statuses`.
+	 * One of the codes from `GET /documents/statuses`.
 	 */
 	private const META_STATUS = '_assinafy_status';
 
@@ -149,7 +149,7 @@ final class DocumentRecord {
 	/**
 	 * The mirrored document status.
 	 *
-	 * One of the eleven codes `GET /documents/statuses` returns:
+	 * One of the codes `GET /documents/statuses` returns:
 	 *
 	 * ```
 	 * {"status":200,"message":"","data":[

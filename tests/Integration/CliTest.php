@@ -79,6 +79,15 @@ final class CliTest extends AssinafyTestCase {
 		WP_CLI::reset();
 
 		$this->configure_plugin();
+		$this->fake_response(
+			'webhooks/event-types',
+			200,
+			array(
+				'status'  => 200,
+				'message' => '',
+				'data'    => array_map( static fn( string $event ): array => array( 'id' => $event ), Route::EVENTS ),
+			)
+		);
 
 		update_option( Settings::OPTION_WEBHOOK_TOKEN, 'cli-test-webhook-token' );
 
@@ -508,6 +517,7 @@ final class CliTest extends AssinafyTestCase {
 	public function test_webhook_off_stops_delivery_and_records_it(): void {
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
 		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_own' );
+		$this->fake_endpoints( array( $this->own_endpoint() ) );
 
 		$this->fake_response(
 			'webhooks/endpoints/ep_own',
@@ -570,6 +580,7 @@ final class CliTest extends AssinafyTestCase {
 	 * Foreign endpoints are never this site's to switch off.
 	 */
 	public function test_webhook_off_refuses_when_no_endpoint_belongs_to_this_site(): void {
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_foreign' );
 		update_option( Settings::OPTION_WEBHOOK_ENABLED, true );
 		$this->fake_endpoints( array( $this->foreign_endpoint() ) );
 
@@ -927,6 +938,16 @@ final class CliTest extends AssinafyTestCase {
 				);
 
 				$method = strtoupper( (string) ( $args['method'] ?? 'GET' ) );
+				if ( str_ends_with( $url, '/webhooks/event-types' ) ) {
+					return self::json_response(
+						200,
+						array(
+							'status'  => 200,
+							'message' => '',
+							'data'    => array_map( static fn( string $event ): array => array( 'id' => $event ), Route::EVENTS ),
+						)
+					);
+				}
 
 				if ( 'POST' === $method && str_contains( $url, 'webhooks/endpoints' ) ) {
 					if ( 200 !== $post_status ) {

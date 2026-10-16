@@ -31,9 +31,9 @@ final class Signers {
 	/**
 	 * Normalise signer rows into the shape the SDK and the API expect.
 	 *
-	 * Verification and notification methods are coupled server-side and only three pairings
-	 * exist: `Email` with `["Email"]`, `Whatsapp` with `["Whatsapp"]`, and
-	 * `DigitalCertificate` with either. Anything else is a 400, as is sending two
+	 * Verification and notification methods are coupled server-side: `Email` with
+	 * `["Email"]`, `Whatsapp` with `["Whatsapp"]`, and `DigitalCertificate` or
+	 * `IdDocumentFaceMatchBasic` with either. Anything else is a 400, as is sending two
 	 * notification methods, so the pairing is derived here rather than left to the caller.
 	 *
 	 * @param array<int|string, mixed> $signers Raw signer rows.
@@ -173,10 +173,10 @@ final class Signers {
 		if ( '' !== $id && ! DocumentRecord::is_valid_id( $id ) ) {
 			return new WP_Error( 'assinafy_signer_incomplete', __( 'The signer id is not valid.', 'assinafy' ) );
 		}
-		if ( '' === $id && ( AssignmentResource::VERIFICATION_DIGITAL_CERTIFICATE === $verification
+		if ( '' === $id && ( in_array( $verification, array( AssignmentResource::VERIFICATION_DIGITAL_CERTIFICATE, AssignmentResource::VERIFICATION_ID_DOCUMENT_FACE_MATCH_BASIC ), true )
 			|| ( AssignmentResource::VERIFICATION_EMAIL === $verification && '' === $email )
 			|| ( AssignmentResource::VERIFICATION_WHATSAPP === $verification && '' === $phone ) ) ) {
-			return new WP_Error( 'assinafy_signer_incomplete', __( 'The selected verification method requires matching contact details, or an existing signer id for digital certificates.', 'assinafy' ) );
+			return new WP_Error( 'assinafy_signer_incomplete', __( 'The selected verification method requires matching contact details, or an existing signer id with government ID for digital certificates and biometric verification.', 'assinafy' ) );
 		}
 
 		return null;
@@ -234,13 +234,14 @@ final class Signers {
 	 * @throws \InvalidArgumentException When the requested pairing is unsupported.
 	 */
 	private static function notification_methods( array $signer, string $verification ): array {
-		$methods = $signer['notification_methods'] ?? array(
-			AssignmentResource::VERIFICATION_DIGITAL_CERTIFICATE === $verification ? AssignmentResource::NOTIFICATION_EMAIL : $verification,
+		$identity = in_array( $verification, array( AssignmentResource::VERIFICATION_DIGITAL_CERTIFICATE, AssignmentResource::VERIFICATION_ID_DOCUMENT_FACE_MATCH_BASIC ), true );
+		$methods  = $signer['notification_methods'] ?? array(
+			$identity ? AssignmentResource::NOTIFICATION_EMAIL : $verification,
 		);
 		if ( ! in_array( $methods, array( array( 'Email' ), array( 'Whatsapp' ) ), true )
-			|| ( AssignmentResource::VERIFICATION_DIGITAL_CERTIFICATE !== $verification && $methods !== array( $verification ) ) ) {
+			|| ( ! $identity && $methods !== array( $verification ) ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Translate the user-facing error here; consumers escape it when displaying HTML.
-			throw new \InvalidArgumentException( __( 'The signer notification channel must match its verification method; digital certificates support Email or Whatsapp.', 'assinafy' ) );
+			throw new \InvalidArgumentException( __( 'The signer notification channel must match its verification method; digital certificates and biometric verification support Email or Whatsapp.', 'assinafy' ) );
 		}
 		return $methods;
 	}
@@ -253,13 +254,16 @@ final class Signers {
 	 */
 	private static function verification_method( array $signer, bool $has_email ): string {
 		$requested = (string) ( $signer['verification_method'] ?? '' );
+		if ( '' === $requested && in_array( $signer['notification_methods'] ?? null, array( array( 'Email' ), array( 'Whatsapp' ) ), true ) ) {
+			return $signer['notification_methods'][0];
+		}
 
 		if ( in_array( $requested, AssignmentResource::VERIFICATION_METHODS, true ) ) {
 			return $requested;
 		}
 		if ( '' !== $requested ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Consumers escape the translated error when displaying HTML.
-			throw new \InvalidArgumentException( __( 'Choose a supported signer verification method: Email, Whatsapp or DigitalCertificate.', 'assinafy' ) );
+			throw new \InvalidArgumentException( __( 'Choose a supported signer verification method: Email, Whatsapp, DigitalCertificate or IdDocumentFaceMatchBasic.', 'assinafy' ) );
 		}
 
 		return $has_email
