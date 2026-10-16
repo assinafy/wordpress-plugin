@@ -28,6 +28,31 @@ defined( 'MINUTE_IN_SECONDS' ) || define( 'MINUTE_IN_SECONDS', 60 );
 defined( 'HOUR_IN_SECONDS' ) || define( 'HOUR_IN_SECONDS', 3600 );
 defined( 'DAY_IN_SECONDS' ) || define( 'DAY_IN_SECONDS', 86400 );
 
+if ( ! class_exists( 'WP_Upgrader' ) ) {
+	/** In-memory stand-in for core's option-backed process lock. */
+	class WP_Upgrader {
+		/** @var array<string, true> */
+		private static array $locks = array();
+
+		public static function create_lock( string $lock_name, ?int $release_timeout = null ): bool {
+			unset( $release_timeout );
+			if ( isset( self::$locks[ $lock_name ] ) ) {
+				return false;
+			}
+
+			self::$locks[ $lock_name ] = true;
+
+			return true;
+		}
+
+		public static function release_lock( string $lock_name ): bool {
+			unset( self::$locks[ $lock_name ] );
+
+			return true;
+		}
+	}
+}
+
 /**
  * The unit suite uses configured salts; core's generated-salt fallback is integration-tested.
  *
@@ -630,7 +655,8 @@ if ( ! function_exists( 'wp_update_post' ) ) {
 	 * @param array<string, mixed> $postarr Post fields.
 	 * @return int
 	 */
-	function wp_update_post( array $postarr ): int {
+	function wp_update_post( array $postarr, bool $wp_error = false, bool $fire_after_hooks = true ): int|WP_Error {
+		unset( $wp_error, $fire_after_hooks );
 		$post_id = (int) ( $postarr['ID'] ?? 0 );
 
 		if ( 0 === $post_id ) {

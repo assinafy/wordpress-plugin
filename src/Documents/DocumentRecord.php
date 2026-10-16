@@ -245,12 +245,28 @@ final class DocumentRecord {
 	 * @param array{}|array{email:string,token:string} $erasure Optional pending identity to redact durably.
 	 */
 	public function set_signers( int $post_id, array $signers, array $erasure = array() ): void {
+		ProjectionLock::run(
+			$post_id,
+			function () use ( $post_id, $signers, $erasure ): void {
+				$this->set_signers_unlocked( $post_id, $signers, $erasure );
+			}
+		);
+	}
+
+	/**
+	 * Replace signers while the caller holds the projection lock.
+	 *
+	 * @param int                                                                                                        $post_id Local post id.
+	 * @param array<int, array{id: string, name: string, email: string, step: int, notified: bool, completed: bool, signing_url: string}> $signers Replacement list.
+	 * @param array{}|array{email:string,token:string} $erasure Optional pending identity to redact durably.
+	 */
+	private function set_signers_unlocked( int $post_id, array $signers, array $erasure = array() ): void {
 		$registry = get_post_meta( $post_id, self::META_REDACTED_SIGNERS, true );
 		$redacted = SignerRedaction::apply( $signers, $this->signers( $post_id ), is_array( $registry ) ? $registry : array(), $erasure );
 		if ( array() !== $redacted['registry'] ) {
-			update_post_meta( $post_id, self::META_REDACTED_SIGNERS, $redacted['registry'] );
+			ProjectionLock::store( $post_id, self::META_REDACTED_SIGNERS, $redacted['registry'] );
 		}
-		update_post_meta( $post_id, self::META_SIGNERS, wp_slash( $redacted['signers'] ) );
+		ProjectionLock::store( $post_id, self::META_SIGNERS, wp_slash( $redacted['signers'] ) );
 	}
 
 	/**
@@ -407,16 +423,32 @@ final class DocumentRecord {
 	 * @return string The status the record held before this call, for change detection.
 	 */
 	public function hydrate_from_api( int $post_id, array $document ): string {
-		$previous    = $this->status( $post_id );
+		$previous = $this->status( $post_id );
+
+		return ProjectionLock::project(
+			$post_id,
+			self::text( $document, 'updated_at' ),
+			$previous,
+			fn(): string => $this->hydrate_unlocked( $post_id, $document, $previous )
+		);
+	}
+
+	/**
+	 * Map one API document while holding the projection lock.
+	 *
+	 * @param int                  $post_id  Local post id.
+	 * @param array<string, mixed> $document Unwrapped API document.
+	 */
+	private function hydrate_unlocked( int $post_id, array $document, string $previous ): string {
 		$document_id = self::text( $document, 'id' );
 
 		if ( '' !== $document_id ) {
-			update_post_meta( $post_id, self::META_DOCUMENT_ID, $document_id );
+			ProjectionLock::store( $post_id, self::META_DOCUMENT_ID, $document_id );
 		}
 
-		update_post_meta( $post_id, self::META_STATUS, self::text( $document, 'status' ) );
-		update_post_meta( $post_id, self::META_IS_CLOSED, ! empty( $document['is_closed'] ) ? '1' : '0' );
-		update_post_meta(
+		ProjectionLock::store( $post_id, self::META_STATUS, self::text( $document, 'status' ) );
+		ProjectionLock::store( $post_id, self::META_IS_CLOSED, ! empty( $document['is_closed'] ) ? '1' : '0' );
+		ProjectionLock::store(
 			$post_id,
 			self::META_ARTIFACTS,
 			array_values( array_filter( array_keys( self::rows( $document, 'artifacts' ) ), 'is_string' ) )
@@ -426,17 +458,16 @@ final class DocumentRecord {
 		$assignment_id = self::text( $assignment, 'id' );
 
 		if ( '' !== $assignment_id ) {
-			update_post_meta( $post_id, self::META_ASSIGNMENT_ID, $assignment_id );
+			ProjectionLock::store( $post_id, self::META_ASSIGNMENT_ID, $assignment_id );
 		}
 
 		// An unassigned upload must retain a pending receipt's retry details and redactions.
 		if ( array() !== $assignment || '' !== $this->assignment_id( $post_id ) || array_filter( array_column( $this->signers( $post_id ), 'id' ) ) ) {
-			$this->set_signers( $post_id, self::flatten_signers( $assignment ) );
+			$this->set_signers_unlocked( $post_id, self::flatten_signers( $assignment ) );
 		}
 
-		update_post_meta( $post_id, self::META_SYNCED_AT, time() );
-
-		$this->follow_remote_name( $post_id, self::text( $document, 'name' ) );
+		ProjectionLock::rename( $post_id, self::text( $document, 'name' ) );
+		ProjectionLock::store( $post_id, self::META_SYNCED_AT, time() );
 
 		return $previous;
 	}
@@ -472,28 +503,6 @@ final class DocumentRecord {
 		$value = $data[ $key ] ?? null;
 
 		return is_array( $value ) ? $value : array();
-	}
-
-	/**
-	 * Keep the post title on the name the server holds.
-	 *
-	 * The API folds diacritics and replaces unsupported characters at upload, so the stored
-	 * name is the server's, never the one that was sent.
-	 *
-	 * @param int    $post_id Local post id.
-	 * @param string $name    Name carried by the API document.
-	 */
-	private function follow_remote_name( int $post_id, string $name ): void {
-		if ( '' === $name || $name === get_post_field( 'post_title', $post_id ) ) {
-			return;
-		}
-
-		wp_update_post(
-			array(
-				'ID'         => $post_id,
-				'post_title' => $name,
-			)
-		);
 	}
 
 	/**

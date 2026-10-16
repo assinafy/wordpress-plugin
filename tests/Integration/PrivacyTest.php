@@ -15,13 +15,14 @@ use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentIndex;
 use Assinafy\WP\Documents\DocumentRecord;
 use Assinafy\WP\Documents\SendService;
+use Assinafy\WP\Integrations\Hook;
 use Assinafy\WP\Log;
 use Assinafy\WP\Privacy;
 
 /**
  * An eraser that misses a store is worse than no eraser at all, because it reports success.
- * Three stores hold something about a signer — the mirror's signer list, the plugin log and
- * the send-lock transients — so each one is written to here and then checked afterwards.
+ * Four stores hold something about a signer — the mirror's signer list, the plugin log, the
+ * send-lock transients and pending cron requests — so each is checked here.
  *
  * The other half is what must survive: an electronic signature is only worth anything while
  * it can still be shown to be that person's, so the document id, the assignment id and every
@@ -205,6 +206,21 @@ final class PrivacyTest extends AssinafyTestCase {
 
 		$this->assertSame( array(), $export['data'] );
 		$this->assertTrue( $export['done'] );
+	}
+
+	/** Deferred sends are local personal data even before a mirror exists. */
+	public function test_the_exporter_reports_pending_asynchronous_sends(): void {
+		$request   = $this->pending_request( self::SIGNER_EMAIL );
+		$timestamp = time() + HOUR_IN_SECONDS;
+		$this->assertTrue( wp_schedule_single_event( $timestamp, Hook::ACTION, array( $request ) ) );
+
+		$export = $this->privacy->export( self::SIGNER_EMAIL );
+
+		$this->assertCount( 1, $export['data'] );
+		$this->assertStringStartsWith( 'assinafy-pending-', $export['data'][0]['item_id'] );
+		$values = $this->export_values( $export['data'][0] );
+		$this->assertSame( 'Pending asynchronous send', $values['Status'] );
+		$this->assertSame( self::SIGNER_EMAIL, $values['Signer email'] );
 	}
 
 	/**
@@ -442,6 +458,21 @@ final class PrivacyTest extends AssinafyTestCase {
 		$this->assertSame( 1, get_transient( 'assinafy_webhook_seen_abc' ), 'Only the send locks are cleared.' );
 	}
 
+	/** Erasure cancels a deferred request before it can recreate the identity remotely. */
+	public function test_the_eraser_cancels_matching_asynchronous_sends_only(): void {
+		$matching = $this->pending_request( self::SIGNER_EMAIL );
+		$other    = $this->pending_request( self::OTHER_EMAIL );
+		$this->assertTrue( wp_schedule_single_event( time() + HOUR_IN_SECONDS, Hook::ACTION, array( $matching ) ) );
+		$this->assertTrue( wp_schedule_single_event( time() + HOUR_IN_SECONDS + 1, Hook::ACTION, array( $other ) ) );
+
+		$result = $this->privacy->erase( self::SIGNER_EMAIL );
+
+		$this->assertTrue( $result['items_removed'] );
+		$this->assertFalse( wp_next_scheduled( Hook::ACTION, array( $matching ) ) );
+		$this->assertIsInt( wp_next_scheduled( Hook::ACTION, array( $other ) ) );
+		$this->assertStringContainsString( 'cancelled', implode( ' ', $result['messages'] ) );
+	}
+
 	/**
 	 * The erasure itself is logged, so a site can show what it did and when. The entry names
 	 * the token rather than the address it came from.
@@ -467,6 +498,19 @@ final class PrivacyTest extends AssinafyTestCase {
 	 */
 	private function token( string $email ): string {
 		return '[redacted-' . substr( hash_hmac( 'sha256', strtolower( $email ), wp_salt( 'auth' ) ), 0, 12 ) . ']';
+	}
+
+	/** @return array<string, mixed> One deferred core send request. */
+	private function pending_request( string $email ): array {
+		return array(
+			'file_path' => dirname( __DIR__ ) . '/fixtures/sample.pdf',
+			'signers'   => array(
+				array(
+					'name'  => 'Pending Signer',
+					'email' => $email,
+				),
+			),
+		);
 	}
 
 	/**

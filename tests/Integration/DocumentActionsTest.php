@@ -15,6 +15,7 @@ use Assinafy\WP\Admin\DocumentActions;
 use Assinafy\WP\Admin\Notice;
 use Assinafy\WP\ClientFactory;
 use Assinafy\WP\Credentials;
+use Assinafy\WP\Documents\DocumentContext;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentRecord;
 use Assinafy\WP\Log;
@@ -78,6 +79,49 @@ final class DocumentActionsTest extends AssinafyTestCase {
 
 		$this->assertStringContainsString( 'Cancelled and deleted.', $first );
 		$this->assertStringNotContainsString( 'Cancelled and deleted.', $second );
+	}
+
+	/** A remote delete is not reported as complete when the local mirror cannot be trashed. */
+	public function test_cancel_reports_a_local_trash_failure(): void {
+		$this->configure_plugin();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$records = new DocumentRecord();
+		$post_id = $this->create_document( '104618d0d63884bc446c534e5ff5' );
+		$this->assertTrue( DocumentContext::bind( $post_id, self::ACCOUNT_ID, self::API_HOST . 'v1' ) );
+		$this->fake_response(
+			'/documents/104618d0d63884bc446c534e5ff5',
+			200,
+			array(
+				'status'  => 200,
+				'message' => '',
+				'data'    => array(),
+			)
+		);
+		$_POST['post']        = $post_id;
+		$_REQUEST['_wpnonce'] = wp_create_nonce( DocumentActions::ACTION_CANCEL . '_' . $post_id );
+		$stop_redirect        = static function (): never {
+			throw new \RuntimeException( 'redirect' );
+		};
+		add_filter( 'pre_trash_post', '__return_false' );
+		add_filter( 'wp_redirect', $stop_redirect );
+		try {
+			( new DocumentActions( new ClientFactory( new Credentials(), new Log() ), $records ) )->handle_cancel();
+			$this->fail( 'The handler must redirect with a local storage error.' );
+		} catch ( \RuntimeException $error ) {
+			$this->assertSame( 'redirect', $error->getMessage() );
+		} finally {
+			remove_filter( 'pre_trash_post', '__return_false' );
+			remove_filter( 'wp_redirect', $stop_redirect );
+			$_POST    = array();
+			$_REQUEST = array();
+		}
+
+		$notice = get_transient( DocumentActions::FLASH_PREFIX . get_current_user_id() );
+		$this->assertSame( 'error', $notice['type'] );
+		$this->assertSame( 'publish', get_post_status( $post_id ) );
+		$this->assertNotSame( '', $records->last_error( $post_id ) );
+		$this->assertCount( 1, $this->requests );
+		$this->assertSame( 'DELETE', $this->requests[0]['args']['method'] );
 	}
 
 	/**

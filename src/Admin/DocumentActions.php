@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use Assinafy\SDK\Exceptions\ApiException;
 use Assinafy\WP\Capabilities;
 use Assinafy\WP\ClientFactory;
+use Assinafy\WP\Documents\DocumentContext;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentRecord;
 use Assinafy\WP\Documents\StatusSync;
@@ -195,7 +196,11 @@ final class DocumentActions {
 			$this->finish( $post_id, 'error', $e->getMessage() );
 		}
 
-		wp_trash_post( $post_id );
+		if ( ! wp_trash_post( $post_id ) ) {
+			$message = __( 'The document was deleted from Assinafy, but its local record could not be moved to the trash.', 'assinafy' );
+			$this->records->set_last_error( $post_id, $message );
+			$this->finish( $post_id, 'error', $message );
+		}
 
 		Notice::set( self::FLASH_PREFIX, 'success', __( 'The request was cancelled and the document was deleted from Assinafy.', 'assinafy' ) );
 
@@ -277,6 +282,15 @@ final class DocumentActions {
 				'error',
 				null !== $error ? $error->get_error_message() : __( 'Connect the plugin to Assinafy first.', 'assinafy' )
 			);
+		}
+
+		$document_id = $this->records->document_id( $post_id );
+		if ( '' !== $document_id ) {
+			try {
+				DocumentContext::verify_or_bind( $post_id, $client, $document_id );
+			} catch ( \Throwable $e ) {
+				$this->finish( $post_id, 'error', $e->getMessage() );
+			}
 		}
 
 		return $client;

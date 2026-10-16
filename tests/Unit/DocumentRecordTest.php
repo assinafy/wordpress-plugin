@@ -11,6 +11,7 @@ namespace Assinafy\WP\Tests\Unit;
 
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentIndex;
+use Assinafy\WP\Documents\DocumentContext;
 use Assinafy\WP\Documents\DocumentRecord;
 use PHPUnit\Framework\TestCase;
 
@@ -21,6 +22,7 @@ use PHPUnit\Framework\TestCase;
  * `assignment` and `signers` arrive as either and every read has to cope with both.
  *
  * @covers \Assinafy\WP\Documents\DocumentRecord
+ * @covers \Assinafy\WP\Documents\DocumentContext
  * @covers \Assinafy\WP\Documents\DocumentPostType::status_label
  */
 final class DocumentRecordTest extends TestCase {
@@ -497,6 +499,48 @@ final class DocumentRecordTest extends TestCase {
 		$this->records->hydrate_from_api( 11, array( 'id' => '104618b275d321f5de22240ebfda' ) );
 
 		$this->assertGreaterThan( 0, $this->records->synced_at( 11 ) );
+	}
+
+	/** A mirror adopts one remote context and can never be silently retargeted. */
+	public function test_workspace_binding_is_immutable(): void {
+		$this->seed_post( 11 );
+
+		$this->assertFalse( DocumentContext::is_bound( 11 ) );
+		$this->assertTrue( DocumentContext::bind( 11, 'account-one', 'https://api.example.test/v1' ) );
+		$this->assertTrue( DocumentContext::is_bound( 11 ) );
+		$this->assertTrue( DocumentContext::matches( 11, 'account-one', 'https://api.example.test/v1' ) );
+		$this->assertFalse( DocumentContext::bind( 11, 'account-two', 'https://api.example.test/v1' ) );
+		$this->assertSame( 'account-one', get_post_meta( 11, DocumentContext::META_ACCOUNT_ID, true ) );
+	}
+
+	/** A slower older response cannot roll a record back after a newer one was stored. */
+	public function test_an_older_remote_projection_is_ignored(): void {
+		$this->seed_post( 11 );
+		$this->records->hydrate_from_api(
+			11,
+			array(
+				'id'         => '104618b275d321f5de22240ebfda',
+				'status'     => 'certificated',
+				'is_closed'  => true,
+				'updated_at' => '2026-09-13T18:40:12Z',
+			)
+		);
+
+		update_post_meta( 11, '_assinafy_synced_at', 123 );
+		$previous = $this->records->hydrate_from_api(
+			11,
+			array(
+				'id'         => '104618b275d321f5de22240ebfda',
+				'status'     => 'pending_signature',
+				'is_closed'  => false,
+				'updated_at' => '2026-09-13T18:40:11Z',
+			)
+		);
+
+		$this->assertSame( 'certificated', $previous );
+		$this->assertSame( 'certificated', $this->records->status( 11 ) );
+		$this->assertTrue( $this->records->is_closed( 11 ) );
+		$this->assertSame( 123, $this->records->synced_at( 11 ) );
 	}
 
 	public function test_the_last_error_is_written_and_cleared(): void {

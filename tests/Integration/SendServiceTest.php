@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\ClientFactory;
 use Assinafy\WP\Credentials;
+use Assinafy\WP\Documents\DocumentContext;
 use Assinafy\WP\Documents\DocumentIndex;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentRecord;
@@ -95,6 +96,7 @@ final class SendServiceTest extends AssinafyTestCase {
 		$this->assertSame( DocumentPostType::POST_TYPE, get_post_type( $first ) );
 		$this->assertSame( self::DOCUMENT_ID, $this->records->document_id( $first ) );
 		$this->assertSame( self::ASSIGNMENT_ID, $this->records->assignment_id( $first ) );
+		$this->assertTrue( DocumentContext::matches( $first, self::ACCOUNT_ID, self::API_HOST . 'v1' ) );
 
 		$requests_after_first = count( $this->requests );
 		$this->assertGreaterThan( 0, $requests_after_first );
@@ -480,6 +482,19 @@ final class SendServiceTest extends AssinafyTestCase {
 		$this->assertSame( array(), $this->requests );
 	}
 
+	/** Invalid local input wins even when the plugin is not connected. */
+	public function test_preflight_runs_before_client_construction(): void {
+		delete_option( Settings::OPTION_ACCOUNT_ID );
+		$args              = $this->args();
+		$args['signers'][] = 'not a signer row';
+
+		$result = $this->service->send( $args );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_signer_incomplete', $result->get_error_code() );
+		$this->assertSame( array(), $this->requests );
+	}
+
 	/**
 	 * Mixed input cannot stringify an array into a signer's identity.
 	 */
@@ -545,6 +560,35 @@ final class SendServiceTest extends AssinafyTestCase {
 		$body    = json_decode( (string) $request['args']['body'], true );
 		$this->assertSame( 'Email', $body['signers'][0]['verification_method'] );
 		$this->assertSame( array( 'Email' ), $body['signers'][0]['notification_methods'] );
+	}
+
+	/** Two different local rows cannot become one remote participant after lookup. */
+	public function test_signers_must_still_be_unique_after_remote_resolution(): void {
+		$this->fake_successful_send();
+		$result = $this->service->send(
+			$this->args(
+				array(
+					'signers' => array(
+						array(
+							'id'   => self::SIGNER_ID,
+							'step' => 1,
+						),
+						array(
+							'name'  => 'Jane Alias',
+							'email' => 'jane@example.com',
+							'step'  => 1,
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_send_failed', $result->get_error_code() );
+		$this->assertStringContainsString( 'unique Assinafy contacts', $result->get_error_message() );
+		$this->assertCount( 1, $this->requests, 'Only the signer lookup may run before this refusal.' );
+		$this->assertStringContainsString( '/signers?', $this->requests[0]['url'] );
+		$this->assertSame( array(), get_posts( array( 'post_type' => DocumentPostType::POST_TYPE ) ) );
 	}
 
 	/**
@@ -835,6 +879,27 @@ final class SendServiceTest extends AssinafyTestCase {
 				)
 			)
 		);
+	}
+
+	/** A failed projection write is reported instead of returning a corrupt success. */
+	public function test_a_projection_that_cannot_be_saved_is_reported_as_a_failure(): void {
+		$this->fake_successful_send();
+		$refuse_status = static function ( mixed $check, int $post_id, string $key ): mixed {
+			unset( $post_id );
+
+			return '_assinafy_status' === $key ? false : $check;
+		};
+		add_filter( 'update_post_metadata', $refuse_status, 10, 3 );
+		try {
+			$result = $this->service->send( $this->args() );
+		} finally {
+			remove_filter( 'update_post_metadata', $refuse_status, 10 );
+		}
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_send_failed', $result->get_error_code() );
+		$this->assertStringContainsString( 'projection could not be saved', $result->get_error_message() );
+		$this->assertCount( 2, $this->requests, 'The assignment must not be created after local projection failure.' );
 	}
 
 	/**

@@ -12,6 +12,7 @@ namespace Assinafy\WP\Tests\Integration;
 defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Documents\DownloadProxy;
+use Assinafy\WP\Documents\DocumentContext;
 use WPDieException;
 
 /**
@@ -154,6 +155,23 @@ final class DownloadProxyTest extends AssinafyTestCase {
 		try {
 			$this->proxy->handle();
 			$this->fail( 'The proxy accepted an artifact name that is not downloadable.' );
+		} catch ( WPDieException $e ) {
+			$this->assertSame( 404, $e->getCode() );
+		}
+
+		$this->assertSame( array(), $this->requests );
+	}
+
+	/** An artifact cannot be fetched through credentials for a different workspace. */
+	public function test_a_document_from_another_workspace_is_not_fetched(): void {
+		$post_id = $this->create_document( self::DOCUMENT_ID, 'certificated', array( 'original', 'certificated' ) );
+		$this->assertTrue( DocumentContext::bind( $post_id, '104618a0000000000000000002', self::API_HOST . 'v1' ) );
+		wp_set_current_user( (int) self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->request( $post_id, 'certificated' );
+
+		try {
+			$this->proxy->handle();
+			$this->fail( 'The proxy fetched an artifact from another workspace.' );
 		} catch ( WPDieException $e ) {
 			$this->assertSame( 404, $e->getCode() );
 		}

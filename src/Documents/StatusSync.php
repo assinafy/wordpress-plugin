@@ -109,16 +109,16 @@ final class StatusSync {
 	 * @return int|WP_Error The mirror post id.
 	 */
 	public function sync_one( string $document_id ): int|WP_Error {
-		$post_id = $this->index->find_by_document_id( $document_id );
+		$candidate = $this->index->find_by_document_id( $document_id );
 
-		if ( $post_id < 1 ) {
+		if ( $candidate < 1 ) {
 			return new WP_Error(
 				'assinafy_unknown_document',
 				__( 'This site has no record of that Assinafy document.', 'assinafy' )
 			);
 		}
 
-		return $this->sync_post( $post_id, $document_id );
+		return $this->sync_post( $candidate, $document_id );
 	}
 
 	/**
@@ -134,13 +134,14 @@ final class StatusSync {
 	 * @return int Records reconciled in this run.
 	 */
 	public function reconcile(): int {
-		if ( null === $this->clients->client() ) {
+		$client = $this->clients->client();
+		if ( null === $client ) {
 			return 0;
 		}
 
 		$synced = 0;
 
-		foreach ( $this->index->stale_post_ids( self::BATCH ) as $post_id ) {
+		foreach ( $this->index->stale_post_ids( self::BATCH, $client->getConfig()->getAccountId(), $client->getConfig()->getBaseUrl() ) as $post_id ) {
 			if ( self::budget_spent() ) {
 				break;
 			}
@@ -179,10 +180,18 @@ final class StatusSync {
 			);
 		}
 
+		$account_id  = $client->getConfig()->getAccountId();
+		$environment = $client->getConfig()->getBaseUrl();
+
+		if ( DocumentContext::is_bound( $post_id )
+			&& ! DocumentContext::matches( $post_id, $account_id, $environment ) ) {
+			return $this->context_error( $post_id );
+		}
+
 		try {
 			$document = $client->documents()->get( $document_id );
 
-			self::assert_document( $document, $document_id, $client->getConfig()->getAccountId() );
+			self::assert_document( $document, $document_id, $account_id );
 		} catch ( \Throwable $e ) {
 			// Touch regardless: a record that cannot be synced must still move to the back
 			// of the queue, or it blocks every record behind it on every run.
@@ -197,8 +206,15 @@ final class StatusSync {
 			);
 		}
 
-		$previous = $this->records->hydrate_from_api( $post_id, $document );
-		$current  = $this->records->status( $post_id );
+		try {
+			DocumentContext::bind_or_fail( $post_id, $account_id, $environment );
+			$previous = $this->records->hydrate_from_api( $post_id, $document );
+			$current  = $this->records->status( $post_id );
+		} catch ( \Throwable $e ) {
+			$this->records->set_last_error( $post_id, $e->getMessage() );
+
+			return new WP_Error( 'assinafy_sync_failed', $e->getMessage() );
+		}
 
 		$this->records->set_last_error( $post_id, '' );
 
@@ -207,6 +223,17 @@ final class StatusSync {
 		}
 
 		return $post_id;
+	}
+
+	/** A record is never reinterpreted under another workspace or environment. */
+	private function context_error( int $post_id ): WP_Error {
+		$error = new WP_Error(
+			'assinafy_document_context_mismatch',
+			__( 'This document belongs to a different Assinafy workspace or environment.', 'assinafy' )
+		);
+		$this->records->set_last_error( $post_id, $error->get_error_message() );
+
+		return $error;
 	}
 
 	/**

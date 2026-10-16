@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Capabilities;
 use Assinafy\WP\ClientFactory;
+use Assinafy\WP\Documents\DocumentContext;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentRecord;
 use Assinafy\WP\Documents\DownloadProxy;
@@ -107,11 +108,9 @@ final class DocumentMetaBox {
 			return;
 		}
 
-		// One request, and only for a record that is still open and already stale. A closed
-		// document never changes again, and a record refreshed moments ago is left alone so
-		// reloading the screen cannot be turned into a way to spend the rate-limit budget.
-		if ( ! $this->records->is_closed( $post_id )
-			&& ( time() - $this->records->synced_at( $post_id ) ) > self::REFRESH_AFTER ) {
+		// Legacy records refresh once to prove their workspace. Afterwards only stale open
+		// records refresh; closed records cannot change again.
+		if ( DocumentContext::needs_refresh( $post_id, $this->records->is_closed( $post_id ), $this->records->synced_at( $post_id ), self::REFRESH_AFTER ) ) {
 			$this->sync->sync_one( $document_id );
 		}
 
@@ -143,7 +142,7 @@ final class DocumentMetaBox {
 		$this->render_signers( $post_id );
 		$this->render_downloads( $post_id );
 		$this->render_actions( $post_id, $status );
-		$this->render_activities( $document_id );
+		$this->render_activities( $post_id, $document_id );
 	}
 
 	/**
@@ -474,26 +473,25 @@ final class DocumentMetaBox {
 	 * The API's activity log is the plugin's history: there is no local audit table to drift
 	 * out of step with it.
 	 *
-	 * Cached for the same window as the status refresh, and for the same reason: reloading
-	 * the screen must not be a way to spend the rate-limit budget. Failures are not cached.
+	 * Activity payloads can carry signer identity, so they are rendered but never cached
+	 * locally. This also keeps the WordPress privacy tools from having a hidden extra copy.
 	 *
+	 * @param int    $post_id    Local document post id.
 	 * @param string $document_id Remote document id.
 	 */
-	private function render_activities( string $document_id ): void {
-		$key        = 'assinafy_activities_' . $document_id;
-		$activities = get_transient( $key );
+	private function render_activities( int $post_id, string $document_id ): void {
+		$client = DocumentContext::matching_client( $post_id, $this->clients->client() );
+		if ( null === $client ) {
+			return;
+		}
 
-		if ( ! is_array( $activities ) ) {
-			try {
-				$activities = $this->clients->client()?->documents()->activities( $document_id ) ?? array();
-			} catch ( \Throwable $e ) {
-				echo '<h4>' . esc_html__( 'History', 'assinafy' ) . '</h4>';
-				echo '<p class="description">' . esc_html( $e->getMessage() ) . '</p>';
+		try {
+			$activities = $client->documents()->activities( $document_id );
+		} catch ( \Throwable $e ) {
+			echo '<h4>' . esc_html__( 'History', 'assinafy' ) . '</h4>';
+			echo '<p class="description">' . esc_html( $e->getMessage() ) . '</p>';
 
-				return;
-			}
-
-			set_transient( $key, $activities, self::REFRESH_AFTER );
+			return;
 		}
 
 		if ( array() === $activities ) {

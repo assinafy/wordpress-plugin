@@ -381,6 +381,11 @@ another origin.
 
 Sandbox documents have no legal effect and are billed separately.
 
+Each local document mirror is permanently bound to the workspace and API environment that
+created or first verified it. After switching connections, synchronization, downloads and
+remote actions on older mirrors are refused until that original workspace/environment is active;
+the hourly queue continues processing records that belong to the current connection.
+
 ### Capabilities
 
 Three custom capabilities are installed on activation:
@@ -1429,7 +1434,8 @@ check the Assinafy account. Persistent processing delays require account/API inv
 Check the document's signer status and recent activity. The UI shows the newest 20 activity
 timestamps, messages/events and participant names; it does not render complete
 `notification_history` or detailed delivery-error fields. Use authorized account/API
-diagnostics for those details. **Resend invitation** requests another delivery attempt for
+diagnostics for those details. Activity payloads are fetched live and are not cached in WordPress.
+**Resend invitation** requests another delivery attempt for
 a notified signer; it is not a guarantee that the recipient receives the message.
 
 With sequential steps, a later-step signer has `notified: false` and no signing URL until
@@ -1665,7 +1671,9 @@ including trashed records, and otherwise retains data.
 
 WordPress's personal-data tools include trashed documents. Erasure redacts local signer
 names, email addresses and signing links, records erased signer ids to prevent later sync
-from restoring them, and reports both removed identity fields and retained evidence. Tokens
-use the site's secret salt. Remote PDFs, signature evidence, document/signer identifiers,
-adapter source references and WooCommerce order records remain; this is local redaction, not remote deletion or anonymization. The
-plugin provides this distinction in the WordPress privacy-policy guide.
+from restoring them, cancels pending asynchronous sends that contain the address, and reports
+both removed identity fields and retained evidence. The exporter includes those pending sends.
+Tokens use the site's secret salt. Remote activity payloads are not cached. Remote PDFs,
+signature evidence, document/signer identifiers, adapter source references and WooCommerce
+order records remain; this is local redaction, not remote deletion or anonymization. The plugin
+provides this distinction in the WordPress privacy-policy guide.

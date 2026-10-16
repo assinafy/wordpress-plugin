@@ -88,13 +88,60 @@ final class DocumentIndex {
 	/**
 	 * Open records, least recently synced first — the reconcile cron's work queue.
 	 *
-	 * @param int $limit Maximum records to return.
+	 * @param int    $limit       Maximum records to return.
+	 * @param string $account_id  Active workspace; empty includes every record.
+	 * @param string $environment Active API root; empty includes every record.
 	 *
 	 * @return array<int, int> Local post ids.
 	 */
-	public function stale_post_ids( int $limit ): array {
+	public function stale_post_ids( int $limit, string $account_id = '', string $environment = '' ): array {
 		if ( $limit < 1 ) {
 			return array();
+		}
+
+		$meta_query = array(
+			array(
+				'key'     => DocumentRecord::META_DOCUMENT_ID,
+				'compare' => 'EXISTS',
+			),
+			array(
+				'relation' => 'OR',
+				array(
+					'key'     => DocumentRecord::META_IS_CLOSED,
+					'value'   => '1',
+					'compare' => '!=',
+				),
+				array(
+					'key'     => DocumentRecord::META_IS_CLOSED,
+					'compare' => 'NOT EXISTS',
+				),
+			),
+		);
+
+		if ( '' !== $account_id && '' !== $environment ) {
+			$meta_query[] = array(
+				'relation' => 'OR',
+				array(
+					array(
+						'key'   => DocumentContext::META_ACCOUNT_ID,
+						'value' => $account_id,
+					),
+					array(
+						'key'   => DocumentContext::META_ENVIRONMENT,
+						'value' => $environment,
+					),
+				),
+				array(
+					array(
+						'key'     => DocumentContext::META_ACCOUNT_ID,
+						'compare' => 'NOT EXISTS',
+					),
+					array(
+						'key'     => DocumentContext::META_ENVIRONMENT,
+						'compare' => 'NOT EXISTS',
+					),
+				),
+			);
 		}
 
 		$posts = get_posts(
@@ -111,24 +158,7 @@ final class DocumentIndex {
 				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Ordering the queue by staleness requires the timestamp join.
 				'meta_key'               => DocumentRecord::META_SYNCED_AT,
 				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded by $limit and run once an hour from cron.
-				'meta_query'             => array(
-					array(
-						'key'     => DocumentRecord::META_DOCUMENT_ID,
-						'compare' => 'EXISTS',
-					),
-					array(
-						'relation' => 'OR',
-						array(
-							'key'     => DocumentRecord::META_IS_CLOSED,
-							'value'   => '1',
-							'compare' => '!=',
-						),
-						array(
-							'key'     => DocumentRecord::META_IS_CLOSED,
-							'compare' => 'NOT EXISTS',
-						),
-					),
-				),
+				'meta_query'             => $meta_query,
 			)
 		);
 

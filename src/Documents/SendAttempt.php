@@ -63,7 +63,13 @@ final class SendAttempt {
 			}
 			if ( 0 === $existing ) {
 				$signers  = $this->resolve_signers( $client, $prepared['signers'] );
-				$post_id  = $this->reserve( $args, $prepared['file'], $prepared['lock'] );
+				$post_id  = $this->reserve(
+					$args,
+					$prepared['file'],
+					$prepared['lock'],
+					$client->getConfig()->getAccountId(),
+					$client->getConfig()->getBaseUrl()
+				);
 				$document = $this->upload( $client, $post_id, $prepared['file'] );
 			}
 
@@ -128,7 +134,6 @@ final class SendAttempt {
 		}
 		return null;
 	}
-
 
 	/**
 	 * Upload once and save its identity before requesting any signatures.
@@ -213,6 +218,11 @@ final class SendAttempt {
 			}
 			$resolved[] = array( 'id' => $id ) + array_intersect_key( $signer, array_flip( array( 'verification_method', 'notification_methods', 'step' ) ) );
 		}
+		$ids = array_column( $resolved, 'id' );
+		if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- The eventual UI consumer escapes this translated failure.
+			throw new \UnexpectedValueException( __( 'Signers must resolve to unique Assinafy contacts.', 'assinafy' ) );
+		}
 		return $resolved;
 	}
 
@@ -241,10 +251,12 @@ final class SendAttempt {
 	 * @param array<string, mixed> $args Send arguments.
 	 * @param string $file PDF path.
 	 * @param string $key Durable idempotency key.
+	 * @param string $account_id Workspace that will own the upload.
+	 * @param string $environment API root receiving it.
 	 * @return int The reserved record.
 	 * @throws \RuntimeException When the reservation cannot be written.
 	 */
-	private function reserve( array $args, string $file, string $key ): int {
+	private function reserve( array $args, string $file, string $key, string $account_id, string $environment ): int {
 		$post_id = (int) ( $args['post_id'] ?? 0 );
 		if ( $post_id > 0 && '' !== $this->records->document_id( $post_id ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Translate the user-facing error here; consumers escape it when displaying HTML.
@@ -270,6 +282,7 @@ final class SendAttempt {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Translate the user-facing error here; consumers escape it when displaying HTML.
 			throw new \RuntimeException( __( 'The integration source could not be saved. Nothing was uploaded.', 'assinafy' ) );
 		}
+		DocumentContext::bind_or_fail( $post_id, $account_id, $environment );
 		$this->records->set_send_key( $post_id, $key );
 		if ( ( new DocumentIndex() )->find_by_send_key( $key ) !== $post_id ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Translate the user-facing error here; consumers escape it when displaying HTML.

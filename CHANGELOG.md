@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-16
+
+### Fixed
+
+- Bind local document mirrors to their Assinafy workspace and API environment before remote
+  synchronization, actions or downloads, without blocking the active workspace's reconcile queue.
+- Serialize projection writes, reject older API snapshots and report failed local metadata/title
+  writes instead of returning a corrupt success.
+- Keep privacy erasure safe during concurrent synchronization, export and cancel matching deferred
+  sends, and stop caching remote activity payloads in WordPress.
+- Reject signer rows that resolve to the same remote contact, validate sends before OAuth/client
+  construction, and report a local trash failure after remote cancellation.
+
 ## [1.4.0] - 2026-10-16
 
 ### Added

@@ -392,6 +392,11 @@ autenticada para outra origem.
 
 Documentos do ambiente de testes (sandbox) não têm efeito legal e são cobrados separadamente.
 
+Cada espelho local de documento fica vinculado permanentemente ao workspace e ao ambiente de API
+que o criou ou validou primeiro. Depois de trocar a conexão, sincronização, downloads e ações
+remotas nos espelhos antigos são recusados até que o workspace/ambiente original esteja ativo; a
+fila horária continua processando os registros que pertencem à conexão atual.
+
 ### Capabilities
 
 Três capabilities personalizadas são instaladas na ativação:
@@ -1467,7 +1472,8 @@ antes a conta Assinafy. Atrasos persistentes de processamento exigem investigaç
 Confira o status do signatário no documento e a atividade recente. A UI mostra os 20 registros de
 atividade mais recentes com data/hora, mensagens/eventos e nomes dos participantes; ela não
 renderiza o `notification_history` completo nem campos detalhados de erro de entrega. Use os
-diagnósticos autorizados da conta/API para esses detalhes. **Reenviar convite** solicita outra
+diagnósticos autorizados da conta/API para esses detalhes. Os payloads de atividade são buscados em
+tempo real e não ficam em cache no WordPress. **Reenviar convite** solicita outra
 tentativa de entrega para um signatário notificado; isso não é garantia de que o destinatário receba
 a mensagem.
 
@@ -1711,9 +1717,10 @@ site, incluindo registros na lixeira, e caso contrário mantém os dados.
 
 As ferramentas de dados pessoais do WordPress incluem documentos na lixeira. A eliminação redige
 localmente nomes de signatários, endereços de e-mail e links de assinatura, registra os ids dos
-signatários apagados para impedir que uma sincronização posterior os restaure, e reporta tanto os
-campos de identidade removidos quanto as evidências mantidas. Os tokens usam o salt secreto do site.
-PDFs remotos, evidências de assinatura, identificadores de documento/signatário, referências de
-origem dos adaptadores e registros de pedidos do WooCommerce permanecem; isto é redação local, não
-exclusão ou anonimização remota. O plugin apresenta essa distinção no guia de política de
-privacidade do WordPress.
+signatários apagados para impedir que uma sincronização posterior os restaure, cancela envios
+assíncronos pendentes que contenham o endereço e reporta tanto os campos de identidade removidos
+quanto as evidências mantidas. O exportador inclui esses envios pendentes. Os tokens usam o salt
+secreto do site. Payloads remotos de atividade não ficam em cache. PDFs remotos, evidências de
+assinatura, identificadores de documento/signatário, referências de origem dos adaptadores e
+registros de pedidos do WooCommerce permanecem; isto é redação local, não exclusão ou anonimização
+remota. O plugin apresenta essa distinção no guia de política de privacidade do WordPress.

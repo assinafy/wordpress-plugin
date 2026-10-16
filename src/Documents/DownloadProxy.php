@@ -181,6 +181,7 @@ final class DownloadProxy {
 		}
 
 		try {
+			DocumentContext::verify_or_bind( $post_id, $client, $document_id );
 			return $client->documents()->download( $document_id, $artifact );
 		} catch ( \Throwable ) {
 			self::not_found();

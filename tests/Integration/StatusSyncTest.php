@@ -14,6 +14,8 @@ defined( 'ABSPATH' ) || exit;
 use Assinafy\SDK\Resources\DocumentResource;
 use Assinafy\WP\ClientFactory;
 use Assinafy\WP\Credentials;
+use Assinafy\WP\Documents\DocumentContext;
+use Assinafy\WP\Documents\DocumentIndex;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentRecord;
 use Assinafy\WP\Documents\StatusSync;
@@ -147,6 +149,39 @@ final class StatusSyncTest extends AssinafyTestCase {
 		$this->assertTrue( $this->records->is_closed( $post_id ) );
 		$this->assertSame( self::ASSIGNMENT_ID, $this->records->assignment_id( $post_id ) );
 		$this->assertSame( '', $this->records->last_error( $post_id ) );
+		$this->assertTrue( DocumentContext::matches( $post_id, self::ACCOUNT_ID, self::API_HOST . 'v1' ) );
+	}
+
+	/** A record already bound elsewhere is refused before its remote id is requested. */
+	public function test_sync_refuses_a_record_from_another_workspace(): void {
+		$post_id = $this->create_document( self::DOCUMENT_ID );
+		$this->assertTrue( DocumentContext::bind( $post_id, '104618a0000000000000000002', self::API_HOST . 'v1' ) );
+
+		$result = $this->sync->sync_one( self::DOCUMENT_ID );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_document_context_mismatch', $result->get_error_code() );
+		$this->assertSame( $result->get_error_message(), $this->records->last_error( $post_id ) );
+		$this->assertSame( array(), $this->requests );
+	}
+
+	/** A failed local write is a sync failure and does not announce a transition. */
+	public function test_sync_reports_a_projection_storage_failure(): void {
+		$post_id = $this->create_document( self::DOCUMENT_ID );
+		update_post_meta( $post_id, '_assinafy_synced_at', 101 );
+		$this->fake_document( self::DOCUMENT_ID, 'certificated', true );
+		$refuse_status = static fn( mixed $check, int $id, string $key ): mixed => '_assinafy_status' === $key ? false : $check;
+		add_filter( 'update_post_metadata', $refuse_status, 10, 3 );
+		try {
+			$result = $this->sync->sync_one( self::DOCUMENT_ID );
+		} finally {
+			remove_filter( 'update_post_metadata', $refuse_status, 10 );
+		}
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_sync_failed', $result->get_error_code() );
+		$this->assertSame( 101, $this->records->synced_at( $post_id ) );
+		$this->assertSame( array(), $this->fired );
 	}
 
 	/**
@@ -326,6 +361,20 @@ final class StatusSyncTest extends AssinafyTestCase {
 		$this->assertSame( 1, $this->sync->reconcile() );
 		$this->assertSame( array( $open_id ), $this->requested_document_ids() );
 		$this->assertSame( 1, $this->records->synced_at( $closed_post ), 'A closed record is not even touched.' );
+	}
+
+	/** The active workspace's queue is not blocked by older records from another one. */
+	public function test_reconcile_excludes_records_bound_to_another_workspace(): void {
+		$other  = $this->stale_document( 0, 100 );
+		$active = $this->stale_document( 1, 200 );
+		$legacy = $this->stale_document( 2, 300 );
+
+		$index = new DocumentIndex();
+		$this->assertTrue( DocumentContext::bind( $index->find_by_document_id( $other ), '104618a0000000000000000002', self::API_HOST . 'v1' ) );
+		$this->assertTrue( DocumentContext::bind( $index->find_by_document_id( $active ), self::ACCOUNT_ID, self::API_HOST . 'v1' ) );
+
+		$this->assertSame( 2, $this->sync->reconcile() );
+		$this->assertSame( array( $active, $legacy ), $this->requested_document_ids() );
 	}
 
 	/**

@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Documents\DocumentIndex;
 use Assinafy\WP\Documents\DocumentRecord;
+use Assinafy\WP\Documents\ProjectionLock;
 use Assinafy\WP\Documents\SendService;
 
 /**
@@ -37,7 +38,7 @@ use Assinafy\WP\Documents\SendService;
  *
  * ## Every store, not just the obvious one
  *
- * Three places hold something about a signer, and an eraser that misses one is worse than no
+ * Four places hold something about a signer, and an eraser that misses one is worse than no
  * eraser at all because it reports success:
  *
  * 1. `assinafy_document` post meta — the signer list on each local record.
@@ -45,6 +46,8 @@ use Assinafy\WP\Documents\SendService;
  *    array.
  * 3. The `assinafy_send_lock_*` transients — five-minute double-send guards keyed by a hash
  *    that a send may have derived from the address.
+ * 4. Pending `assinafy_send_document` cron events — deferred requests that still carry the
+ *    signer rows until WordPress runs them. Remote activity is deliberately not cached.
  */
 final class Privacy {
 
@@ -61,12 +64,14 @@ final class Privacy {
 	/**
 	 * @param DocumentRecord $records Typed access to local document records.
 	 * @param Log            $log     Plugin event log.
-	 * @param DocumentIndex  $index   Pages through every record the plugin owns.
+	 * @param DocumentIndex   $index   Pages through every record the plugin owns.
+	 * @param PendingSendStore $pending Deferred send storage.
 	 */
 	public function __construct(
 		private readonly DocumentRecord $records,
 		private readonly Log $log,
-		private readonly DocumentIndex $index = new DocumentIndex()
+		private readonly DocumentIndex $index = new DocumentIndex(),
+		private readonly PendingSendStore $pending = new PendingSendStore()
 	) {
 	}
 
@@ -86,7 +91,7 @@ final class Privacy {
 		wp_add_privacy_policy_content(
 			'Assinafy',
 			wp_kses_post(
-				__( '<p>When we request an electronic signature, we send the document, signer names and email addresses, and signature instructions to Assinafy. Assinafy processes the document and may send signature invitations. We keep local records of document and assignment identifiers, signer details, signing links, signature progress, timestamps, and operational logs.</p><p>WordPress personal-data tools export local signature-request details and redact signer names, email addresses and signing links. Document and signer identifiers, signature evidence, and timestamps are retained. Documents held by Assinafy, their contents, and WooCommerce order data are not erased by this tool; requests concerning these records must be handled separately. Describe your retention period and the applicable Assinafy service terms and privacy policy here.</p>', 'assinafy' )
+				__( '<p>When we request an electronic signature, we send the document, signer names and email addresses, and signature instructions to Assinafy. Assinafy processes the document and may send signature invitations. We keep local records of document and assignment identifiers, signer details, signing links, signature progress, timestamps, operational logs, and pending asynchronous signature requests until they run.</p><p>WordPress personal-data tools export local and pending signature-request details, redact signer names, email addresses and signing links, and cancel matching pending requests. Document and signer identifiers, signature evidence, and timestamps are retained. Documents held by Assinafy, their contents, and WooCommerce order data are not erased by this tool; requests concerning these records must be handled separately. Describe your retention period and the applicable Assinafy service terms and privacy policy here.</p>', 'assinafy' )
 			)
 		);
 	}
@@ -192,6 +197,10 @@ final class Privacy {
 			);
 		}
 
+		if ( 1 === $page ) {
+			$data = array_merge( $data, $this->pending->export( $email ) );
+		}
+
 		return array(
 			'data' => $data,
 			'done' => count( $posts ) < self::PER_PAGE,
@@ -225,10 +234,13 @@ final class Privacy {
 
 		$messages = array();
 		$removed  = 0 < $redacted;
+		$pending  = 0;
 
 		if ( 1 === $page ) {
-			// The log and the send locks are single, small stores: one pass clears both.
+			// The log, pending queue and send locks are single, small stores: one pass clears them.
 			$removed = $this->redact_log( $email, $token ) || $removed;
+			$pending = $this->pending->remove( $email );
+			$removed = 0 < $pending || $removed;
 			$this->clear_send_locks();
 		}
 
@@ -237,7 +249,11 @@ final class Privacy {
 				'Assinafy signature records for this address were redacted: the signer name, email address and signing link were replaced with a token. The signature evidence itself — the Assinafy document id, the assignment id, the signing order and every timestamp — is retained, because an electronic signature has to stay verifiable for the life of the document it signed.',
 				'assinafy'
 			);
+		}
 
+		$messages = array_merge( $messages, $this->pending_messages( $pending ) );
+
+		if ( 0 < $redacted || 0 < $pending ) {
 			// The key is not `token`: the SDK's `LogRedactor` masks any field by that name as a
 			// credential, and this one is the opposite — it is what the address was replaced
 			// with, and the entry is worthless without it.
@@ -245,6 +261,7 @@ final class Privacy {
 				'privacy_erasure',
 				array(
 					'records'     => $redacted,
+					'pending'     => $pending,
 					'redacted_as' => $token,
 				)
 			);
@@ -256,6 +273,13 @@ final class Privacy {
 			'messages'       => $messages,
 			'done'           => count( $posts ) < self::PER_PAGE,
 		);
+	}
+
+	/** @return array<int, string> */
+	private function pending_messages( int $removed ): array {
+		return 0 < $removed
+			? array( __( 'Pending asynchronous Assinafy requests for this address were cancelled before they could send the document or create a remote signature request.', 'assinafy' ) )
+			: array();
 	}
 
 	/**
@@ -287,42 +311,28 @@ final class Privacy {
 	 * @return bool Whether anything changed.
 	 */
 	private function redact_record( int $post_id, string $email, string $token ): bool {
-		$signers = $this->records->signers( $post_id );
-		$changed = false;
+		return ProjectionLock::run(
+			$post_id,
+			function () use ( $post_id, $email, $token ): bool {
+				$signers = $this->records->signers( $post_id );
+				foreach ( $signers as $signer ) {
+					if ( $this->is_match( $signer, $email ) ) {
+						$this->records->set_signers(
+							$post_id,
+							$signers,
+							array(
+								'email' => $email,
+								'token' => $token,
+							)
+						);
 
-		foreach ( $signers as $index => $signer ) {
-			if ( ! is_array( $signer ) || ! $this->is_match( $signer, $email ) ) {
-				continue;
-			}
-
-			foreach ( array( 'name', 'email' ) as $field ) {
-				if ( array_key_exists( $field, $signer ) ) {
-					$signer[ $field ] = $token;
+						return true;
+					}
 				}
+
+				return false;
 			}
-
-			// The signing URL carries the address as a query parameter, so it goes too. It is
-			// unusable after certification or expiry in any case.
-			if ( array_key_exists( 'signing_url', $signer ) ) {
-				$signer['signing_url'] = '';
-			}
-
-			$signers[ $index ] = $this->redact_strings( $signer, $email, $token );
-			$changed           = true;
-		}
-
-		if ( $changed ) {
-			$this->records->set_signers(
-				$post_id,
-				$signers,
-				array(
-					'email' => $email,
-					'token' => $token,
-				)
-			);
-		}
-
-		return $changed;
+		);
 	}
 
 	/**

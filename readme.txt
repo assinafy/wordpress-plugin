@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -149,6 +149,12 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.4.1 =
+* Prevents local document records from being used with a different Assinafy workspace or API environment.
+* Keeps privacy erasure safe during synchronization and includes pending asynchronous sends in WordPress privacy tools.
+* Prevents older API responses and local storage failures from silently corrupting document progress.
+* Rejects duplicate resolved signers and reports failed local cleanup after remote cancellation.
+
 = 1.4.0 =
 * Adds biometric verification, Email/WhatsApp notifications for identity methods, and identity-review status updates.
 * Stores signing secrets returned at webhook creation, including for OAuth, and refuses deliveries with an unreadable secret.
@@ -202,6 +208,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.4.1 =
+Protects document ownership and privacy state during account changes, concurrent synchronization and deferred sends.
 
 = 1.4.0 =
 Adds biometric verification and signed OAuth webhook registration. Restore or recreate the endpoint if its signing secret is lost.

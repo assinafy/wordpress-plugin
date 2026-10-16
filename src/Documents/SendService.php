@@ -165,6 +165,12 @@ final class SendService {
 			return $source_problem;
 		}
 
+		$prepared = $this->preflight( $args );
+
+		if ( $prepared instanceof WP_Error ) {
+			return $prepared;
+		}
+
 		$client = $this->clients->client();
 
 		if ( null === $client ) {
@@ -174,11 +180,13 @@ final class SendService {
 			);
 		}
 
-		$prepared = $this->preflight( $args );
-
-		if ( $prepared instanceof WP_Error ) {
-			return $prepared;
-		}
+		$prepared['lock'] = self::LOCK_PREFIX . $this->idempotency_key(
+			$args,
+			$prepared['file'],
+			$prepared['signers'],
+			$client->getConfig()->getAccountId(),
+			$client->getConfig()->getBaseUrl()
+		);
 
 		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 
@@ -207,11 +215,23 @@ final class SendService {
 		$held = $this->claim_lock( $prepared['lock'] );
 
 		if ( null !== $held ) {
-			return is_int( $held ) ? SourceReference::bind( $this->records, $held, $args ) : $held;
+			if ( ! is_int( $held ) ) {
+				return $held;
+			}
+			if ( ! $this->bind_context( $held, $client ) ) {
+				return $this->context_error( $held );
+			}
+
+			return SourceReference::bind( $this->records, $held, $args );
 		}
 
 		$existing = ( new DocumentIndex() )->find_by_send_key( $prepared['lock'] );
-		$bound    = $existing > 0 ? SourceReference::bind( $this->records, $existing, $args ) : 0;
+		if ( $existing > 0 && ! $this->bind_context( $existing, $client ) ) {
+			delete_transient( $prepared['lock'] );
+
+			return $this->context_error( $existing );
+		}
+		$bound = $existing > 0 ? SourceReference::bind( $this->records, $existing, $args ) : 0;
 		if ( $bound instanceof WP_Error ) {
 			delete_transient( $prepared['lock'] );
 			return $bound;
@@ -230,9 +250,26 @@ final class SendService {
 		return $result;
 	}
 
+	/** Bind a reserved or completed send to the client its scoped key came from. */
+	private function bind_context( int $post_id, AssinafyClient $client ): bool {
+		return DocumentContext::bind(
+			$post_id,
+			$client->getConfig()->getAccountId(),
+			$client->getConfig()->getBaseUrl()
+		);
+	}
+
+	/** Report a record that cannot safely be used under this client. */
+	private function context_error( int $post_id ): WP_Error {
+		return new WP_Error(
+			'assinafy_document_context_mismatch',
+			__( 'This document belongs to a different Assinafy workspace or environment.', 'assinafy' ),
+			array( 'post_id' => $post_id )
+		);
+	}
+
 	/**
-	 * Run every check that must pass before the API is touched, and derive the lock key from
-	 * what survives.
+	 * Run every check that must pass before the API is touched.
 	 *
 	 * Nothing here reaches the network, which is the point: an upload the API rejects still
 	 * leaves a document row in the customer's workspace with status `failed`, and the
@@ -241,8 +278,8 @@ final class SendService {
 	 *
 	 * @param array<string, mixed> $args Send arguments.
 	 *
-	 * @return array{file: string, signers: array<int, array<string, mixed>>, lock: string}|WP_Error
-	 *         The validated inputs and the lock that guards them, or the first refusal.
+	 * @return array{file: string, signers: array<int, array<string, mixed>>}|WP_Error
+	 *         The validated inputs, or the first refusal.
 	 */
 	private function preflight( array $args ): array|WP_Error {
 		$file = $this->resolve_file( $args );
@@ -281,7 +318,6 @@ final class SendService {
 		return array(
 			'file'    => $file,
 			'signers' => $signers,
-			'lock'    => self::LOCK_PREFIX . $this->idempotency_key( $args, $file, $signers ),
 		);
 	}
 
@@ -417,13 +453,15 @@ final class SendService {
 	 * @param array<string, mixed>             $args    Send arguments.
 	 * @param string                           $file    Resolved file path.
 	 * @param array<int, array<string, mixed>> $signers Normalised signers.
+	 * @param string                           $account_id Active workspace id.
+	 * @param string                           $environment Active API root.
 	 */
-	private function idempotency_key( array $args, string $file, array $signers ): string {
+	private function idempotency_key( array $args, string $file, array $signers, string $account_id, string $environment ): string {
 		$supplied = (string) ( $args['idempotency_key'] ?? '' );
 
 		$request = array(
-			'account'     => $this->clients->client()?->getConfig()->getAccountId(),
-			'environment' => $this->clients->base_url(),
+			'account'     => $account_id,
+			'environment' => $environment,
 			'request'     => '' !== $supplied ? $supplied : array(
 				// Equal filenames and sizes do not mean equal PDF contents.
 				'file'    => hash_file( 'sha256', $file ),
