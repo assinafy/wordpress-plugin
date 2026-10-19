@@ -166,7 +166,7 @@ são PascalCase; combinações incompatíveis de método/canal são rejeitadas l
 |---|---|---|---|
 | `Email` | `["Email"]` | Estimativa da conta | E-mail, ou um ID de signatário existente |
 | `Whatsapp` | `["Whatsapp"]` | Estimativa da conta; restrições de plano podem se aplicar | Número de telefone, ou um ID de signatário existente |
-| `DigitalCertificate` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; o recurso precisa estar habilitado | ID de signatário existente com documento de identificação configurado na Assinafy; signatário sozinho em sua etapa |
+| `DigitalCertificate` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; o recurso precisa estar habilitado | Assignment virtual; ID de signatário existente com documento de identificação configurado na Assinafy; signatário sozinho em sua etapa |
 | `IdDocumentFaceMatchBasic` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; recurso biométrico habilitado | ID de signatário existente com CPF válido configurado na Assinafy |
 
 [`Signers`](src/Documents/Signers.php) valida o pareamento. Omitir o método e o canal usa `Email`
@@ -174,7 +174,9 @@ como padrão quando há e-mail ou quando nenhum telefone é informado, e `Whatsa
 Informar apenas o canal de notificação infere o método de verificação correspondente.
 Canais explícitos suportados são preservados.
 
-A1 e A3 usam `DigitalCertificate`. A verificação biométrica usa `IdDocumentFaceMatchBasic`: o
+A1 e A3 usam `DigitalCertificate`. Signatários com certificado exigem assignment `virtual`; o
+SDK incluído recusa `collect` e pedidos por template antes de estimar, cobrar ou enviar convites.
+A verificação biométrica usa `IdDocumentFaceMatchBasic`: o
 signatário confirma o consentimento na página hospedada e envia documento, foto e prova de vida.
 Quando a verificação exige revisão, a conta aprova ou rejeita no painel da Assinafy; a assinatura
 pode continuar, mas a certificação aguarda a aprovação (`pending_identity_review`).

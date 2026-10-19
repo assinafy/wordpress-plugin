@@ -160,7 +160,7 @@ Values are PascalCase; incompatible method/channel combinations are rejected loc
 |---|---|---|---|
 | `Email` | `["Email"]` | Account estimate | Email, or an existing signer ID |
 | `Whatsapp` | `["Whatsapp"]` | Account estimate; plan restrictions may apply | Phone number, or an existing signer ID |
-| `DigitalCertificate` | `["Email"]` or `["Whatsapp"]` | Account estimate; feature must be enabled | Existing signer ID with government ID configured in Assinafy; signer alone in its step |
+| `DigitalCertificate` | `["Email"]` or `["Whatsapp"]` | Account estimate; feature must be enabled | Virtual assignment; existing signer ID with government ID configured in Assinafy; signer alone in its step |
 | `IdDocumentFaceMatchBasic` | `["Email"]` or `["Whatsapp"]` | Account estimate; biometric feature enabled | Existing signer ID with a valid CPF configured in Assinafy |
 
 [`Signers`](src/Documents/Signers.php) validates the pairing. Omitting the method and channel
@@ -168,7 +168,9 @@ defaults to `Email` when an email is present or no phone is supplied, and otherw
 `Whatsapp`. Supplying only a notification channel infers its matching verification method.
 Supported explicit channels are preserved.
 
-A1 and A3 both use `DigitalCertificate`. Biometric verification uses `IdDocumentFaceMatchBasic`:
+A1 and A3 both use `DigitalCertificate`. Certificate signers require a `virtual` assignment;
+the bundled SDK rejects `collect` and template certificate requests before estimating, charging
+or sending invitations. Biometric verification uses `IdDocumentFaceMatchBasic`:
 the signer gives consent on the hosted page and submits ID photos and a liveness check.
 When verification requires review, the account approves or rejects it in the Assinafy dashboard;
 signing can continue, but certification waits for approval (`pending_identity_review`).

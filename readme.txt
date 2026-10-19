@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,7 +53,7 @@ Assinafy offers four, and a signer uses one of them:
 
 * **Email** (the default) &mdash; the signer receives a one-time code by email. No credits.
 * **WhatsApp** &mdash; the code arrives over WhatsApp. Requires a phone number and a paid Assinafy plan.
-* **Digital certificate** &mdash; the signer signs with their own ICP-Brasil certificate. Requires the Digital Certificate feature on the Assinafy account, and the signer must be alone in their signing step.
+* **Digital certificate** &mdash; the signer signs with their own ICP-Brasil certificate. Requires a virtual assignment, the Digital Certificate feature on the Assinafy account, and the signer must be alone in their signing step. Collect and template certificate requests are rejected before they can be charged or invited.
 * **Biometric** &mdash; `IdDocumentFaceMatchBasic` uses government ID photos and a liveness check on Assinafy's hosted page with explicit signer consent. Requires the account feature and an existing signer with a valid CPF. Certification waits for account approval if identity review is required.
 
 The send screen and WP-CLI send command use email verification. All four methods are available to code that calls the `assinafy_send_document` action or shared send service. DigitalCertificate covers A1 and A3. Certificates and biometric verification allow either Email or WhatsApp notifications.
@@ -149,6 +149,10 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.4.2 =
+* Requires virtual assignments for digital-certificate signers and rejects collect or template certificate requests before estimating cost or requesting signatures.
+* Includes Assinafy PHP SDK 2.7.1.
+
 = 1.4.1 =
 * Prevents local document records from being used with a different Assinafy workspace or API environment.
 * Keeps privacy erasure safe during synchronization and includes pending asynchronous sends in WordPress privacy tools.
@@ -208,6 +212,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.4.2 =
+Prevents digital-certificate requests that the signer cannot complete from being estimated, charged or invited.
 
 = 1.4.1 =
 Protects document ownership and privacy state during account changes, concurrent synchronization and deferred sends.

@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-10-19
+
+### Fixed
+
+- Require virtual assignments for digital-certificate signers before estimating cost or
+  requesting signatures, and reject template certificate requests whose method cannot be known.
+
 ## [1.4.1] - 2026-10-16
 
 ### Fixed
