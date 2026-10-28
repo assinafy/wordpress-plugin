@@ -12,6 +12,7 @@ namespace Assinafy\WP;
 defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Admin\DocumentMetaBox;
+use Assinafy\WP\Admin\ContractScreen;
 use Assinafy\WP\Admin\SendScreen;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Documents\DocumentRecord;
@@ -205,6 +206,7 @@ final class Plugin {
 		if ( is_admin() ) {
 			( new SendScreen( $send ) )->register();
 			( new DocumentMetaBox( $clients, $records, $sync ) )->register();
+			( new ContractScreen( $clients ) )->register();
 		}
 
 		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( \WP_CLI::class ) ) {

@@ -48,6 +48,7 @@ if ( ! class_exists( \Assinafy\WP\Settings::class ) ) {
 		}
 
 		delete_option( \Assinafy\WP\Log::OPTION );
+		delete_option( \Assinafy\WP\Webhook\SigningSecret::LOCK_NAME . '.lock' );
 
 		$assinafy_retained = 0;
 		do {

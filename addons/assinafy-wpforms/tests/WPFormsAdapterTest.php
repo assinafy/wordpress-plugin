@@ -83,6 +83,21 @@ final class WPFormsAdapterTest extends AssinafyTestCase {
 		$this->assertSame( [], $this->requests );
 	}
 
+	/** A local receipt failure cannot undo the host's accepted submission. */
+	public function test_signer_storage_failure_preserves_host_success_without_sending(): void {
+		$form = $this->form();
+		$fail = static fn( mixed $check, int $post_id, string $key ): mixed => '_assinafy_signers' === $key ? false : $check;
+		add_filter( 'update_post_metadata', $fail, 10, 3 );
+		try {
+			wpforms()->process->process( $this->entry( $form ) );
+		} finally {
+			remove_filter( 'update_post_metadata', $fail, 10 );
+		}
+		$this->assertEmpty( wpforms()->process->errors );
+		$this->assertSame( [], $this->requests );
+		$this->assertSame( [], $this->store->for_form( $form['id'] ) );
+	}
+
 	public function test_mapped_optional_fields_become_required_before_acceptance(): void {
 		$form               = $this->form();
 		$entry              = $this->entry( $form );

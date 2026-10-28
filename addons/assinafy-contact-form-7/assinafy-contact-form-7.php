@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Assinafy for Contact Form 7
  * Description: Request signatures for an existing PDF after a successful Contact Form 7 submission.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Requires at least: 6.8
  * Requires PHP: 8.2
  * Requires Plugins: assinafy, contact-form-7

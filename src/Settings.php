@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Admin\SettingsAjax;
 use Assinafy\WP\Admin\WebhookSettings;
+use Assinafy\WP\Webhook\SigningSecret;
 use WP_Error;
 
 /**
@@ -383,7 +384,9 @@ final class Settings {
 			return (string) get_option( $option, '' );
 		}
 
-		return $this->credentials->encrypt( $value );
+		return self::OPTION_WEBHOOK_SECRET_ENC === $option
+			? SigningSecret::encrypt( $value, (string) self::get( self::OPTION_WEBHOOK_ENDPOINT_ID ) )
+			: $this->credentials->encrypt( $value );
 	}
 
 	/**

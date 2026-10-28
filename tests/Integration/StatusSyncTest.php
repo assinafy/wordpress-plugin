@@ -61,6 +61,7 @@ final class StatusSyncTest extends AssinafyTestCase {
 	 *   {"code":"certificated",        "deletable":false},
 	 *   {"code":"rejected_by_signer",  "deletable":true },
 	 *   {"code":"pending_signature",   "deletable":true },
+	 *   {"code":"pending_identity_review", "deletable":true },
 	 *   {"code":"rejected_by_user",    "deletable":true },
 	 *   {"code":"failed",              "deletable":true }
 	 * ]}
@@ -78,6 +79,7 @@ final class StatusSyncTest extends AssinafyTestCase {
 		'certificated',
 		'rejected_by_signer',
 		'pending_signature',
+		'pending_identity_review',
 		'rejected_by_user',
 		'failed',
 	);
@@ -150,6 +152,40 @@ final class StatusSyncTest extends AssinafyTestCase {
 		$this->assertSame( self::ASSIGNMENT_ID, $this->records->assignment_id( $post_id ) );
 		$this->assertSame( '', $this->records->last_error( $post_id ) );
 		$this->assertTrue( DocumentContext::matches( $post_id, self::ACCOUNT_ID, self::API_HOST . 'v1' ) );
+	}
+
+	/** A response that loses the projection lock cannot announce the winning transition. */
+	public function test_a_newer_response_wins_before_an_older_projection_takes_the_lock(): void {
+		$post_id     = $this->create_document( self::DOCUMENT_ID, 'pending_signature' );
+		$older       = array(
+			'id'         => self::DOCUMENT_ID,
+			'status'     => 'pending_signature',
+			'updated_at' => '2026-10-01T12:00:00Z',
+		);
+		$newer       = array(
+			'id'         => self::DOCUMENT_ID,
+			'status'     => 'certificated',
+			'is_closed'  => true,
+			'updated_at' => '2026-10-01T12:00:01Z',
+		);
+		$interleaved = false;
+		$before_lock = function ( string $query ) use ( $post_id, $newer, &$interleaved, &$before_lock ): string {
+			if ( str_contains( $query, '/* LOCK */' ) && str_contains( $query, 'assinafy_document_projection_' . $post_id . '.lock' ) ) {
+				remove_filter( 'query', $before_lock );
+				$interleaved = true;
+				$this->records->hydrate_from_api( $post_id, $newer );
+			}
+			return $query;
+		};
+		add_filter( 'query', $before_lock );
+		try {
+			$previous = $this->records->hydrate_from_api( $post_id, $older );
+		} finally {
+			remove_filter( 'query', $before_lock );
+		}
+		$this->assertTrue( $interleaved );
+		$this->assertSame( 'certificated', $previous, 'A skipped response must report the status it actually found under the lock.' );
+		$this->assertSame( 'certificated', $this->records->status( $post_id ) );
 	}
 
 	/** A record already bound elsewhere is refused before its remote id is requested. */
@@ -586,14 +622,14 @@ final class StatusSyncTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * The six codes a document holds while it is still open and moving.
+	 * States before the document reaches a terminal outcome.
 	 *
 	 * @return array<string, array{0: string}>
 	 */
 	public function open_statuses(): array {
 		$cases = array();
 
-		foreach ( array( 'uploaded', 'metadata_processing', 'metadata_ready', 'pending_signature', 'certificating' ) as $status ) {
+		foreach ( array( 'uploaded', 'metadata_processing', 'metadata_ready', 'pending_signature', 'pending_identity_review', 'certificating' ) as $status ) {
 			$cases[ $status ] = array( $status );
 		}
 
@@ -601,7 +637,7 @@ final class StatusSyncTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * The eleven codes are the whole machine, and `ready` is not one of them.
+	 * The twelve codes are the whole machine, and `ready` is not one of them.
 	 *
 	 * `DocumentResource::STATUS_READY` exists in the SDK and the webhook catalog describes
 	 * `document_ready` as "status is now ready", but the API never emits a status by that
@@ -609,8 +645,8 @@ final class StatusSyncTest extends AssinafyTestCase {
 	 * An integrator who bound to a `ready` status would wait forever, so no code path here
 	 * may treat it as terminal.
 	 */
-	public function test_the_status_machine_has_eleven_codes_and_no_ready(): void {
-		$this->assertCount( 11, self::STATUS_CODES );
+	public function test_the_status_machine_has_twelve_codes_and_no_ready(): void {
+		$this->assertCount( 12, self::STATUS_CODES );
 		$this->assertSame( self::STATUS_CODES, array_unique( self::STATUS_CODES ) );
 		$this->assertNotContains( DocumentResource::STATUS_READY, self::STATUS_CODES );
 
@@ -633,7 +669,7 @@ final class StatusSyncTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * Every one of the eleven codes survives the round trip onto the record.
+	 * Every status code survives the round trip onto the record.
 	 */
 	public function test_every_status_code_round_trips_onto_the_record(): void {
 		$post_id = $this->create_document( self::DOCUMENT_ID, '' );

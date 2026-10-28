@@ -42,3 +42,7 @@ Thumbs.db
 # Local development instructions
 /AGENTS.md
 /CLAUDE.md
+
+# Local credentials
+/.env
+/.env.*

@@ -34,9 +34,9 @@ use WP_REST_Response;
  *
  * Two consequences of the delivery contract shape the responses:
  *
- * - An authenticated delivery is answered 2xx even when it does no work. Assinafy attempts a
- *   delivery twice, three seconds apart, and pauses the account's deliveries after ten
- *   consecutive failures until a probe succeeds. Answering 500 because one document could not
+ * - An authenticated delivery is answered 2xx even when it does no work. Assinafy makes up to
+ *   six attempts for a transient failure, about ten minutes apart, and pauses that endpoint
+ *   after ten consecutive failures until a probe succeeds. Answering 500 because one document could not
  *   be re-read would spend that budget on a condition the hourly reconcile run fixes by
  *   itself. The outcome goes in the response body instead, where the first 2000 characters
  *   are kept in the account's delivery history. The exception is a body that is not a
@@ -108,8 +108,7 @@ final class Handler {
 
 		if ( ! Settings::get( Settings::OPTION_WEBHOOK_ENABLED ) ) {
 			// Unticking the box stops this site from acting on deliveries; it does not
-			// deactivate the account's endpoint, which only `wp assinafy webhook off`
-			// does. Refusing the delivery would pause it for every site on the account.
+			// deactivate the endpoint, which only `wp assinafy webhook off` does.
 			return $this->outcome( false, 'disabled', '' );
 		}
 

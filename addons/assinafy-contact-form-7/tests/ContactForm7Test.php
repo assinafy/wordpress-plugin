@@ -131,6 +131,21 @@ final class ContactForm7Test extends AssinafyTestCase {
 		$this->assertSame( array(), $this->requests );
 	}
 
+	/** Failed signer storage must not turn an accepted host submission into an exception. */
+	public function test_signer_storage_failure_preserves_host_success_without_sending(): void {
+		$fail = static fn( mixed $check, int $post_id, string $key ): mixed => '_assinafy_signers' === $key ? false : $check;
+		add_filter( 'update_post_metadata', $fail, 10, 3 );
+		try {
+			$result = $this->submit();
+		} finally {
+			remove_filter( 'update_post_metadata', $fail, 10 );
+		}
+		$this->assertSame( 'mail_sent', $result['status'] );
+		$this->assertSame( array(), $this->requests );
+		$this->assertSame( array(), $this->ids() );
+		$this->assertNotEmpty( get_post_meta( $this->form->id(), FormSettings::ERROR, true ) );
+	}
+
 	/** Explicit spam and aborted host hooks run before the adapter's successful boundary. */
 	public function test_real_spam_and_abort_checks_prevent_requests(): void {
 		add_filter( 'wpcf7_spam', '__return_true' );

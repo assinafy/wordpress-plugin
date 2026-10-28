@@ -16,8 +16,8 @@ use WP_Error;
 /** @covers \Assinafy\WP\Documents\Signers */
 final class SignersTest extends TestCase {
 
-	/** @dataProvider identity_channels */
-	public function test_identity_methods_keep_the_requested_notification( string $method, string $channel ): void {
+	/** @dataProvider supported_channels */
+	public function test_supported_methods_keep_the_requested_notification( string $method, string $channel ): void {
 		$result = Signers::normalize(
 			array(
 				array(
@@ -33,12 +33,40 @@ final class SignersTest extends TestCase {
 	}
 
 	/** @return array<string, array{string, string}> */
-	public static function identity_channels(): array {
+	public static function supported_channels(): array {
 		return array(
+			'email'                => array( 'Email', 'Email' ),
+			'whatsapp'             => array( 'Whatsapp', 'Whatsapp' ),
 			'certificate email'    => array( 'DigitalCertificate', 'Email' ),
 			'certificate whatsapp' => array( 'DigitalCertificate', 'Whatsapp' ),
 			'biometric email'      => array( 'IdDocumentFaceMatchBasic', 'Email' ),
 			'biometric whatsapp'   => array( 'IdDocumentFaceMatchBasic', 'Whatsapp' ),
+		);
+	}
+
+	/** @dataProvider invalid_channels */
+	public function test_invalid_notification_pairings_are_refused( string $method, array $channels ): void {
+		$result = Signers::normalize(
+			array(
+				array(
+					'id'                   => 'abcdef123456',
+					'verification_method'  => $method,
+					'notification_methods' => $channels,
+				),
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $result );
+	}
+
+	/** @return array<string, array{string, array<int, string>}> */
+	public static function invalid_channels(): array {
+		return array(
+			'email mismatch'      => array( 'Email', array( 'Whatsapp' ) ),
+			'whatsapp mismatch'   => array( 'Whatsapp', array( 'Email' ) ),
+			'empty notification'  => array( 'DigitalCertificate', array() ),
+			'multiple channels'   => array( 'IdDocumentFaceMatchBasic', array( 'Email', 'Whatsapp' ) ),
+			'unsupported channel' => array( 'IdDocumentFaceMatchBasic', array( 'Sms' ) ),
+			'unsupported method'  => array( 'Bypass', array( 'Email' ) ),
 		);
 	}
 

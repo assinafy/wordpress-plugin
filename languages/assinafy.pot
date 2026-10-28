@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Assinafy 1.4.2\n"
+"Project-Id-Version: Assinafy 1.5.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/assinafy\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-19T18:32:28+00:00\n"
+"POT-Creation-Date: 2026-10-28T23:21:21+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: assinafy\n"
@@ -18,9 +18,9 @@ msgstr ""
 #. Author of the plugin
 #: assinafy.php
 #: src/Integrations/ElementorAction.php:59
-#: src/Settings.php:270
 #: src/Settings.php:271
-#: src/Settings.php:412
+#: src/Settings.php:272
+#: src/Settings.php:415
 msgid "Assinafy"
 msgstr ""
 
@@ -43,6 +43,306 @@ msgstr ""
 
 #: assinafy.php:74
 msgid "Assinafy could not load its dependencies. Reinstall the plugin from a complete package."
+msgstr ""
+
+#: src/Admin/ContractActions.php:37
+#: src/Admin/ContractScreen.php:65
+msgid "You are not allowed to manage contracts."
+msgstr ""
+
+#: src/Admin/ContractActions.php:45
+#: src/Admin/ContractScreen.php:70
+#: src/Admin/DocumentActions.php:283
+#: src/Admin/SettingsAjax.php:71
+msgid "Connect the plugin to Assinafy first."
+msgstr ""
+
+#: src/Admin/ContractActions.php:48
+msgid "The connected workspace changed. Reload the contract before saving."
+msgstr ""
+
+#: src/Admin/ContractActions.php:57
+msgid "Contract saved."
+msgstr ""
+
+#: src/Admin/ContractActions.php:69
+msgid "Invalid contract fields."
+msgstr ""
+
+#: src/Admin/ContractActions.php:77
+msgid "Choose a valid contract action."
+msgstr ""
+
+#: src/Admin/ContractActions.php:80
+msgid "The termination reason must contain at most 500 characters."
+msgstr ""
+
+#: src/Admin/ContractActions.php:98
+msgid "Choose a valid contract relationship."
+msgstr ""
+
+#: src/Admin/ContractActions.php:117
+msgid "Reload the contract to read its current term before renewing."
+msgstr ""
+
+#: src/Admin/ContractEditor.php:32
+msgid "Contract terms"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:39
+#: src/Admin/ContractScreen.php:158
+#: src/Documents/DocumentPostType.php:117
+#: src/PendingSendStore.php:39
+#: src/Privacy.php:165
+msgid "Status"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:46
+msgid "Automatic renewal"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:46
+msgid "Renew automatically after the end date"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:48
+msgid "Blank fields clear their current values. Other contract fields stay unchanged. Assinafy validates the counterparty CPF/CNPJ and plan permissions."
+msgstr ""
+
+#: src/Admin/ContractEditor.php:49
+msgid "Save contract terms"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:59
+msgid "Keep current status"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:63
+msgid "Draft"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:64
+msgid "Active"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:69
+#: src/Documents/DocumentPostType.php:100
+msgid "Expired"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:70
+msgid "Terminated"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:82
+#: src/Admin/ContractEditor.php:85
+msgid "Renew contract"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:83
+msgid "New end date (optional)"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:84
+msgid "Leave the date blank to use the renewal term. A repeated request cannot renew the same term twice."
+msgstr ""
+
+#: src/Admin/ContractEditor.php:88
+#: src/Admin/ContractEditor.php:91
+msgid "Terminate contract"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:88
+msgid "Termination stops lifecycle alerts and prevents renewal. It does not delete the document."
+msgstr ""
+
+#: src/Admin/ContractEditor.php:89
+msgid "Termination reason (optional)"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:97
+msgid "Link to an existing contract"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:97
+msgid "Use this document as an amendment, renewal or termination. Its changes apply to the parent contract after certification."
+msgstr ""
+
+#: src/Admin/ContractEditor.php:98
+msgid "Parent document ID"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:99
+msgid "Relationship"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:101
+msgid "Amendment"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:102
+msgid "Renewal"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:103
+msgid "Termination"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:108
+msgid "New or effective end date"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:109
+msgid "New value (amendment or renewal only)"
+msgstr ""
+
+#: src/Admin/ContractEditor.php:111
+msgid "Link document"
+msgstr ""
+
+#: src/Admin/ContractForm.php:24
+msgid "Counterparty"
+msgstr ""
+
+#: src/Admin/ContractForm.php:25
+msgid "Counterparty CPF/CNPJ"
+msgstr ""
+
+#: src/Admin/ContractForm.php:26
+msgid "Contract value"
+msgstr ""
+
+#: src/Admin/ContractForm.php:27
+msgid "Currency"
+msgstr ""
+
+#: src/Admin/ContractForm.php:28
+msgid "Start date"
+msgstr ""
+
+#: src/Admin/ContractForm.php:29
+#: src/Admin/ContractScreen.php:158
+msgid "End date"
+msgstr ""
+
+#: src/Admin/ContractForm.php:30
+msgid "Renewal term (months)"
+msgstr ""
+
+#: src/Admin/ContractForm.php:31
+msgid "Notice period (days)"
+msgstr ""
+
+#: src/Admin/ContractForm.php:51
+msgid "Choose whether this contract renews automatically."
+msgstr ""
+
+#: src/Admin/ContractForm.php:58
+msgid "Choose a valid contract status."
+msgstr ""
+
+#: src/Admin/ContractForm.php:63
+msgid "The end date must be on or after the start date."
+msgstr ""
+
+#: src/Admin/ContractForm.php:71
+msgid "A contract field has an invalid value."
+msgstr ""
+
+#: src/Admin/ContractForm.php:91
+msgid "Use a valid contract date in YYYY-MM-DD format, from year 1000."
+msgstr ""
+
+#: src/Admin/ContractForm.php:98
+msgid "Use a non-negative contract value with at most two decimal places."
+msgstr ""
+
+#: src/Admin/ContractForm.php:106
+msgid "Use a three-letter currency code."
+msgstr ""
+
+#: src/Admin/ContractForm.php:112
+msgid "Enter a CPF or CNPJ for the counterparty."
+msgstr ""
+
+#: src/Admin/ContractForm.php:115
+msgid "The counterparty name must contain at most 255 characters."
+msgstr ""
+
+#: src/Admin/ContractForm.php:124
+msgid "Renewal months must be 1–600 and notice days must be 0–3650."
+msgstr ""
+
+#: src/Admin/ContractForm.php:135
+msgid "Assinafy returned an invalid or mismatched contract. Reload its current state before trying again."
+msgstr ""
+
+#: src/Admin/ContractForm.php:150
+msgid "Enter a valid Assinafy document ID."
+msgstr ""
+
+#: src/Admin/ContractScreen.php:42
+#: src/Admin/ContractScreen.php:48
+msgid "Contracts"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:77
+#: src/Admin/DocumentActions.php:264
+msgid "That document does not exist."
+msgstr ""
+
+#: src/Admin/ContractScreen.php:95
+msgid "Track contract dates, renewal terms and related documents in your connected Assinafy workspace. Changes require a plan with contract tracking."
+msgstr ""
+
+#: src/Admin/ContractScreen.php:97
+msgid "Document ID"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:98
+msgid "Open contract"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:103
+msgid "Previous page"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:104
+msgid "Next page"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:122
+msgid "All contracts"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:124
+msgid "Contract tracking does not change the signed PDF or its signature status."
+msgstr ""
+
+#: src/Admin/ContractScreen.php:141
+msgid "Amendment terms"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:151
+msgid "Unlink pending amendment"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:158
+#: src/Admin/SendScreen.php:160
+#: src/Documents/DocumentPostType.php:248
+#: src/Documents/DocumentPostType.php:251
+#: src/Integrations/WooCommerceProductTab.php:98
+#: src/PendingSendStore.php:35
+#: src/Privacy.php:157
+msgid "Document"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:158
+msgid "Counterparty / relationship"
+msgstr ""
+
+#: src/Admin/ContractScreen.php:170
+msgid "No contracts found."
 msgstr ""
 
 #: src/Admin/DocumentActions.php:114
@@ -93,15 +393,6 @@ msgstr ""
 #: src/Admin/SettingsAjax.php:58
 #: src/Admin/SettingsAjax.php:121
 msgid "You are not allowed to do that."
-msgstr ""
-
-#: src/Admin/DocumentActions.php:264
-msgid "That document does not exist."
-msgstr ""
-
-#: src/Admin/DocumentActions.php:283
-#: src/Admin/SettingsAjax.php:71
-msgid "Connect the plugin to Assinafy first."
 msgstr ""
 
 #: src/Admin/DocumentMetaBox.php:85
@@ -206,6 +497,10 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
+#: src/Admin/DocumentMetaBox.php:302
+msgid "Manage contract"
+msgstr ""
+
 #: src/Admin/DocumentMetaBox.php:345
 msgid "Document name"
 msgstr ""
@@ -283,15 +578,6 @@ msgstr ""
 msgid "You are not allowed to send documents for signature."
 msgstr ""
 
-#: src/Admin/SendScreen.php:160
-#: src/Documents/DocumentPostType.php:248
-#: src/Documents/DocumentPostType.php:251
-#: src/Integrations/WooCommerceProductTab.php:98
-#: src/PendingSendStore.php:35
-#: src/Privacy.php:157
-msgid "Document"
-msgstr ""
-
 #: src/Admin/SendScreen.php:165
 msgid "No PDF chosen"
 msgstr ""
@@ -321,12 +607,12 @@ msgid "Signers sharing an order number are invited at the same time. A higher nu
 msgstr ""
 
 #: src/Admin/SendScreen.php:205
-#: src/Settings.php:474
+#: src/Settings.php:477
 msgid "Message to signers"
 msgstr ""
 
 #: src/Admin/SendScreen.php:215
-#: src/Settings.php:462
+#: src/Settings.php:465
 msgid "Signature deadline"
 msgstr ""
 
@@ -464,7 +750,7 @@ msgid "Paste the whsec_ value"
 msgstr ""
 
 #: src/Admin/WebhookSettings.php:114
-msgid "Registration stores the signing secret returned when the endpoint is created. OAuth cannot read it again through the API. To restore a saved whsec_ value, paste it here; otherwise delete the endpoint in Assinafy, then register this site again to create a new one. Leaving the field blank keeps the stored secret. Unsigned or stale deliveries are refused when a secret is configured."
+msgid "Registration stores the endpoint signing secret. OAuth cannot read it again, so registering this site again rotates a missing or unreadable secret. You can also paste a saved whsec_ value here. Leaving the field blank keeps the stored secret. Registered endpoints refuse unsigned or stale deliveries."
 msgstr ""
 
 #: src/Admin/WebhookSettings.php:121
@@ -596,7 +882,7 @@ msgstr ""
 
 #: src/Documents/DocumentContext.php:77
 #: src/Documents/SendService.php:266
-#: src/Documents/StatusSync.php:232
+#: src/Documents/StatusSync.php:238
 msgid "This document belongs to a different Assinafy workspace or environment."
 msgstr ""
 
@@ -644,18 +930,8 @@ msgstr ""
 msgid "Cancelled"
 msgstr ""
 
-#: src/Documents/DocumentPostType.php:100
-msgid "Expired"
-msgstr ""
-
 #: src/Documents/DocumentPostType.php:101
 msgid "Failed"
-msgstr ""
-
-#: src/Documents/DocumentPostType.php:117
-#: src/PendingSendStore.php:39
-#: src/Privacy.php:165
-msgid "Status"
 msgstr ""
 
 #: src/Documents/DocumentPostType.php:119
@@ -871,7 +1147,7 @@ msgstr ""
 msgid "This site has no record of that Assinafy document."
 msgstr ""
 
-#: src/Documents/StatusSync.php:252
+#: src/Documents/StatusSync.php:258
 msgid "Assinafy returned an invalid or mismatched document."
 msgstr ""
 
@@ -974,7 +1250,7 @@ msgstr ""
 msgid "Shown in the invitation. Leave empty to use the default from the Assinafy settings."
 msgstr ""
 
-#: src/Integrations/WooCommerceProductTab.php:208
+#: src/Integrations/WooCommerceProductTab.php:214
 msgid "— Select a PDF —"
 msgstr ""
 
@@ -1020,7 +1296,7 @@ msgid "Assinafy is renewing the connection. Try again shortly."
 msgstr ""
 
 #: src/OAuthConnection.php:234
-#: src/Settings.php:405
+#: src/Settings.php:408
 msgid "You are not allowed to manage Assinafy settings."
 msgstr ""
 
@@ -1102,116 +1378,116 @@ msgstr ""
 msgid "Pending asynchronous Assinafy requests for this address were cancelled before they could send the document or create a remote signature request."
 msgstr ""
 
-#: src/Settings.php:281
+#: src/Settings.php:282
 msgid "Assinafy Settings"
 msgstr ""
 
-#: src/Settings.php:282
+#: src/Settings.php:283
 msgid "Settings"
 msgstr ""
 
-#: src/Settings.php:321
+#: src/Settings.php:322
 msgid "Testing…"
 msgstr ""
 
-#: src/Settings.php:322
+#: src/Settings.php:323
 msgid "Working…"
 msgstr ""
 
-#: src/Settings.php:323
+#: src/Settings.php:324
 msgid "Request failed."
 msgstr ""
 
-#: src/Settings.php:324
+#: src/Settings.php:325
 msgid "This page has expired. Reload it and try again."
 msgstr ""
 
-#: src/Settings.php:444
+#: src/Settings.php:447
 msgid "Recent activity"
 msgstr ""
 
-#: src/Settings.php:458
+#: src/Settings.php:461
 msgid "Defaults"
 msgstr ""
 
-#: src/Settings.php:468
+#: src/Settings.php:471
 msgid "days"
 msgstr ""
 
-#: src/Settings.php:469
+#: src/Settings.php:472
 msgid "Zero sends no deadline."
 msgstr ""
 
-#: src/Settings.php:483
+#: src/Settings.php:486
 msgid "Capability required to send"
 msgstr ""
 
 #. translators: %s: default capability name.
-#: src/Settings.php:493
+#: src/Settings.php:496
 #, php-format
 msgid "Defaults to %s, which administrators and editors are granted on activation."
 msgstr ""
 
-#: src/Settings.php:510
+#: src/Settings.php:513
 msgid "Data"
 msgstr ""
 
-#: src/Settings.php:513
+#: src/Settings.php:516
 msgid "On uninstall"
 msgstr ""
 
-#: src/Settings.php:518
+#: src/Settings.php:521
 msgid "Delete the plugin settings and document records when the plugin is deleted"
 msgstr ""
 
-#: src/Settings.php:520
+#: src/Settings.php:523
 msgid "Documents already sent stay in your Assinafy account either way."
 msgstr ""
 
-#: src/Settings.php:534
+#: src/Settings.php:537
 msgid "Nothing logged yet."
 msgstr ""
 
-#: src/Settings.php:540
+#: src/Settings.php:543
 msgid "When"
 msgstr ""
 
-#: src/Settings.php:541
+#: src/Settings.php:544
 msgid "Event"
 msgstr ""
 
-#: src/Settings.php:542
+#: src/Settings.php:545
 msgid "Detail"
 msgstr ""
 
-#: src/Webhook/Handler.php:122
+#: src/Webhook/Handler.php:121
 msgid "Delivery body is not valid JSON."
 msgstr ""
 
-#: src/Webhook/Handler.php:132
+#: src/Webhook/Handler.php:131
 msgid "Delivery is missing a numeric id."
 msgstr ""
 
-#: src/Webhook/Route.php:186
+#: src/Webhook/Route.php:202
 msgid "Invalid webhook endpoint."
 msgstr ""
 
-#: src/Webhook/Route.php:194
+#: src/Webhook/Route.php:210
 msgid "Invalid webhook signature."
 msgstr ""
 
-#: src/Webhook/Route.php:318
+#: src/Webhook/Route.php:333
 msgid "No webhook endpoint has been generated for this site yet."
 msgstr ""
 
-#: src/Webhook/Route.php:336
+#: src/Webhook/Route.php:351
 msgid "Assinafy returned no supported document webhook events. Try registering again later."
 msgstr ""
 
-#: src/Webhook/Route.php:437
-msgid "This Assinafy account already has the maximum number of webhook endpoints — paid plans allow up to three. Remove one in the Assinafy dashboard before registering this site."
+#: src/Webhook/SigningSecret.php:125
+msgid "Another request is registering this webhook signing secret. Try again when it finishes."
 msgstr ""
 
-#: src/Webhook/SigningSecret.php:88
+#: src/Webhook/SigningSecret.php:171
 msgid "The webhook endpoint was registered, but its signing secret could not be stored. Register this site again or restore its signing secret before accepting deliveries."
 msgstr ""

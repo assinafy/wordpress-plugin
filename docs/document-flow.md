@@ -12,8 +12,8 @@ Os exemplos HTTP mostram a chave de API legada/Sandbox; uma conexão OAuth de pr
 
 Além do fluxo Email abaixo, hooks e o serviço compartilhado aceitam `Whatsapp`,
 `DigitalCertificate` (A1/A3) e `IdDocumentFaceMatchBasic` (biometria). Certificado e biometria
-aceitam uma notificação Email ou Whatsapp e exigem um signatário existente com documento de
-identificação configurado; biometria exige CPF válido e consentimento no fluxo hospedado.
+aceitam uma notificação Email ou Whatsapp e exigem um signatário existente com CPF válido
+configurado na Assinafy; biometria também exige consentimento no fluxo hospedado.
 Quando há revisão biométrica, a certificação aguarda aprovação no painel da Assinafy.
 Veja [métodos e requisitos](../README.md#métodos-de-verificação-e-de-notificação).
 

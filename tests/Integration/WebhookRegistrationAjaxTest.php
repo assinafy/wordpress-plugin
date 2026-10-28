@@ -82,6 +82,7 @@ final class WebhookRegistrationAjaxTest extends WP_Ajax_UnitTestCase {
 	 */
 	public function set_up(): void {
 		parent::set_up();
+		add_filter( 'pre_option_home', static fn(): string => 'https://example.test' );
 
 		$this->requests    = array();
 		$this->endpoints   = array();
@@ -348,7 +349,7 @@ final class WebhookRegistrationAjaxTest extends WP_Ajax_UnitTestCase {
 		$response = $this->register();
 
 		$this->assertFalse( $response['success'] ?? true );
-		$this->assertStringContainsString( 'maximum number of webhook endpoints', (string) ( $response['data']['message'] ?? '' ) );
+		$this->assertSame( 'Limite de endpoints de webhook atingido.', $response['data']['message'] ?? '' );
 		$this->assertCount( 1, $this->writes( 'POST' ) );
 		$this->assertSame( array(), $this->writes( 'PUT' ) );
 		$this->assertFalse( (bool) get_option( Settings::OPTION_WEBHOOK_ENABLED ) );

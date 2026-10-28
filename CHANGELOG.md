@@ -7,6 +7,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-28
+
+### Added
+
+- Track workspace contracts in the native admin: terms, renewal, termination, amendment links and related documents.
+- Expose all six contract methods through `wp assinafy contract` and support contract lifecycle webhooks.
+
+### Changed
+
+- Bundle Assinafy PHP SDK 2.8.0, including certificate templates without placed signer fields.
+- Update development harness dependencies with security fixes.
+- Recover missing OAuth webhook secrets by rotation and bind stored secrets to their endpoint, workspace and environment.
+
+### Fixed
+
+- Prevent stale document responses from announcing duplicate status transitions.
+- Check PDF read permission for WooCommerce REST and import configuration changes.
+- Report incomplete CF7 and WPForms receipt storage without interrupting accepted submissions.
+- Report this site's webhook state in WP-CLI and hide deadline edits on closed documents.
+- Exclude local credentials from core and add-on archives.
+
 ## [1.4.2] - 2026-10-19
 
 ### Fixed

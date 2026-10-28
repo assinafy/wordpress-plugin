@@ -27,7 +27,7 @@
     "test:e2e": "playwright test tests/e2e --workers=1"
   },
   "overrides": {
-    "qs": "6.16.0",
+    "qs": "6.17.0",
     "@wordpress/env": {
       "simple-git": "4.0.2",
       "js-yaml": "4.3.2"

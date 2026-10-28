@@ -193,7 +193,7 @@ abstract class AssinafyTestCase extends WP_UnitTestCase {
 	 * Create a mirror record for a remote document.
 	 *
 	 * @param string            $document_id Remote document id.
-	 * @param string            $status      One of the eleven status codes.
+	 * @param string            $status      A document status code.
 	 * @param array<int, string> $artifacts  Artifact names the remote document carries.
 	 *
 	 * @return int The mirror post id.

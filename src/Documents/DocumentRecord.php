@@ -162,6 +162,7 @@ final class DocumentRecord {
 	 *   {"code":"certificated",        "deletable":false},
 	 *   {"code":"rejected_by_signer",  "deletable":true },
 	 *   {"code":"pending_signature",   "deletable":true },
+	 *   {"code":"pending_identity_review", "deletable":true },
 	 *   {"code":"rejected_by_user",    "deletable":true },
 	 *   {"code":"failed",              "deletable":true }
 	 * ]}
@@ -423,13 +424,18 @@ final class DocumentRecord {
 	 * @return string The status the record held before this call, for change detection.
 	 */
 	public function hydrate_from_api( int $post_id, array $document ): string {
-		$previous = $this->status( $post_id );
-
-		return ProjectionLock::project(
+		return ProjectionLock::run(
 			$post_id,
-			self::text( $document, 'updated_at' ),
-			$previous,
-			fn(): string => $this->hydrate_unlocked( $post_id, $document, $previous )
+			function () use ( $post_id, $document ): string {
+				$previous = $this->status( $post_id );
+
+				return ProjectionLock::project(
+					$post_id,
+					self::text( $document, 'updated_at' ),
+					$previous,
+					fn(): string => $this->hydrate_unlocked( $post_id, $document, $previous )
+				);
+			}
 		);
 	}
 

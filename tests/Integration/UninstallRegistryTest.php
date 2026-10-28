@@ -16,6 +16,7 @@ use Assinafy\WP\Credentials;
 use Assinafy\WP\Documents\DocumentPostType;
 use Assinafy\WP\Log;
 use Assinafy\WP\Settings;
+use Assinafy\WP\Webhook\SigningSecret;
 
 /**
  * The anti-drift test. `uninstall.php` walks `Settings::OPTIONS` rather than repeating the
@@ -189,11 +190,13 @@ final class UninstallRegistryTest extends AssinafyTestCase {
 		$post_id = $this->create_document( '204618d0d63884bc446c534e5ff5' );
 		wp_trash_post( $post_id );
 		add_option( 'assinafy_send_lock_test.lock', time(), '', false );
+		add_option( SigningSecret::LOCK_NAME . '.lock', time(), '', false );
 
 		$this->run_uninstall();
 
 		$this->assertNull( get_post( $post_id ) );
 		$this->assertFalse( get_option( 'assinafy_send_lock_test.lock' ) );
+		$this->assertFalse( get_option( SigningSecret::LOCK_NAME . '.lock' ) );
 	}
 
 	/**

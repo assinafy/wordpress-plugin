@@ -5,7 +5,7 @@ Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
 Requires Plugins: assinafy
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,9 +52,13 @@ No. The stored signer contact is redacted, and the addon will not reconstruct it
 
 = Which advanced workflows are supported? =
 
-Version 0.1.0 sends one existing PDF to one mapped signer. Pro-only features, payments, conditional workflows, PDF generation and third-party addons are not verified.
+Version 0.1.1 sends one existing PDF to one mapped signer. Pro-only features, payments, conditional workflows, PDF generation and third-party addons are not verified.
 
 == Changelog ==
+
+= 0.1.1 =
+* Reports local receipt-storage failures without interrupting an accepted form submission.
+* Excludes local credentials from the distribution archive.
 
 = 0.1.0 =
 * Separate native WPForms settings and accepted-submission adapter.

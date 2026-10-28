@@ -69,20 +69,25 @@ final class Requests {
 			'idempotency_key' => 'contact-form-7-form-' . $form_id . '-request-' . $id . '-attachment-' . $args['attachment_id'],
 		);
 		$signer = $args['signers'][0];
-		$this->records->set_signers(
-			$id,
-			array(
+		try {
+			$this->records->set_signers(
+				$id,
 				array(
-					'id'          => '',
-					'name'        => $signer['full_name'],
-					'email'       => $signer['email'],
-					'step'        => 1,
-					'notified'    => false,
-					'completed'   => false,
-					'signing_url' => '',
-				),
-			)
-		);
+					array(
+						'id'          => '',
+						'name'        => $signer['full_name'],
+						'email'       => $signer['email'],
+						'step'        => 1,
+						'notified'    => false,
+						'completed'   => false,
+						'signing_url' => '',
+					),
+				)
+			);
+		} catch ( \RuntimeException ) {
+			wp_delete_post( $id, true );
+			return new WP_Error( 'assinafy_cf7_storage', __( 'The retry data could not be saved. Nothing was sent.', 'assinafy-contact-form-7' ) );
+		}
 		update_post_meta( $id, self::CONFIG, wp_slash( $config ) );
 		if ( ! $this->records->set_source( $id, $source ) || get_post_meta( $id, self::CONFIG, true ) !== $config ) {
 			wp_delete_post( $id, true );

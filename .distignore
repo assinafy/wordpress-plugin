@@ -79,3 +79,7 @@ composer.phar
 # Local development instructions
 /AGENTS.md
 /CLAUDE.md
+
+# Local credentials
+/.env
+/.env.*

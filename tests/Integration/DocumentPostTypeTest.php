@@ -30,22 +30,23 @@ final class DocumentPostTypeTest extends AssinafyTestCase {
 	private const DOCUMENT_ID = '104618b275d321f5de22240ebfda';
 
 	/**
-	 * The eleven codes of `GET /documents/statuses` mapped to the labels the list table shows.
+	 * Codes of `GET /documents/statuses` mapped to the labels the list table shows.
 	 *
 	 * @var array<string, string>
 	 */
 	private const LABELS = array(
-		'uploading'           => 'Uploading',
-		'uploaded'            => 'Uploaded',
-		'metadata_processing' => 'Processing',
-		'metadata_ready'      => 'Ready to send',
-		'pending_signature'   => 'Awaiting signatures',
-		'certificating'       => 'All signed — certifying',
-		'certificated'        => 'Signed and certified',
-		'rejected_by_signer'  => 'Declined by a signer',
-		'rejected_by_user'    => 'Cancelled',
-		'expired'             => 'Expired',
-		'failed'              => 'Failed',
+		'uploading'               => 'Uploading',
+		'uploaded'                => 'Uploaded',
+		'metadata_processing'     => 'Processing',
+		'metadata_ready'          => 'Ready to send',
+		'pending_signature'       => 'Awaiting signatures',
+		'pending_identity_review' => 'Awaiting identity review',
+		'certificating'           => 'All signed — certifying',
+		'certificated'            => 'Signed and certified',
+		'rejected_by_signer'      => 'Declined by a signer',
+		'rejected_by_user'        => 'Cancelled',
+		'expired'                 => 'Expired',
+		'failed'                  => 'Failed',
 	);
 
 	/**
@@ -176,7 +177,7 @@ final class DocumentPostTypeTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * Each of the eleven codes has a human label.
+	 * Each status code has a human label.
 	 *
 	 * @dataProvider status_labels
 	 *
@@ -188,7 +189,7 @@ final class DocumentPostTypeTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * The eleven codes and their labels.
+	 * Status codes and their labels.
 	 *
 	 * @return array<string, array{0: string, 1: string}>
 	 */
@@ -203,13 +204,13 @@ final class DocumentPostTypeTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * There are eleven codes, and `ready` is not among them: the SDK's `STATUS_READY` has no
+	 * There are twelve codes, and `ready` is not among them: the SDK's `STATUS_READY` has no
 	 * counterpart in the API. An unmapped code is shown as it arrived rather than vanishing
 	 * behind a blank badge, so a status the platform adds later is visible on the day it
 	 * appears.
 	 */
 	public function test_an_unmapped_code_is_shown_as_it_arrived(): void {
-		$this->assertCount( 11, self::LABELS );
+		$this->assertCount( 12, self::LABELS );
 		$this->assertArrayNotHasKey( 'ready', self::LABELS );
 
 		$this->assertSame( 'ready', DocumentPostType::status_label( 'ready' ) );

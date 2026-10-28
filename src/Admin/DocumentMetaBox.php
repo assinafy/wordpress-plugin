@@ -294,16 +294,21 @@ final class DocumentMetaBox {
 		if ( current_user_can( Capabilities::MANAGE ) && ( new DeletableStatuses( $this->clients ) )->allows( $status ) ) {
 			$this->render_cancel_form( $post_id, $status );
 		}
+
+		if ( current_user_can( Capabilities::MANAGE ) && null !== DocumentContext::matching_client( $post_id, $this->clients->client() ) ) {
+			printf(
+				'<p><a class="button" href="%1$s">%2$s</a></p>',
+				esc_url( admin_url( 'admin.php?page=assinafy-contracts&post=' . $post_id ) ),
+				esc_html__( 'Manage contract', 'assinafy' )
+			);
+		}
 	}
 
 	/**
 	 * Render the forms the send capability covers: rename before the assignment exists, and
 	 * the deadline and resend controls once it does.
 	 *
-	 * The deadline survives expiry. `is_closed` covers every terminal state at once, but
-	 * `expired` is the one a new deadline reopens — hiding the control there would hide it in
-	 * the single state it exists to repair. Resending is not offered: an invitation sent
-	 * against a dead deadline arrives at a document nobody can sign.
+	 * Closed documents, including expired requests, cannot change deadlines or send invitations.
 	 *
 	 * @param int    $post_id Document post id.
 	 * @param string $status  Current status code.
@@ -317,13 +322,8 @@ final class DocumentMetaBox {
 			return;
 		}
 
-		$is_closed = $this->records->is_closed( $post_id );
-
-		if ( ! $is_closed || 'expired' === $status ) {
+		if ( ! $this->records->is_closed( $post_id ) ) {
 			$this->render_extend_form( $post_id );
-		}
-
-		if ( ! $is_closed ) {
 			$this->render_resend_forms( $post_id );
 		}
 	}

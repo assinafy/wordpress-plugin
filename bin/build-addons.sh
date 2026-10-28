@@ -12,7 +12,7 @@ for source in "${ROOT}"/addons/assinafy-*; do
 	[ -n "${version}" ] && [ "${version}" = "${stable}" ] || { echo "Version mismatch: ${slug}" >&2; exit 1; }
 	stage="${DEST}/${slug}"
 	mkdir -p "${stage}"
-	rsync -a --delete --exclude=/tests --exclude=.DS_Store "${source}/" "${stage}/"
+	rsync -a --delete --delete-excluded --exclude=/tests --exclude=/README.en.md --exclude=.DS_Store --exclude=.env --exclude='.env.*' "${source}/" "${stage}/"
 	[ -f "${stage}/LICENSE" ] || { echo "Missing license: ${slug}" >&2; exit 1; }
 	zip_path="${DEST}/${slug}-${version}.zip"
 	rm -f "${zip_path}"

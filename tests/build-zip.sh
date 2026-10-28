@@ -10,6 +10,7 @@ mkdir -p "$FIXTURE/bin" "$FIXTURE/vendor-prefixed" "$FIXTURE/.cache" "$FIXTURE/.
 cp "$SOURCE/bin/build-zip.sh" "$FIXTURE/bin/build-zip.sh"
 cp "$SOURCE/.distignore" "$FIXTURE/.distignore"
 touch "$FIXTURE/addons/assinafy-example/assinafy-example.php" "$FIXTURE/vendor-prefixed/autoload.php" "$FIXTURE/.cache/private" "$FIXTURE/.agents/private" "$FIXTURE/.claude/private" "$FIXTURE/docs/private.md" "$FIXTURE/tests/private.php" "$FIXTURE/AGENTS.md" "$FIXTURE/CLAUDE.md" "$FIXTURE/phpstan.neon"
+touch "$FIXTURE/.env" "$FIXTURE/.env.production.local"
 cat > "$FIXTURE/assinafy.php" <<'PHP'
 <?php
 /**
@@ -34,9 +35,28 @@ test -f "$FIXTURE/dist/assinafy-1.0.0.zip"
 test -f "$FIXTURE/dist/assinafy/vendor-prefixed/autoload.php"
 test ! -e "$FIXTURE/dist/assinafy/.cache"
 test ! -e "$FIXTURE/dist/assinafy/.agents"
-for excluded in .claude docs tests AGENTS.md CLAUDE.md; do
+for excluded in .claude docs tests AGENTS.md CLAUDE.md .env .env.production.local; do
 	test ! -e "$FIXTURE/dist/assinafy/$excluded"
 done
 test ! -e "$FIXTURE/dist/assinafy/addons"
 test ! -e "$FIXTURE/dist/assinafy/phpstan.neon"
+
+cp "$SOURCE/bin/build-addons.sh" "$FIXTURE/bin/build-addons.sh"
+cat > "$FIXTURE/addons/assinafy-example/assinafy-example.php" <<'PHP'
+<?php
+/**
+ * Version: 1.0.0
+ */
+PHP
+printf 'Stable tag: 1.0.0\n' > "$FIXTURE/addons/assinafy-example/readme.txt"
+touch "$FIXTURE/addons/assinafy-example/LICENSE"
+touch "$FIXTURE/addons/assinafy-example/README.en.md"
+mkdir -p "$FIXTURE/addons/assinafy-example/src" "$FIXTURE/dist/addons/assinafy-example"
+touch "$FIXTURE/addons/assinafy-example/.env" "$FIXTURE/addons/assinafy-example/src/.env.production.local"
+touch "$FIXTURE/dist/addons/assinafy-example/.env.stale"
+bash "$FIXTURE/bin/build-addons.sh"
+test -f "$FIXTURE/dist/addons/assinafy-example-1.0.0.zip"
+for excluded in .env .env.stale src/.env.production.local tests README.en.md; do
+	test ! -e "$FIXTURE/dist/addons/assinafy-example/$excluded"
+done
 printf 'Build version and exclusion checks passed.\n'

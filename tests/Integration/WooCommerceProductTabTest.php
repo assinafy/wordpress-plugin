@@ -188,6 +188,34 @@ final class WooCommerceProductTabTest extends AssinafyTestCase {
 		$this->assertSame( 'Please sign.', $imported->get_meta( WooCommerce::PRODUCT_MESSAGE ) );
 	}
 
+	/** A sender still needs access to the selected PDF on every configuration route. */
+	public function test_rest_and_import_cannot_select_an_unreadable_pdf(): void {
+		$attachment = $this->attachment();
+		$original   = $this->attachment();
+		$product    = new \WC_Product_Simple();
+		$product->update_meta_data( WooCommerce::PRODUCT_ENABLED, 'yes' );
+		$product->update_meta_data( WooCommerce::PRODUCT_ATTACHMENT, (string) $original );
+		$product->update_meta_data( WooCommerce::PRODUCT_MESSAGE, 'Original invitation.' );
+		$product->save();
+		$deny = static function ( array $caps, string $cap, int $user_id, array $args ) use ( $attachment ): array {
+			return 'read_post' === $cap && $attachment === (int) ( $args[0] ?? 0 ) ? array( 'do_not_allow' ) : $caps;
+		};
+		add_filter( 'map_meta_cap', $deny, 99, 4 );
+		try {
+			$this->assertTrue( current_user_can( Capabilities::SEND ) );
+			$this->assertFalse( current_user_can( 'read_post', $attachment ) );
+			$this->rest_update_product( $product->get_id(), 'PDF access required', $attachment, 'Please sign.' );
+			$this->assertSame( (string) $original, wc_get_product( $product->get_id() )->get_meta( WooCommerce::PRODUCT_ATTACHMENT ) );
+			$this->assertSame( 'Original invitation.', wc_get_product( $product->get_id() )->get_meta( WooCommerce::PRODUCT_MESSAGE ) );
+
+			$product->update_meta_data( WooCommerce::PRODUCT_ATTACHMENT, (string) $attachment );
+			$imported = apply_filters( 'woocommerce_product_import_pre_insert_product_object', $product, array() );
+			$this->assertSame( (string) $original, $imported->get_meta( WooCommerce::PRODUCT_ATTACHMENT ) );
+		} finally {
+			remove_filter( 'map_meta_cap', $deny, 99 );
+		}
+	}
+
 	/**
 	 * Push the three keys at one product through WooCommerce's own products controller.
 	 *

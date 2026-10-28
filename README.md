@@ -13,6 +13,7 @@ tempos e recursos disponíveis na conta devem ser lidos da conta configurada.
 - [2. Requisitos e instalação](#2-requisitos-e-instalação)
 - [3. Configuração](#3-configuração)
 - [4. O fluxo do documento, passo a passo](#4-o-fluxo-do-documento-passo-a-passo)
+- [Gestão de contratos (CLM)](#gestão-de-contratos-clm)
 - [5. Pontos de extensão](#5-pontos-de-extensão)
 - [6. WP-CLI](#6-wp-cli)
 - [7. Webhooks](#7-webhooks)
@@ -32,15 +33,14 @@ Referência completa: [métodos do SDK](docs/sdk-reference.md) e [payloads REST]
 
 Ele envia um PDF para uma conta Assinafy, pede que pessoas nomeadas o assinem, espelha o estado
 remoto em um custom post type do WordPress e entrega os artefatos finalizados de volta por um
-proxy protegido por capability. Todo o resto do plugin — a tela de configurações, o receptor de
-webhook, o cron de reconciliação, o WP-CLI, o WooCommerce — existe para tornar esse único caminho
-confiável.
+proxy protegido por capability. A gestão de contratos acrescenta termos, aditivos, renovações e
+encerramento pela administração nativa e pelo WP-CLI, usando a mesma conexão.
 
 O core é dono do envio, da recuperação, do armazenamento, dos webhooks e da sincronização.
 Comportamento específico de cada host pertence aos adaptadores. WooCommerce e Elementor Forms são
 entregues como adaptadores embutidos. Gravity Forms, Contact Form 7 e WPForms têm add-ons de
-desenvolvimento separados no checkout do código-fonte, em `addons/`, na versão 0.1.0. Cada um envia
-um PDF existente com nome/e-mail do signatário mapeados através do core. CF7 e WPForms Lite são
+desenvolvimento separados no checkout do código-fonte, em `addons/`: Gravity Forms 0.1.0, Contact Form 7 e WPForms 0.1.1.
+Cada um envia um PDF existente com nome/e-mail do signatário mapeados através do core. CF7 e WPForms Lite são
 testados contra plugins host gratuitos reais; Gravity Forms e Elementor Pro têm apenas testes
 documentados de contrato de API, pendentes de validação com instalação licenciada. A vinculação de
 entradas do WPForms Pro também não foi verificada em um host licenciado. Um produto WooCommerce
@@ -166,7 +166,7 @@ são PascalCase; combinações incompatíveis de método/canal são rejeitadas l
 |---|---|---|---|
 | `Email` | `["Email"]` | Estimativa da conta | E-mail, ou um ID de signatário existente |
 | `Whatsapp` | `["Whatsapp"]` | Estimativa da conta; restrições de plano podem se aplicar | Número de telefone, ou um ID de signatário existente |
-| `DigitalCertificate` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; o recurso precisa estar habilitado | Assignment virtual; ID de signatário existente com documento de identificação configurado na Assinafy; signatário sozinho em sua etapa |
+| `DigitalCertificate` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; o recurso precisa estar habilitado | Assignment virtual; ID de signatário existente com CPF válido configurado na Assinafy; signatário sozinho em sua etapa |
 | `IdDocumentFaceMatchBasic` | `["Email"]` ou `["Whatsapp"]` | Estimativa da conta; recurso biométrico habilitado | ID de signatário existente com CPF válido configurado na Assinafy |
 
 [`Signers`](src/Documents/Signers.php) valida o pareamento. Omitir o método e o canal usa `Email`
@@ -174,8 +174,10 @@ como padrão quando há e-mail ou quando nenhum telefone é informado, e `Whatsa
 Informar apenas o canal de notificação infere o método de verificação correspondente.
 Canais explícitos suportados são preservados.
 
-A1 e A3 usam `DigitalCertificate`. Signatários com certificado exigem assignment `virtual`; o
-SDK incluído recusa `collect` e pedidos por template antes de estimar, cobrar ou enviar convites.
+A1 e A3 usam `DigitalCertificate` e exigem CPF válido no signatário existente. O plugin envia
+assignments `virtual`. O SDK também permite assinatura com certificado a partir de templates
+sem campos posicionados; assignments `collect` e templates com campos posicionados são recusados
+antes de estimar, cobrar ou enviar convites.
 A verificação biométrica usa `IdDocumentFaceMatchBasic`: o
 signatário confirma o consentimento na página hospedada e envia documento, foto e prova de vida.
 Quando a verificação exige revisão, a conta aprova ou rejeita no painel da Assinafy; a assinatura
@@ -436,6 +438,53 @@ WooCommerce, da CLI e do cron compartilham o mesmo serviço de envio.
 Cada passo, com as requisições e respostas exatas, está documentado em
 [docs/document-flow.md](docs/document-flow.md).
 
+### Gestão de contratos (CLM)
+
+**Assinafy → Contracts** exige `assinafy_manage` (`Capabilities::MANAGE`, concedida aos
+administradores por padrão). A página lista os contratos da conta conectada em páginas de 25.
+Selecione um contrato, informe um ID remoto em **Open contract** ou use **Manage contract** no
+registro local do documento. Os termos são lidos da Assinafy a cada visita. Com OAuth, leituras
+usam `documents:read`; escritas usam `documents:write` e exigem um plano com gestão de contratos.
+Termos existentes continuam legíveis se o plano deixar de incluir o recurso.
+
+1. **Adicionar termos a um documento existente.** Abra o documento e informe contraparte,
+   CPF/CNPJ opcional, valor, moeda, datas inicial/final, meses de renovação, dias de aviso e a
+   preferência de renovação automática. Datas usam `YYYY-MM-DD`, valores são não negativos com
+   até duas casas decimais e a moeda usa três letras, como `BRL`. Meses de renovação aceitam
+   1–600 e dias de aviso, 0–3650. Salve os termos; escolha **Active** quando o contrato deve
+   entrar no acompanhamento do ciclo de vida.
+2. **Manter os termos atuais.** Campos editáveis em branco enviam `null` para limpar o valor;
+   campos omitidos preservam o valor atual. O formulário mantém campos avançados como `owner_id`,
+   `metadata` e `external_references`. Cada formulário de contrato existente envia a revisão
+   `updated_at` que leu. Se outro usuário ou o serviço de ciclo de vida tiver alterado o contrato,
+   a API retorna `409`: recarregue o estado atual antes de enviar novamente. O status do ciclo
+   de vida do contrato é separado do status de assinatura do documento.
+3. **Acompanhar datas e renovações.** A Assinafy emite eventos de aviso de renovação, proximidade
+   do vencimento, vencimento e renovação. **Renew contract** envia o `term` atual; deixe a nova
+   data final em branco para avançar por `renewal_term_months` (12 quando ausente) ou informe uma
+   data posterior. A renovação avança o período e pode reabrir um contrato vencido. Repetir o
+   mesmo período/data não renova duas vezes: a API recusa com `400`, ou `409` para revisão antiga.
+4. **Vincular um instrumento assinado.** Abra outro documento sem termos de contrato raiz e use
+   **Link to an existing contract**. Informe o ID de um documento pai e a relação: `amendment`,
+   `renewal` ou `termination`. Para aditivo/renovação, proponha opcionalmente novo valor ou data
+   final; campos de proposta em branco são omitidos. A API resolve um pai em qualquer ponto da
+   família para a raiz. As propostas entram em vigor quando o instrumento é certificado, na
+   ordem de certificação; instrumentos bloqueados expõem `apply_error`. A página mostra termos
+   propostos, estado de aplicação e a família relacionada. **Unlink pending amendment** envia
+   `parent_document_id: null` para um vínculo pendente. Aditivos aplicados são somente leitura.
+   Alterações mais completas usam SDK ou CLI.
+5. **Encerrar ao concluir.** **Terminate contract** aceita um motivo opcional, interrompe os
+   alertas e impede renovação. A ação altera apenas a gestão do contrato: PDF, status de
+   assinatura e artefatos assinados permanecem intactos.
+
+A [CLI abaixo](#wp-assinafy-contract-listgetupdaterelatedrenewterminate) e o recurso `contracts()`
+do SDK 2.8.0 incluído expõem list, get, update, related, renew e terminate, inclusive metadados
+avançados e referências externas. Enviar `external_references` substitui a lista inteira.
+Corpos completos, respostas e erros estão em [métodos do SDK](docs/sdk-reference.md) e
+[payloads REST](docs/api-payloads.md). Os termos ficam na Assinafy; a reconciliação horária do
+WordPress continua atualizando as projeções locais dos documentos. Webhooks de contratos
+provocam uma releitura autoritativa dos documentos já espelhados neste site.
+
 ---
 
 ## 5. Pontos de extensão
@@ -511,7 +560,7 @@ Cada linha de signatário aceita:
 | `email` | `string` | Obrigatório para verificação por Email, a menos que um ID de signatário existente seja informado. Linhas só com telefone assumem Whatsapp. |
 | `whatsapp_phone_number` (ou `phone`) | `string` | E.164. Números nacionais crus de 10/11 dígitos recebem `+55`. |
 | `step` | `int` | Informe para todos os signatários ou omita para todos. O padrão é 1; etapas explícitas começam em 1 sem lacunas. Signatários DigitalCertificate precisam de uma etapa só deles. |
-| `verification_method` | `string` | `Email`, `Whatsapp`, `DigitalCertificate` ou `IdDocumentFaceMatchBasic`. Os dois últimos exigem um ID de signatário existente com documento de identificação configurado; a biometria exige CPF válido. |
+| `verification_method` | `string` | `Email`, `Whatsapp`, `DigitalCertificate` ou `IdDocumentFaceMatchBasic`. Os dois últimos exigem um ID de signatário existente com CPF válido configurado na Assinafy. |
 | `notification_methods` | `array<string>` | Exatamente um canal `Email` ou `Whatsapp`. A verificação por Email/Whatsapp exige o canal correspondente; DigitalCertificate e IdDocumentFaceMatchBasic aceitam qualquer um dos dois. |
 | `id` | `string` | Um id de signatário Assinafy existente, usado como está em vez do buscar-e-criar. |
 
@@ -709,13 +758,12 @@ $url = Assinafy\WP\Documents\DownloadProxy::url( $post_id, 'certificated' );
 
 ## 6. WP-CLI
 
-Registrado apenas quando o WP-CLI está carregado. Quatro subcomandos, todos funcionais; não há
-stubs.
+Registrado apenas quando o WP-CLI está carregado: `status`, `send`, `sync`, `webhook` e `contract`.
 
 ### `wp assinafy status`
 
-Reporta como este site está conectado. Contatar a conta custa uma requisição; ler a assinatura do
-plano custa uma segunda.
+Reporta como este site está conectado. Contatar a conta custa uma requisição; localizar o webhook
+deste site entre os endpoints da conta custa uma segunda.
 
 ```
 $ wp assinafy status
@@ -758,10 +806,9 @@ Success: Sent. Local record: post 4187.
 | `--key=<idempotency-key>` | Repetir o comando com a mesma chave reutiliza ou retoma o envio registrado. Use uma chave nova para um novo contrato/versão intencional. |
 | `--porcelain` | Imprime o ID do registro Assinafy local, inclusive um ID existente em um envio deduplicado. |
 
-A chave padrão da CLI faz o hash do caminho/anexo selecionado e dos signatários interpretados. Ela
-não inclui mudanças nos bytes do PDF, na mensagem ou na expiração. Use uma `--key` nova e explícita
-para um novo envio intencional quando esses detalhes mudarem, e reutilize essa chave em
-retentativas.
+A chave padrão usa o digest do serviço compartilhado sobre o conteúdo do PDF e as opções de envio
+normalizadas, incluindo signatários, mensagem e expiração. Alterar esses valores cria uma nova
+requisição. Use `--key` explícita para definir uma identidade estável e reutilize-a nas retentativas.
 
 ```bash
 # Two signers, in parallel on step 1.
@@ -830,16 +877,57 @@ sem endpoints diz isso.
 | `--email=<address>` | Endereço que a Assinafy alerta quando uma entrega falha. Usa por padrão o e-mail do administrador do site. |
 
 O `register` adiciona ou atualiza o endpoint próprio deste site — localizado entre os endpoints
-da conta por correspondência de prefixo da URL, criado quando ausente — inscrevendo-o em
-`document_metadata_ready`, `document_ready`, `signer_signed_document`, `signer_viewed_document`,
-`signer_rejected_document`, `user_rejected_document` e `document_processing_failed` (mesclados
-com os eventos que o endpoint já tiver) com a assinatura das entregas ativada, e define
+da conta por correspondência de prefixo da URL, criado quando ausente — inscrevendo-o nos vinte
+eventos padrão listados abaixo, incluindo contratos e identidade (mesclados com os eventos
+suportados que o endpoint já tiver) com a assinatura das entregas ativada, e define
 `assinafy_webhook_enabled` para que a rota passe a aceitar entregas. Ele nunca toca no endpoint
 de outra integração; quando o limite de endpoints do plano já foi atingido, ele falha pedindo
 que você remova um endpoint no painel da Assinafy antes. O `off` define `is_active=false` apenas
-no endpoint próprio deste site — pelo id de endpoint armazenado, com fallback para a
-correspondência de URL — e limpa essa option; ele falha quando este site não tem endpoint. Os
-endpoints de outras integrações nunca são tocados.
+no endpoint próprio deste site, localizado pela URL atual, e limpa essa option; ele falha quando
+este site não tem endpoint. Os endpoints de outras integrações nunca são tocados.
+
+### `wp assinafy contract <list|get|update|related|renew|terminate>`
+
+```text
+wp assinafy contract <action> [<document-id>] [--data=<json>] [--filters=<json>] [--page=<number>] [--per-page=<number>] [--yes]
+```
+
+Todos os IDs são IDs remotos de documentos na conta conectada. Todas as ações exceto `list`
+exigem um. Os resultados são JSON: `list` mantém `data` e `pagination`; as demais ações retornam
+o contrato ou aditivo desembrulhado. Escopos e requisitos do plano são os mesmos do fluxo CLM nativo.
+
+| Opção | Observações |
+|---|---|
+| `--data=<json>` | Objeto JSON para `update`, `renew` ou `terminate`. `update` exige ao menos um campo. Inclua o último `updated_at` para recusar alterações concorrentes com `409`. |
+| `--filters=<json>` | Objeto JSON de filtros escalares: `status`, `counterparty`, `search`, `end_date_from`, `end_date_to`, `ending_within_days`, `external_system`, `external_id`, `sort`, `expand`. |
+| `--page=<number>` | Página positiva da lista; padrão 1. |
+| `--per-page=<number>` | Tamanho da página, de 1 a 100; padrão 25. |
+| `--yes` | Confirma `terminate` sem pergunta interativa. |
+
+```bash
+wp assinafy contract list --filters='{"status":"active","ending_within_days":45}' --page=1 --per-page=25
+wp assinafy contract get DOCUMENT_ID
+wp assinafy contract update DOCUMENT_ID --data='{"counterparty_name":"Example Company","end_date":"2027-12-31","updated_at":"2026-10-28T12:00:00Z"}'
+wp assinafy contract related DOCUMENT_ID
+wp assinafy contract renew DOCUMENT_ID --data='{"term":1,"updated_at":"2026-10-28T12:00:00Z"}'
+wp assinafy contract terminate DOCUMENT_ID --data='{"reason":"Completed","updated_at":"2026-10-28T12:00:00Z"}' --yes
+```
+
+Substitua `DOCUMENT_ID`, `term` e `updated_at` pelos valores retornados por `get`. A renovação
+exige o `term` atual ou `end_date` explícita posterior; `value` opcional altera o valor. Repetir
+a renovação resulta em recusa, sem avançar outro período. Para vincular um documento separado,
+remover um vínculo pendente ou manter campos que não estão no formulário nativo:
+
+```bash
+wp assinafy contract update AMENDMENT_DOCUMENT_ID --data='{"parent_document_id":"ROOT_DOCUMENT_ID","relation_type":"amendment","value":130000,"end_date":"2028-06-30"}'
+wp assinafy contract update AMENDMENT_DOCUMENT_ID --data='{"parent_document_id":null,"updated_at":"2026-10-28T12:00:00Z"}'
+wp assinafy contract update DOCUMENT_ID --data='{"metadata":{"crm_stage":"won"},"external_references":[{"system":"erp","id":"C-1042"}],"updated_at":"2026-10-28T12:00:00Z"}'
+```
+
+Campos omitidos são preservados. O comportamento de `null` nos campos raiz segue o
+[schema REST](docs/api-payloads.md); em um aditivo pendente, remove aquele termo proposto.
+Enviar `external_references` substitui a lista inteira. `related` aceita o ID da raiz ou de
+um aditivo e retorna o contrato raiz com toda a família de aditivos.
 
 ---
 
@@ -900,15 +988,18 @@ com a aceitação de webhooks desligada responde 200 com `reason: disabled`:
 | `disabled` | `false` | Este site não está aceitando entregas. Nada foi lido nem gravado. |
 | `duplicate` | `false` | Este id de entrega já foi processado. |
 | `account_mismatch` | `false` | O envelope cita uma conta Assinafy diferente. |
-| `unknown_event` | `false` | O evento não é um dos vinte. |
+| `unknown_event` | `false` | O evento não é um dos 28 eventos suportados. |
 | `not_a_document` | `false` | `object` é um Signer, User ou Account — não há o que reler. |
 | `unknown_document` | `false` | Este site não tem registro desse documento. |
 | `sync_failed` | `false` | A releitura falhou. A reconciliação pode tentar de novo nos registros espelhados abertos. |
 
 Falhas transitórias de releitura são reconhecidas para que a recuperação não dependa de uma nova
-entrega do webhook. A reconciliação do core tenta novamente nos registros abertos. O plugin não
-expõe nem controla o cronograma de retentativas de entrega do serviço remoto nem seu comportamento
-de circuit breaker.
+entrega do webhook. A reconciliação do core tenta novamente nos registros abertos. A Assinafy faz
+até seis tentativas por evento e endpoint, com cerca de dez minutos de intervalo, para erros de
+conexão, timeouts, `408`, `429` e `5xx`; outros status encerram a entrega. Dez falhas consecutivas
+pausam aquele endpoint. Sondagens ocorrem após 3, 15 e 60 minutos e depois a cada seis horas; uma
+sondagem bem-sucedida retoma os eventos pendentes do mais antigo ao mais recente. Alterar a URL
+ou definir `is_active: true` também remove a pausa.
 
 ### O envelope da entrega
 
@@ -935,7 +1026,7 @@ de circuit breaker.
   anterior aos metadados, `assignment_created` pode chegar primeiro. Reler torna o handler
   independente de ordem de graça.
 
-### Os vinte tipos de evento
+### Os 28 tipos de evento
 
 ```
 document_uploaded          document_metadata_ready    document_prepared
@@ -946,18 +1037,22 @@ signer_rejected_document   user_rejected_document     document_processing_failed
 signer_identity_verified   signer_identity_verification_failed
 signer_identity_review_required   signer_identity_review_approved
 signer_identity_review_rejected
+document_contract_updated         document_contract_renewal_notice
+document_contract_expiring        document_contract_expired
+document_contract_renewed         document_contract_terminated
+document_contract_amended         document_contract_amendment_updated
 ```
 
-A lista de permitidos do plugin contém esses vinte eventos. As constantes de eventos de template
+A lista de permitidos do plugin contém esses 28 eventos. As constantes de eventos de template
 do SDK, incluindo `template_created`, `template_processed` e `template_processing_failed`, não
 estão nessa lista e são filtradas das requisições de registro.
 
-O plugin se inscreve em doze por padrão: `document_metadata_ready`, `document_ready`,
+O plugin se inscreve em vinte por padrão: `document_metadata_ready`, `document_ready`,
 `signer_signed_document`, `signer_viewed_document`, `signer_rejected_document`,
 `user_rejected_document` e `document_processing_failed`. A reconciliação pode recuperar o estado
 mais recente do documento, mas não um histórico completo de eventos intermediários.
 
-Os cinco eventos `signer_identity_*` também fazem parte da inscrição padrão.
+Os cinco eventos `signer_identity_*` e os oito `document_contract_*` também fazem parte da inscrição padrão.
 
 O registro consulta `GET /webhooks/event-types` no ambiente selecionado e envia apenas os
 eventos disponíveis nele. Um ambiente com catálogo menor mantém o fluxo de registro.
@@ -972,14 +1067,15 @@ Endpoints de outras integrações coexistem e nunca são substituídos. Quando o
 do plano já foi atingido, o registro falha com um erro pedindo que você remova um endpoint no
 painel da Assinafy antes.
 
-Os endpoints são registrados com `signing_enabled: true`. O segredo `whsec_` retornado pela
-criação é armazenado criptografado, inclusive nas conexões OAuth. Sites com chave de API também
-podem recuperar o segredo pela API ao registrar novamente. OAuth não pode reler ou rotacionar
-esse segredo pela API: se ele for perdido, remova o endpoint no painel da Assinafy e registre este site novamente
-para criar outro, ou restaure uma cópia guardada no campo **Segredo de assinatura**. Enviar o campo em branco
-mantém o valor existente. Um segredo armazenado que não pode ser descriptografado faz as entregas
-falharem com 401 até ser restaurado; o token da URL sozinho autentica apenas quando nunca há
-segredo configurado.
+Os endpoints são registrados com `signing_enabled: true`. O segredo `whsec_` retornado é
+armazenado criptografado e vinculado ao endpoint, à conta e ao ambiente. Sites com chave de API
+podem recuperá-lo ao registrar novamente. OAuth não pode relê-lo, mas pode rotacioná-lo com
+`webhooks:write`: o registro reutiliza um segredo legível para o mesmo endpoint; caso contrário,
+rotaciona e salva um novo. Também é possível restaurar uma cópia guardada em **Segredo de
+assinatura**; o campo em branco mantém o valor salvo. Segredos ilegíveis ou de outro contexto e
+rotações interrompidas rejeitam entregas com `401`. Registre o endpoint novamente para recuperar.
+Durante a recuperação, as entregas ficam bloqueadas até o novo segredo ser salvo. O token da URL
+sozinho autentica apenas quando nenhum segredo de assinatura foi configurado.
 
 ### API programática de webhook
 
@@ -1020,8 +1116,8 @@ armazenada na conta Assinafy.
 
 | Membro | Retorna |
 |---|---|
-| `Route::EVENTS` | Os vinte eventos documentados de documentos/signatários entendidos pelo receptor. |
-| `Route::DEFAULT_EVENTS` | Os doze eventos padrão; o registro envia o subconjunto disponível no ambiente selecionado. |
+| `Route::EVENTS` | Os 28 eventos de documentos, signatários e contratos entendidos pelo receptor. |
+| `Route::DEFAULT_EVENTS` | Os vinte eventos padrão; o registro envia o subconjunto disponível no ambiente selecionado. |
 | `Route::token()` | O token do endpoint armazenado, `''` antes de existir um. |
 | `Route::url()` | O endpoint completo deste site, `''` quando não há token. |
 | `Route::rotate_token()` | Um novo token, já armazenado. |
@@ -1123,6 +1219,25 @@ validação local, configuração e helpers de transporte.
 Os exemplos HTTP mostram `X-Api-Key` para conexões legadas e Sandbox. Produção com OAuth usa
 `Authorization: Bearer {ACCESS_TOKEN}` nos mesmos endpoints.
 
+### `contracts()` — SDK 2.8.0
+
+Use o cliente conectado de `Assinafy\WP\ClientFactory` para obter `$client->contracts()`.
+A página CLM nativa e a CLI usam esse mesmo recurso, direcionado à conta configurada.
+
+| Método | Resultado |
+|---|---|
+| `list(int $page = 1, int $perPage = 25, array $filters = [])` | Lista de contratos com `data` e `pagination`. |
+| `get(string $documentId)` | Contrato raiz ou vínculo de aditivo desembrulhado. |
+| `update(string $documentId, array $data)` | Termos ou aditivo salvos; campos omitidos permanecem intactos. |
+| `related(string $documentId)` | Contrato raiz e seus `amendments`, a partir de qualquer membro da família. |
+| `renew(string $documentId, array $data = [])` | Contrato renovado; informe `term` atual ou `end_date` posterior. |
+| `terminate(string $documentId, array $data = [])` | Contrato encerrado; `reason` opcional. |
+
+Os seis métodos retornam arrays. Inclua o último `updated_at` nas escritas para detectar conflitos.
+A [referência completa](docs/sdk-reference.md#resourcescontractresource) documenta payloads de
+requisição/resposta, campos avançados, paginação e exceções; o
+[fluxo CLM](#gestão-de-contratos-clm) cobre as telas nativas.
+
 ### `accounts()->get()`
 
 Usado pelo **Testar conexão** na tela de configurações e pelo `wp assinafy status`.
@@ -1164,8 +1279,8 @@ telefone. Requisição e resposta no
 [Passo 2](docs/document-flow.md#passo-2--resolver-cada-signatário-buscar-e-então-criar).
 
 Note que o `create()` não envia `government_id`, mesmo que a API o aceite — e é por isso que um
-signatário `DigitalCertificate` precisa de um id de signatário pré-existente cujo documento de
-identificação tenha sido definido separadamente.
+signatário `DigitalCertificate` precisa de um id de signatário pré-existente cujo CPF válido tenha
+sido definido separadamente.
 
 ### `assignments()->create( string $documentId, array $signers, string $method = 'virtual', array $options = [] )`
 
@@ -1356,7 +1471,7 @@ A resposta da inscrição não traz segredo de assinatura.
 
 O SDK envia os quatro campos do corpo HTTP. URL e e-mail são argumentos obrigatórios; o SDK fornece
 padrões para os eventos e para o estado ativo. Sua lista padrão de eventos contém quatro eventos,
-enquanto o plugin seleciona entre os doze de `Route::DEFAULT_EVENTS` ao registrar seu próprio endpoint.
+enquanto o plugin seleciona entre os vinte de `Route::DEFAULT_EVENTS` ao registrar seu próprio endpoint.
 
 ```http
 PUT /v1/accounts/{ACCOUNT_ID}/webhooks/subscriptions
@@ -1380,7 +1495,7 @@ Content-Type: application/json
   "updated_at":"2026-09-13T19:02:44Z"}}
 ```
 
-O SDK valida que a URL é HTTP ou HTTPS absoluta e que o e-mail está bem formado antes de enviar.
+O SDK exige URL HTTPS absoluta e e-mail bem formado antes de enviar.
 
 ### `webhooks()->deactivate()`
 

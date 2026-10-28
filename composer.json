@@ -5,7 +5,7 @@
     "license": "GPL-2.0-or-later",
     "require": {
         "php": "^8.2",
-        "assinafy/php-sdk": "^2.7.1"
+        "assinafy/php-sdk": "^2.8.0"
     },
     "replace": {
         "guzzlehttp/guzzle": "^7.0",

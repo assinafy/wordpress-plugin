@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.4.2
+Stable tag: 1.5.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,12 +53,22 @@ Assinafy offers four, and a signer uses one of them:
 
 * **Email** (the default) &mdash; the signer receives a one-time code by email. No credits.
 * **WhatsApp** &mdash; the code arrives over WhatsApp. Requires a phone number and a paid Assinafy plan.
-* **Digital certificate** &mdash; the signer signs with their own ICP-Brasil certificate. Requires a virtual assignment, the Digital Certificate feature on the Assinafy account, and the signer must be alone in their signing step. Collect and template certificate requests are rejected before they can be charged or invited.
+* **Digital certificate** &mdash; the signer signs with their own ICP-Brasil certificate. Requires a virtual assignment, the Digital Certificate feature on the Assinafy account, and the signer must be alone in their signing step. Collect certificate requests are rejected before they can be charged or invited. The SDK also supports templates without placed signer fields; templates with placed fields are rejected by the API. The signer requires a valid CPF.
 * **Biometric** &mdash; `IdDocumentFaceMatchBasic` uses government ID photos and a liveness check on Assinafy's hosted page with explicit signer consent. Requires the account feature and an existing signer with a valid CPF. Certification waits for account approval if identity review is required.
 
 The send screen and WP-CLI send command use email verification. All four methods are available to code that calls the `assinafy_send_document` action or shared send service. DigitalCertificate covers A1 and A3. Certificates and biometric verification allow either Email or WhatsApp notifications.
 
 Signing happens on Assinafy's own hosted pages, not inside WordPress. This plugin composes the request, stores the document and assignment identifiers, and fetches status and files back.
+
+= Contract tracking =
+
+Open Assinafy, Contracts to list workspace contracts or enter a document ID. The Manage contract link on a local document keeps its workspace binding. Contract controls require assinafy_manage; edits, renewals and termination require a plan with contract tracking.
+
+Save counterparty details, value/currency, start/end dates, automatic renewal, renewal months and notice days. Blank form fields clear their current values. Each existing contract write includes its revision; reload after a conflict. Renewal sends the current term so repeating a request cannot renew twice. Termination stops lifecycle alerts without changing the signed PDF.
+
+Link a new document as an amendment, renewal or termination of an existing contract. View its proposed value/date and related documents; a pending link can be removed. Assinafy applies changes after certification. Advanced metadata, external references and all six contract methods are available through the SDK and wp assinafy contract.
+
+OAuth uses documents:read and documents:write, already requested by the plugin. Contract state is read from Assinafy rather than copied into local WordPress records.
 
 == Installation ==
 
@@ -149,6 +159,13 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.5.0 =
+* Adds native contract tracking, lifecycle controls, amendment links and WP-CLI commands.
+* Includes Assinafy PHP SDK 2.8.0 and contract lifecycle webhooks.
+* Recovers OAuth webhook secrets and binds them to the endpoint and workspace.
+* Prevents duplicate status notifications and unauthorized PDF selection through WooCommerce REST/imports.
+* Keeps local credentials out of core and add-on archives.
+
 = 1.4.2 =
 * Requires virtual assignments for digital-certificate signers and rejects collect or template certificate requests before estimating cost or requesting signatures.
 * Includes Assinafy PHP SDK 2.7.1.
@@ -212,6 +229,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+Adds contract tracking with the existing OAuth document scopes. Register the webhook again to enable contract events and recover a missing signing secret.
 
 = 1.4.2 =
 Prevents digital-certificate requests that the signer cannot complete from being estimated, charged or invited.

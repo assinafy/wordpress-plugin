@@ -47,14 +47,15 @@ final class Cli {
 		WP_CLI::add_command( 'assinafy send', array( $this, 'send' ) );
 		WP_CLI::add_command( 'assinafy sync', array( $this, 'sync' ) );
 		WP_CLI::add_command( 'assinafy webhook', array( new WebhookCli( $this->clients ), 'webhook' ) );
+		WP_CLI::add_command( 'assinafy contract', array( new ContractCli( $this->clients ), 'contract' ) );
 	}
 
 	/**
 	 * Report how this site is connected to Assinafy.
 	 *
-	 * Reads the account, the account-wide webhook subscription and the rate-limit budget left
+	 * Reads the account, this site's webhook endpoint and the rate-limit budget left
 	 * over from the last API call this site made. Contacting the account costs one request;
-	 * reading the subscription costs a second.
+	 * reading the endpoints costs a second.
 	 *
 	 * ## OPTIONS
 	 *
@@ -162,13 +163,19 @@ final class Cli {
 	 */
 	private function subscription_rows( AssinafyClient $client ): array {
 		try {
-			$subscription = $client->webhooks()->get();
+			$subscription = null;
+			foreach ( $client->webhooks()->listEndpoints() as $endpoint ) {
+				if ( Route::is_ours( $endpoint ) ) {
+					$subscription = $endpoint;
+					break;
+				}
+			}
 		} catch ( \Throwable $e ) {
 			return array( $this->row( 'Webhook subscription', 'unreadable: ' . $e->getMessage() ) );
 		}
 
 		if ( null === $subscription ) {
-			return array( $this->row( 'Webhook subscription', 'none registered on this account' ) );
+			return array( $this->row( 'Webhook subscription', 'none registered for this site' ) );
 		}
 
 		$events = $subscription['events'] ?? array();

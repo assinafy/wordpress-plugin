@@ -21,6 +21,7 @@ use Assinafy\WP\Settings;
 use Assinafy\WP\Tests\Unit\Support\FakeHttp;
 use Assinafy\WP\Webhook\Handler;
 use Assinafy\WP\Webhook\Route;
+use Assinafy\WP\Webhook\SigningSecret;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -287,26 +288,154 @@ final class WebhookEndpointTest extends TestCase {
 		$result = Route::subscribe( $this->client(), 'ops@example.com' );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'assinafy_webhook_limit', $result->get_error_code() );
+		$this->assertSame( 'assinafy_webhook_request_failed', $result->get_error_code() );
+		$this->assertSame( 'Limite de endpoints de webhook atingido.', $result->get_error_message() );
 		$this->assertSame( '', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, '' ) );
 	}
 
-	/**
-	 * The secret routes are not available to OAuth applications, so an OAuth site stores the
-	 * endpoint id and leaves the secret to the operator.
-	 */
-	public function test_oauth_sites_skip_the_secret_fetch(): void {
-		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+	/** Updating an endpoint cannot exhaust the plan's endpoint slots. */
+	public function test_an_update_permission_failure_is_not_reported_as_a_full_plan(): void {
+		$this->queue_endpoints( array( $this->own_endpoint() ) );
+		FakeHttp::queue( 403, '{"status":403,"message":"Missing webhooks:write permission","data":null}' );
 
-		$this->queue_endpoints( array() );
-		$this->queue_envelope( 200, $this->own_endpoint( array( 'id' => 'ep_new' ) ) );
+		$result = Route::subscribe( $this->client(), 'ops@example.com' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_webhook_request_failed', $result->get_error_code() );
+		$this->assertSame( 'Missing webhooks:write permission', $result->get_error_message() );
+	}
+
+	/** A readable saved secret survives registration without rotation or a forbidden read. */
+	public function test_oauth_sites_keep_the_saved_secret(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_own' );
+		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, SigningSecret::encrypt( self::whsec(), 'ep_own' ), false );
+
+		$this->queue_endpoints( array( $this->own_endpoint() ) );
+		$this->queue_envelope( 200, $this->own_endpoint() );
 
 		$result = Route::subscribe( $this->client( true ), 'ops@example.com' );
 
 		$this->assertIsArray( $result );
 		$this->assertCount( 3, FakeHttp::$requests, 'An OAuth site asked for the endpoint secret.' );
-		$this->assertSame( 'ep_new', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
-		$this->assertSame( '', get_option( Settings::OPTION_WEBHOOK_SECRET_ENC, '' ) );
+		$this->assertSame( 'ep_own', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
+		$this->assertSame( self::whsec(), Route::secret() );
+	}
+
+	/** Switching environments must not reuse a different endpoint's saved signing secret. */
+	public function test_oauth_registration_rotates_a_different_endpoints_secret(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_other_environment' );
+		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, SigningSecret::encrypt( self::whsec(), 'ep_other_environment' ), false );
+		$this->queue_endpoints( array( $this->own_endpoint() ) );
+		$this->queue_envelope( 200, $this->own_endpoint() );
+		$this->queue_secret();
+
+		$this->assertIsArray( Route::subscribe( $this->client( true ), 'ops@example.com' ) );
+		$this->assertCount( 4, FakeHttp::$requests );
+		$this->assertStringEndsWith( '/secret/rotate', FakeHttp::last()['url'] );
+		$this->assertSame( 'ep_own', get_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID ) );
+	}
+
+	/** A cloned endpoint ID cannot make a different environment's secret authenticate here. */
+	public function test_a_bound_secret_is_not_accepted_after_switching_environment(): void {
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_own' );
+		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, SigningSecret::encrypt( self::whsec(), 'ep_own' ), false );
+		update_option( Settings::OPTION_ENVIRONMENT, 'sandbox' );
+		$body = '{"id":30022}';
+
+		$this->assertSame( '', Route::secret() );
+		$this->assert_bad_signature( $this->route()->check_token( new WP_REST_Request( array( 'token' => self::TOKEN ), $body, $this->signed_headers( $body ) ) ) );
+	}
+
+	/** A copied endpoint ID is insufficient to reuse a different workspace's secret. */
+	public function test_a_bound_secret_is_not_accepted_after_switching_account(): void {
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_own' );
+		update_option( Credentials::OPTION_ACCOUNT_ID, self::ACCOUNT_ID );
+		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, SigningSecret::encrypt( self::whsec(), 'ep_own' ), false );
+		update_option( Credentials::OPTION_ACCOUNT_ID, 'another-workspace' );
+		$body = '{"id":30022}';
+
+		$this->assertSame( '', Route::secret() );
+		$this->assert_bad_signature( $this->route()->check_token( new WP_REST_Request( array( 'token' => self::TOKEN ), $body, $this->signed_headers( $body ) ) ) );
+	}
+
+	/** OAuth can recover a lost secret by rotating it, without reading the secret route. */
+	public function test_oauth_registration_rotates_a_missing_secret(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		$this->queue_endpoints( array( $this->own_endpoint() ) );
+		$this->queue_envelope( 200, $this->own_endpoint() );
+		$this->queue_secret();
+
+		$result = Route::subscribe( $this->client( true ), 'ops@example.com' );
+
+		$this->assertIsArray( $result );
+		$this->assertCount( 4, FakeHttp::$requests );
+		$this->assertStringEndsWith( '/webhooks/endpoints/ep_own/secret/rotate', FakeHttp::last()['url'] );
+		$this->assertSame( 'POST', FakeHttp::last()['args']['method'] );
+		$this->assertSame( 'Bearer test-access-token', FakeHttp::last_headers()['authorization'] );
+		$this->assertSame( self::whsec(), Route::secret() );
+		$this->assertArrayNotHasKey( 'secret', $result );
+	}
+
+	/** A second recovery cannot retire the key while the first response is being saved. */
+	public function test_concurrent_secret_recovery_stops_before_a_second_rotation(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		$client = $this->client( true );
+		$this->queue_secret();
+		$this->queue_envelope( 200, array( 'secret' => 'whsec_b2Jzb2xldGU=' ) );
+		$second                    = null;
+		FakeHttp::$before_response = static function () use ( $client, &$second ): void {
+			FakeHttp::$before_response = null;
+			$second                    = SigningSecret::store( $client, 'ep_own' );
+		};
+
+		$this->assertNull( SigningSecret::store( $client, 'ep_own' ) );
+		$this->assertInstanceOf( WP_Error::class, $second );
+		$this->assertSame( 'assinafy_webhook_secret_busy', $second->get_error_code() );
+		$this->assertTrue( $second->get_error_data()['retryable'] );
+		$this->assertCount( 1, FakeHttp::$requests );
+		$this->assertSame( self::whsec(), Route::secret() );
+	}
+
+	/** Failed rotation must leave the next explicit registration free to recover. */
+	public function test_failed_secret_recovery_releases_the_lock(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		$client = $this->client( true );
+		$this->queue_envelope( 500, null );
+
+		$this->assertInstanceOf( WP_Error::class, SigningSecret::store( $client, 'ep_own' ) );
+		$this->queue_secret();
+		$this->assertNull( SigningSecret::store( $client, 'ep_own' ) );
+		$this->assertCount( 2, FakeHttp::$requests );
+		$this->assertSame( self::whsec(), Route::secret() );
+	}
+
+	/** Rotated site encryption keys must be recoverable without deleting the remote endpoint. */
+	public function test_oauth_registration_rotates_an_unreadable_secret(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, bin2hex( chr( 1 ) . random_bytes( 64 ) ), false );
+		$this->queue_endpoints( array( $this->own_endpoint() ) );
+		$this->queue_envelope( 200, $this->own_endpoint() );
+		$this->queue_secret();
+
+		$this->assertIsArray( Route::subscribe( $this->client( true ), 'ops@example.com' ) );
+		$this->assertStringEndsWith( '/secret/rotate', FakeHttp::last()['url'] );
+		$this->assertSame( self::whsec(), Route::secret() );
+	}
+
+	/** A failed recovery cannot silently downgrade a registered endpoint to token-only auth. */
+	public function test_oauth_rotation_failure_refuses_unsigned_deliveries(): void {
+		update_option( Credentials::OPTION_AUTH_MODE, 'oauth' );
+		$this->queue_endpoints( array( $this->own_endpoint() ) );
+		$this->queue_envelope( 200, $this->own_endpoint() );
+		$this->queue_envelope( 500, null );
+
+		$result = Route::subscribe( $this->client( true ), 'ops@example.com' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_webhook_secret_failed', $result->get_error_code() );
+		$this->assert_bad_signature( $this->route()->check_token( new WP_REST_Request( array( 'token' => self::TOKEN ), '{"id":30022}' ) ) );
 	}
 
 	/** OAuth creation returns the only API-readable copy of the signing secret. */
@@ -368,7 +497,8 @@ final class WebhookEndpointTest extends TestCase {
 		$encrypted = $settings->sanitize_webhook_secret( '  ' . self::whsec() . ' ' );
 
 		$this->assertNotSame( self::whsec(), $encrypted );
-		$this->assertSame( self::whsec(), $this->credentials->decrypt( $encrypted ) );
+		$stored = json_decode( (string) $this->credentials->decrypt( $encrypted ), true );
+		$this->assertSame( self::whsec(), $stored['secret'] );
 		$this->assertSame( $encrypted, $settings->sanitize_webhook_secret( $encrypted ), 'Sanitisation is not idempotent.' );
 
 		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, $encrypted, false );
@@ -449,7 +579,7 @@ final class WebhookEndpointTest extends TestCase {
 
 	/** A deployment with the original catalog must still accept endpoint registration. */
 	public function test_registration_only_sends_deployed_events(): void {
-		$events = array_values( array_filter( Route::EVENTS, static fn( string $event ): bool => ! str_starts_with( $event, 'signer_identity_' ) ) );
+		$events = array_values( array_filter( Route::EVENTS, static fn( string $event ): bool => ! str_starts_with( $event, 'signer_identity_' ) && ! str_starts_with( $event, 'document_contract_' ) ) );
 		$this->queue_endpoints( array(), $events );
 		$this->queue_envelope( 200, $this->own_endpoint( array( 'secret' => self::whsec() ) ) );
 
@@ -466,6 +596,26 @@ final class WebhookEndpointTest extends TestCase {
 		$result = Route::subscribe( $this->client(), 'ops@example.com' );
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'assinafy_webhook_secret_failed', $result->get_error_code() );
+		$this->assert_bad_signature( $this->route()->check_token( new WP_REST_Request( array( 'token' => self::TOKEN ), '{"id":30022}' ) ) );
+	}
+
+	/** Contract lifecycle events are retained when the target API offers them. */
+	public function test_registration_includes_contract_events(): void {
+		$events = array(
+			'document_contract_updated',
+			'document_contract_renewal_notice',
+			'document_contract_expiring',
+			'document_contract_expired',
+			'document_contract_renewed',
+			'document_contract_terminated',
+			'document_contract_amended',
+			'document_contract_amendment_updated',
+		);
+		$this->queue_endpoints( array(), $events );
+		$this->queue_envelope( 200, $this->own_endpoint( array( 'secret' => self::whsec() ) ) );
+
+		$this->assertIsArray( Route::subscribe( $this->client(), 'ops@example.com' ) );
+		$this->assertSame( $events, $this->request_body( 2 )['events'] );
 	}
 
 	/** An empty deployed catalog cannot become a default subscription sent by the SDK. */

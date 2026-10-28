@@ -13,6 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Assinafy\WP\Documents\DocumentIndex;
 use Assinafy\WP\Documents\DocumentRecord;
+use Assinafy\WP\Credentials;
 use Assinafy\WP\Settings;
 use Assinafy\WP\Webhook\Handler;
 use Assinafy\WP\Webhook\Route;
@@ -127,6 +128,43 @@ final class WebhookRouteTest extends AssinafyTestCase {
 		);
 		$this->assertCount( 1, $this->requests );
 		$this->assertStringEndsWith( '/v1/documents/' . self::DOCUMENT_ID, $this->requests[0]['url'] );
+	}
+
+	/** Registered signed endpoints cannot fall back to URL-token authentication after key loss. */
+	public function test_a_registered_endpoint_without_its_secret_refuses_delivery(): void {
+		update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, 'ep_own', false );
+		$this->create_document( self::DOCUMENT_ID, 'pending_signature' );
+
+		$response = $this->deliver( self::TOKEN, $this->envelope() );
+
+		$this->assertSame( 401, $response->get_status() );
+		$this->assertSame( 'assinafy_webhook_bad_signature', $this->error_code( $response ) );
+		$this->assertSame( array(), $this->requests );
+	}
+
+	/** A signed CLM delivery uses WordPress's real header normalization and authoritative state. */
+	public function test_a_signed_contract_delivery_refetches_the_document(): void {
+		$key = 'synthetic-contract-webhook-key';
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Standard Webhooks encodes its secret.
+		update_option( Settings::OPTION_WEBHOOK_SECRET_ENC, ( new Credentials() )->encrypt( 'whsec_' . base64_encode( $key ) ), false );
+		$post_id = $this->create_document( self::DOCUMENT_ID, 'pending_signature' );
+		$this->fake_document( 'certificated' );
+		$body      = (string) wp_json_encode( $this->envelope( array( 'event' => 'document_contract_updated' ) ) );
+		$timestamp = (string) time();
+		$request   = new WP_REST_Request( 'POST', '/' . Route::REST_NAMESPACE . '/webhook/' . self::TOKEN );
+		$request->set_header( 'content-type', 'application/json' );
+		$request->set_header( 'webhook-id', 'synthetic-contract-delivery' );
+		$request->set_header( 'webhook-timestamp', $timestamp );
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Standard Webhooks encodes its signature.
+		$request->set_header( 'webhook-signature', 'v1,' . base64_encode( hash_hmac( 'sha256', 'synthetic-contract-delivery.' . $timestamp . '.' . $body, $key, true ) ) );
+		$request->set_body( $body );
+
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'synced', $response->get_data()['reason'] );
+		$this->assertCount( 1, $this->requests );
+		$this->assertSame( 'certificated', ( new DocumentRecord() )->status( $post_id ) );
 	}
 
 	/**
@@ -573,7 +611,7 @@ final class WebhookRouteTest extends AssinafyTestCase {
 		$this->create_document( self::DOCUMENT_ID, 'pending_signature' );
 		$this->fake_document( 'certificated' );
 
-		$this->assertCount( 20, Route::EVENTS );
+		$this->assertCount( 28, Route::EVENTS );
 
 		foreach ( Route::EVENTS as $index => $event ) {
 			$response = $this->deliver(
@@ -589,7 +627,7 @@ final class WebhookRouteTest extends AssinafyTestCase {
 			$this->assertSame( 'synced', $response->get_data()['reason'], $event . ' was not accepted.' );
 		}
 
-		$this->assertCount( 20, $this->requests );
+		$this->assertCount( 28, $this->requests );
 	}
 
 	/**

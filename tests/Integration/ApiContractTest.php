@@ -50,7 +50,7 @@ final class ApiContractTest extends AssinafyTestCase {
 	private const SIGNER_ID = '19e6b92e7895332ed9708535d8c';
 
 	/**
-	 * The eleven status codes, verbatim and in the order `GET /documents/statuses` returns.
+	 * The status codes in the order `GET /documents/statuses` returns.
 	 *
 	 * @var array<int, array{code: string, deletable: bool}>
 	 */
@@ -89,6 +89,10 @@ final class ApiContractTest extends AssinafyTestCase {
 		),
 		array(
 			'code'      => 'pending_signature',
+			'deletable' => true,
+		),
+		array(
+			'code'      => 'pending_identity_review',
 			'deletable' => true,
 		),
 		array(
@@ -184,7 +188,7 @@ final class ApiContractTest extends AssinafyTestCase {
 	/**
 	 * `GET /documents/statuses` — the deletable-status vocabulary.
 	 *
-	 * Account-independent and unpaginated: eleven rows, in the order the API returns them.
+	 * Account-independent and unpaginated, in the order the API returns them.
 	 */
 	public function test_documents_statuses(): void {
 		$this->fake_response(
@@ -200,7 +204,7 @@ final class ApiContractTest extends AssinafyTestCase {
 		$statuses = $this->client()->documents()->statuses();
 
 		$this->assert_request( 'GET', 'documents/statuses' );
-		$this->assertCount( 11, $statuses );
+		$this->assertCount( 12, $statuses );
 
 		$deletable = array();
 		foreach ( $statuses as $row ) {
@@ -208,6 +212,7 @@ final class ApiContractTest extends AssinafyTestCase {
 		}
 
 		$this->assertTrue( $deletable['pending_signature'] );
+		$this->assertTrue( $deletable['pending_identity_review'] );
 		$this->assertFalse( $deletable['certificated'], 'A certificated document can never be deleted.' );
 		$this->assertFalse( $deletable['uploaded'] );
 	}

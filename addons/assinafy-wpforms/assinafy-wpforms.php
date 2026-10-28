@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Assinafy for WPForms
  * Description: Request an Assinafy signature after an accepted WPForms submission.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Requires at least: 6.8
  * Requires PHP: 8.2
  * Requires Plugins: assinafy

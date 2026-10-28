@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use Assinafy\WP\Admin\DocumentMetaBox;
 use Assinafy\WP\ClientFactory;
 use Assinafy\WP\Credentials;
+use Assinafy\WP\Documents\DocumentContext;
 use Assinafy\WP\Documents\DocumentRecord;
 use Assinafy\WP\Documents\StatusSync;
 use Assinafy\WP\Log;
@@ -91,11 +92,14 @@ final class DocumentMetaBoxTest extends AssinafyTestCase {
 			$this->assertNotSame( '', $control->getAttribute( 'form' ) );
 			$this->assertCount( 1, $xpath->query( '//form[@id="' . $control->getAttribute( 'form' ) . '"]' ) );
 		}
+		if ( 'expired' === $status ) {
+			$this->assertStringNotContainsString( 'name="assinafy_expires_on"', $markup );
+		}
 	}
 
 	/**
 	 * Before assignment: rename/cancel. After assignment: deadline, two resends, cancel. Once
-	 * expired: deadline and cancel, with both resends gone.
+	 * expired: only cancel, because a closed document cannot change its deadline.
 	 *
 	 * @return array<string, array{bool, string, int}>
 	 */
@@ -103,7 +107,7 @@ final class DocumentMetaBoxTest extends AssinafyTestCase {
 		return array(
 			'without assignment' => array( false, 'metadata_ready', 2 ),
 			'with assignment'    => array( true, 'pending_signature', 4 ),
-			'expired'            => array( true, 'expired', 2 ),
+			'expired'            => array( true, 'expired', 1 ),
 		);
 	}
 
@@ -124,5 +128,30 @@ final class DocumentMetaBoxTest extends AssinafyTestCase {
 		$this->assertStringContainsString( 'artifact=original', $markup );
 		$this->assertStringNotContainsString( 'thumbnail', $markup );
 		$this->assertStringNotContainsString( 'preview', $markup );
+	}
+
+	/** @dataProvider contract_access */
+	public function test_contract_link_requires_management_and_the_documents_workspace( string $role, bool $matching, bool $allowed ): void {
+		$this->configure_plugin();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => $role ) ) );
+		$post_id = $this->create_document( '104618d0d63884bc446c534e5ff5' );
+		DocumentContext::bind( $post_id, $matching ? self::ACCOUNT_ID : 'another-account', self::API_HOST . 'v1' );
+		$clients = new ClientFactory( new Credentials(), new Log() );
+		$records = new DocumentRecord();
+		$panel   = new DocumentMetaBox( $clients, $records, new StatusSync( $clients, $records ) );
+		ob_start();
+		$panel->render( get_post( $post_id ) );
+		$markup = (string) ob_get_clean();
+
+		$this->assertSame( $allowed, str_contains( $markup, 'page=assinafy-contracts' ) );
+	}
+
+	/** @return array<string, array{string, bool, bool}> */
+	public static function contract_access(): array {
+		return array(
+			'manager'         => array( 'administrator', true, true ),
+			'other workspace' => array( 'administrator', false, false ),
+			'viewer'          => array( 'editor', true, false ),
+		);
 	}
 }

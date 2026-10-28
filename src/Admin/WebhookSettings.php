@@ -88,8 +88,8 @@ final class WebhookSettings {
 	 * API-key sites have no field because registration reads the endpoint's secret from the
 	 * API, and a field in the saved group without a matching input would erase the stored
 	 * secret on every settings save — the option is registered as internal for them. OAuth
-	 * applications cannot re-read the secret routes, so this field restores a saved `whsec_`
-	 * value when needed. The field always renders empty:
+	 * applications cannot re-read a secret; registration rotates a lost one. This field also
+	 * restores a saved `whsec_` value when needed. The field always renders empty:
 	 * ciphertext never reaches the browser, and a blank submission keeps the stored value.
 	 *
 	 * @param bool $has_secret Whether a secret is currently stored.
@@ -111,7 +111,7 @@ final class WebhookSettings {
 					<input type="text" class="regular-text code" id="assinafy-webhook-secret" autocomplete="off" spellcheck="false"
 						name="<?php echo esc_attr( Settings::OPTION_WEBHOOK_SECRET_ENC ); ?>" value=""
 						placeholder="<?php echo esc_attr( $has_secret ? __( 'Saved — leave blank to keep it', 'assinafy' ) : __( 'Paste the whsec_ value', 'assinafy' ) ); ?>" />
-					<p class="description"><?php esc_html_e( 'Registration stores the signing secret returned when the endpoint is created. OAuth cannot read it again through the API. To restore a saved whsec_ value, paste it here; otherwise delete the endpoint in Assinafy, then register this site again to create a new one. Leaving the field blank keeps the stored secret. Unsigned or stale deliveries are refused when a secret is configured.', 'assinafy' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Registration stores the endpoint signing secret. OAuth cannot read it again, so registering this site again rotates a missing or unreadable secret. You can also paste a saved whsec_ value here. Leaving the field blank keeps the stored secret. Registered endpoints refuse unsigned or stale deliveries.', 'assinafy' ); ?></p>
 				<?php endif; ?>
 				<?php if ( ! $oauth ) : ?>
 					<p class="description">

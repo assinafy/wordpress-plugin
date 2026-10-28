@@ -152,7 +152,7 @@ final class WooCommerceProductTab {
 	}
 
 	/**
-	 * Put the three keys back when whoever is writing them may not send.
+	 * Restore the three keys when the writer cannot send or read the selected PDF.
 	 *
 	 * WooCommerce's own products controller copies every `meta_data` entry onto the product
 	 * with `update_meta_data()` and no protected-meta check, and its CSV importer does the
@@ -175,7 +175,13 @@ final class WooCommerceProductTab {
 	 * @return mixed The product, with any change to the three keys undone.
 	 */
 	public function restore_product_meta( mixed $product ): mixed {
-		if ( ! $product instanceof WC_Product || current_user_can( Capabilities::SEND ) ) {
+		if ( ! $product instanceof WC_Product ) {
+			return $product;
+		}
+
+		$attachment = (int) $product->get_meta( WooCommerce::PRODUCT_ATTACHMENT );
+		if ( current_user_can( Capabilities::SEND )
+			&& ( 0 === $attachment || ( current_user_can( 'read_post', $attachment ) && 'application/pdf' === get_post_mime_type( $attachment ) ) ) ) {
 			return $product;
 		}
 

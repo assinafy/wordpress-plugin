@@ -12,7 +12,7 @@ namespace Assinafy\WP\Webhook;
 defined( 'ABSPATH' ) || exit;
 
 use Assinafy\SDK\AssinafyClient;
-use Assinafy\SDK\Exceptions\ApiException;
+use Assinafy\SDK\Resources\WebhookResource;
 use Assinafy\SDK\Support\WebhookEventParser;
 use Assinafy\WP\Settings;
 use WP_Error;
@@ -28,8 +28,8 @@ use WP_REST_Server;
  * compares it with `hash_equals()` and is never `__return_true`. When a `whsec_` signing
  * secret is configured — stored by registration or restored from a saved copy — the
  * delivery's Standard Webhooks signature is verified on top,
- * and an unsigned, badly signed or stale delivery fails with a 401. With no secret configured
- * the token alone authenticates, exactly as before, so the body is treated as a hint rather
+ * and an unsigned, badly signed or stale delivery fails with a 401. Before any signed endpoint
+ * is registered, the token alone authenticates, so the body is treated as a hint rather
  * than as truth either way (see {@see Handler}).
  *
  * An account has one endpoint, or up to three on paid plans, and every active endpoint
@@ -55,9 +55,9 @@ final class Route {
 	private const TOKEN_BYTES = 16;
 
 	/**
-	 * The documented document and signer events the receiver understands.
+	 * The documented document, signer and contract events the receiver understands.
 	 *
-	 * Twenty document and signer events. `template_created`, `template_processed` and
+	 * Document, signer and contract events. `template_created`, `template_processed` and
 	 * `template_processing_failed` exist as SDK constants and in the published event catalog
 	 * but are not subscribable, so they are absent here. Registration also filters against
 	 * the target environment catalog returned by `GET /webhooks/event-types`.
@@ -85,6 +85,14 @@ final class Route {
 		'signer_rejected_document',
 		'user_rejected_document',
 		'document_processing_failed',
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_UPDATED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_RENEWAL_NOTICE,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_EXPIRING,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_EXPIRED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_RENEWED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_TERMINATED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_AMENDED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_AMENDMENT_UPDATED,
 	);
 
 	/**
@@ -108,6 +116,14 @@ final class Route {
 		'signer_rejected_document',
 		'user_rejected_document',
 		'document_processing_failed',
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_UPDATED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_RENEWAL_NOTICE,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_EXPIRING,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_EXPIRED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_RENEWED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_TERMINATED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_AMENDED,
+		WebhookResource::EVENT_DOCUMENT_CONTRACT_AMENDMENT_UPDATED,
 	);
 
 	/**
@@ -202,9 +218,8 @@ final class Route {
 	/**
 	 * Verify the delivery's Standard Webhooks signature when a secret is configured.
 	 *
-	 * With no secret stored the token alone authenticates. A stored secret that cannot be
-	 * parsed makes the parser raise, which fails the delivery closed rather than widening
-	 * the gate.
+	 * Before registration the token alone authenticates. Once registered, a missing, unreadable
+	 * or malformed secret fails the delivery closed.
 	 *
 	 * @param WP_REST_Request<array<string, mixed>> $request Incoming request.
 	 */
@@ -212,7 +227,8 @@ final class Route {
 		$secret = self::secret();
 
 		if ( '' === $secret ) {
-			return '' === (string) Settings::get( Settings::OPTION_WEBHOOK_SECRET_ENC );
+			return '' === (string) Settings::get( Settings::OPTION_WEBHOOK_SECRET_ENC )
+				&& '' === (string) Settings::get( Settings::OPTION_WEBHOOK_ENDPOINT_ID );
 		}
 
 		try {
@@ -299,12 +315,11 @@ final class Route {
 	 *
 	 * The account's endpoints are listed first and the one whose URL names this site —
 	 * {@see self::is_ours()} matches on the endpoint prefix — is updated in place; when none
-	 * matches, a new endpoint is created. Foreign endpoints coexist and are never touched,
-	 * which is why a full plan fails with `assinafy_webhook_limit` rather than an offer to
-	 * take one over.
+	 * matches, a new endpoint is created. Foreign endpoints coexist and are never touched;
+	 * registration reports the API's error when the account has reached its endpoint limit.
 	 *
 	 * On success the endpoint id is stored and the creation secret encrypted. API-key sites
-	 * can re-read the secret; existing OAuth endpoints keep their saved secret.
+	 * can re-read the secret; OAuth keeps a saved secret bound to this connection or rotates it.
 	 *
 	 * @param AssinafyClient     $client Configured API client.
 	 * @param string             $email  Address Assinafy alerts when delivery fails.
@@ -376,7 +391,7 @@ final class Route {
 	 * Update the matching endpoint, or create this site's own when none matches.
 	 *
 	 * On success the endpoint id and creation secret are stored. API-key sites can also
-	 * re-read the secret; existing OAuth endpoints keep their saved secret.
+	 * re-read the secret; OAuth keeps a saved secret bound to this connection or rotates it.
 	 *
 	 * @param AssinafyClient            $client   Configured API client.
 	 * @param string                    $email    Address Assinafy alerts when delivery fails.
@@ -385,7 +400,7 @@ final class Route {
 	 * @return array<string, mixed>|WP_Error The stored endpoint, or the failure.
 	 */
 	private static function write_endpoint( AssinafyClient $client, string $email, array $events, ?array $existing ): array|WP_Error {
-		$id = null !== $existing && is_string( $existing['id'] ?? null ) ? $existing['id'] : '';
+		$id = is_string( $existing['id'] ?? null ) ? $existing['id'] : '';
 
 		// A short label telling this site's endpoint apart from the account's others.
 		$host = (string) wp_parse_url( self::url(), PHP_URL_HOST );
@@ -404,13 +419,12 @@ final class Route {
 				)
 				: $client->webhooks()->createEndpoint( self::url(), $email, $events, '' !== $host ? $host : 'WordPress', true, true );
 		} catch ( \Throwable $e ) {
-			return self::write_error( $e );
+			return self::error( $e );
 		}
 
 		$id = is_string( $endpoint['id'] ?? null ) ? $endpoint['id'] : '';
 
 		if ( '' !== $id ) {
-			update_option( Settings::OPTION_WEBHOOK_ENDPOINT_ID, $id, false );
 			$error = SigningSecret::store( $client, $id, $endpoint );
 			if ( null !== $error ) {
 				return $error;
@@ -419,27 +433,6 @@ final class Route {
 		unset( $endpoint['secret'] );
 
 		return $endpoint;
-	}
-
-	/**
-	 * Turn a failed endpoint write into a `WP_Error`.
-	 *
-	 * A 403 from the create route is the plan's endpoint limit, reported as such: foreign
-	 * endpoints coexist with this site's, so there is nothing to take over — the operator
-	 * removes one in the Assinafy dashboard first.
-	 *
-	 * @param \Throwable $e The failure.
-	 */
-	private static function write_error( \Throwable $e ): WP_Error {
-		if ( $e instanceof ApiException && 403 === $e->getStatusCode() ) {
-			return new WP_Error(
-				'assinafy_webhook_limit',
-				__( 'This Assinafy account already has the maximum number of webhook endpoints — paid plans allow up to three. Remove one in the Assinafy dashboard before registering this site.', 'assinafy' ),
-				array( 'status' => 403 )
-			);
-		}
-
-		return self::error( $e );
 	}
 
 	/**

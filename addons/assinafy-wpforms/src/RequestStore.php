@@ -101,7 +101,12 @@ final class RequestStore {
 		update_post_meta( $post_id, self::META_FORM, $form_id );
 		update_post_meta( $post_id, self::META_SUBMISSION, $submission );
 		update_post_meta( $post_id, self::META_REQUEST, wp_slash( $request ) );
-		$this->records->set_signers( $post_id, [ self::pending_signer( $signer ) ] );
+		try {
+			$this->records->set_signers( $post_id, [ self::pending_signer( $signer ) ] );
+		} catch ( \RuntimeException ) {
+			wp_delete_post( $post_id, true );
+			return new WP_Error( 'assinafy_wpforms_storage', __( 'The signature request could not be saved completely. Nothing was sent.', 'assinafy-wpforms' ) );
+		}
 		if ( ! $this->records->set_source(
 			$post_id,
 			[

@@ -71,6 +71,7 @@ final class CliTest extends AssinafyTestCase {
 	 */
 	public function set_up(): void {
 		parent::set_up();
+		add_filter( 'pre_option_home', static fn(): string => 'https://example.test' );
 
 		if ( ! class_exists( \WP_CLI::class, false ) ) {
 			require_once dirname( __DIR__ ) . '/stubs/wp-cli.php';
@@ -96,13 +97,13 @@ final class CliTest extends AssinafyTestCase {
 
 	/**
 	 * WP-CLI turns every public method of a registered object into a subcommand, so each one
-	 * is registered against its own method and the list is exactly four.
+	 * is registered against its own method.
 	 */
 	public function test_every_subcommand_is_registered(): void {
 		$this->cli->register();
 
 		$this->assertSame(
-			array( 'assinafy status', 'assinafy send', 'assinafy sync', 'assinafy webhook' ),
+			array( 'assinafy status', 'assinafy send', 'assinafy sync', 'assinafy webhook', 'assinafy contract' ),
 			array_keys( WP_CLI::$commands )
 		);
 
@@ -112,11 +113,11 @@ final class CliTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * The report reads the account and the subscription, and names the endpoint this site
+	 * The report reads the account and this site's endpoint, and names the URL this site
 	 * answers on.
 	 */
 	public function test_status_reports_how_the_site_is_connected(): void {
-		$this->fake_subscription( Route::url() );
+		$this->fake_endpoints( array( $this->own_endpoint() ) );
 		$this->fake_account();
 
 		$rows = $this->run_status();
@@ -129,6 +130,28 @@ final class CliTest extends AssinafyTestCase {
 		$this->assertSame( 'yes', $rows['Webhook delivering'] );
 		$this->assertStringContainsString( 'document_ready', $rows['Webhook events'] );
 		$this->assertArrayHasKey( 'Rate budget', $rows );
+	}
+
+	/** The oldest endpoint can belong to another integration on the same account. */
+	public function test_status_reports_this_sites_endpoint_when_a_foreign_one_is_older(): void {
+		$this->fake_endpoints( array( $this->foreign_endpoint(), $this->own_endpoint( array( 'is_active' => false ) ) ) );
+		$this->fake_account();
+
+		$rows = $this->run_status();
+
+		$this->assertSame( Route::url(), $rows['Webhook subscription'] );
+		$this->assertSame( 'no', $rows['Webhook delivering'] );
+	}
+
+	/** A foreign endpoint does not mean this site receives deliveries. */
+	public function test_status_reports_when_only_foreign_endpoints_exist(): void {
+		$this->fake_endpoints( array( $this->foreign_endpoint() ) );
+		$this->fake_account();
+
+		$rows = $this->run_status();
+
+		$this->assertSame( 'none registered for this site', $rows['Webhook subscription'] );
+		$this->assertArrayNotHasKey( 'Webhook delivering', $rows );
 	}
 
 	/**
@@ -151,7 +174,7 @@ final class CliTest extends AssinafyTestCase {
 	 * still worth printing.
 	 */
 	public function test_status_reports_an_unreachable_account(): void {
-		$this->fake_subscription( Route::url() );
+		$this->fake_endpoints( array( $this->own_endpoint() ) );
 
 		$rows = $this->run_status();
 
@@ -159,30 +182,22 @@ final class CliTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * An account that has never configured a subscription answers `null`, not an error.
+	 * An account without endpoints reports that this site is not registered.
 	 */
 	public function test_status_reports_an_account_with_no_subscription(): void {
-		$this->fake_response(
-			'webhooks/subscriptions',
-			200,
-			array(
-				'status'  => 200,
-				'message' => '',
-				'data'    => array(),
-			)
-		);
+		$this->fake_endpoints( array() );
 		$this->fake_account();
 
 		$rows = $this->run_status();
 
-		$this->assertSame( 'none registered on this account', $rows['Webhook subscription'] );
+		$this->assertSame( 'none registered for this site', $rows['Webhook subscription'] );
 	}
 
 	/**
 	 * `--format` reaches the renderer, which is what makes the report scriptable.
 	 */
 	public function test_status_renders_in_the_requested_format(): void {
-		$this->fake_subscription( Route::url() );
+		$this->fake_endpoints( array( $this->own_endpoint() ) );
 		$this->fake_account();
 
 		$this->run_command( 'status', array(), array( 'format' => 'json' ) );
@@ -679,7 +694,7 @@ final class CliTest extends AssinafyTestCase {
 		);
 
 		$this->assertCommandStops(
-			'This Assinafy account already has the maximum number of webhook endpoints — paid plans allow up to three. Remove one in the Assinafy dashboard before registering this site.',
+			'Limite de endpoints de webhook atingido.',
 			'webhook',
 			array( 'register' )
 		);
@@ -828,29 +843,6 @@ final class CliTest extends AssinafyTestCase {
 					'resource' => 'account',
 					'id'       => self::ACCOUNT_ID,
 					'name'     => 'Acme Inc.',
-				),
-			)
-		);
-	}
-
-	/**
-	 * Queue `GET /accounts/{accountId}/webhooks/subscriptions`.
-	 *
-	 * @param string $url Endpoint the account currently delivers to.
-	 */
-	private function fake_subscription( string $url ): void {
-		$this->fake_response(
-			'webhooks/subscriptions',
-			200,
-			array(
-				'status'  => 200,
-				'message' => '',
-				'data'    => array(
-					'url'        => $url,
-					'email'      => 'ops@example.com',
-					'events'     => array( 'document_ready', 'signer_signed_document' ),
-					'is_active'  => true,
-					'updated_at' => '2026-08-27T17:55:12Z',
 				),
 			)
 		);

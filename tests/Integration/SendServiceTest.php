@@ -592,11 +592,11 @@ final class SendServiceTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * Identity methods permit either notification channel; preserve both on the wire.
+	 * Every supported verification/notification pairing reaches estimation and creation.
 	 *
-	 * @dataProvider identity_channels
+	 * @dataProvider supported_channels
 	 */
-	public function test_identity_signers_keep_their_notifications( string $method, string $channel ): void {
+	public function test_supported_signers_keep_their_notifications( string $method, string $channel ): void {
 		$this->fake_successful_send();
 		$result = $this->service->send(
 			$this->args(
@@ -623,8 +623,10 @@ final class SendServiceTest extends AssinafyTestCase {
 	}
 
 	/** @return array<string, array{string, string}> */
-	public static function identity_channels(): array {
+	public static function supported_channels(): array {
 		return array(
+			'email'                => array( 'Email', 'Email' ),
+			'whatsapp'             => array( 'Whatsapp', 'Whatsapp' ),
 			'certificate email'    => array( 'DigitalCertificate', 'Email' ),
 			'certificate whatsapp' => array( 'DigitalCertificate', 'Whatsapp' ),
 			'biometric email'      => array( 'IdDocumentFaceMatchBasic', 'Email' ),

@@ -13,7 +13,7 @@ The HTTP examples show the legacy/Sandbox API key; a Production OAuth connection
 Beyond the Email flow below, hooks and the shared service accept `Whatsapp`,
 `DigitalCertificate` (A1/A3) and `IdDocumentFaceMatchBasic` (biometric). Certificates and biometric
 verification accept one Email or Whatsapp notification and require an existing signer with
-government ID configured; biometric verification requires a valid CPF and consent on the hosted
+a valid CPF configured in Assinafy; biometric verification also requires consent on the hosted
 flow. When biometric review is required, certification waits for account approval in Assinafy.
 See [methods and requirements](../README.en.md#verification-and-notification-methods).
 

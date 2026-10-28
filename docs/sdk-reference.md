@@ -1,6 +1,6 @@
 # Bundled PHP SDK reference
 
-This reference describes the SDK installed by the plugin (2.7.0). Obtain the configured client through `ClientFactory::client()`. WordPress uses `WpHttpClient`, including credential isolation and encrypted OAuth renewal. The SDK default Guzzle transport is unavailable in the plugin distribution.
+This reference describes the SDK installed by the plugin (2.8.0). Obtain the configured client through `ClientFactory::client()`. WordPress uses `WpHttpClient`, including credential isolation and encrypted OAuth renewal. The SDK default Guzzle transport is unavailable in the plugin distribution.
 
 For OAuth discovery, obtain the resource through `OAuthTokens::oauth()`. It supplies a credential-free WordPress transport for each discovery origin; constructing the SDK OAuth resource without this discovery factory would use the unavailable default transport.
 
@@ -105,6 +105,17 @@ Documents: upload, list, search, rename, download, tag, and delete.
 
 The heart of the SDK. A document is uploaded, processed asynchronously into pages,
 then assigned for signature via {@see self::assignments()}. Account-scoped.
+
+### `contracts()`
+
+```php
+public function contracts(): ContractResource
+```
+
+Contracts: track document terms, relationships, renewals, and terminations.
+
+Reads require the OAuth `documents:read` scope. Writes require `documents:write`
+and a workspace plan that includes contract tracking. Account-scoped.
 
 ### `signers()`
 
@@ -313,6 +324,7 @@ Full return example:
             'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
         ],
         'is_closed' => false,
+        'has_contract' => false,
         'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
         'decline_reason' => null,
         'declined_by' => null,
@@ -333,10 +345,12 @@ Full return example:
     'assignment' => [
         'resource' => 'assignment',
         'id' => 'assignment-id',
+        'document_id' => 'document-id',
         'sender_email' => 'person@example.com',
         'method' => 'virtual',
         'expires_at' => null,
         'message' => null,
+        'created_at' => '2026-09-01T12:00:00Z',
         'signers' => [
             [
                 'id' => 'signer-id',
@@ -1557,10 +1571,12 @@ Example response for the virtual request (SDK return; optional fields depend on 
 [
     'resource' => 'assignment',
     'id' => 'assignment-id',
+    'document_id' => 'document-id',
     'sender_email' => 'person@example.com',
     'method' => 'virtual',
     'expires_at' => '2026-12-31T23:59:59Z',
     'message' => 'Please sign this contract',
+    'created_at' => '2026-09-01T12:00:00Z',
     'signers' => [
         [
             'id' => 'signer-id',
@@ -1651,7 +1667,8 @@ the signer access code — that is delivered separately by the notification chan
 @return array<string, mixed> the created assignment
 @throws ValidationException on an unknown method, an empty signer list, a `collect`
     assignment without entries, a malformed `expires_at`, non-contiguous steps, or a
-    digital-certificate signer sharing a step with another signer
+    digital-certificate signer sharing a step with another signer, or a
+    digital-certificate signer on a non-virtual assignment
 
 ### `list()`
 
@@ -1682,10 +1699,12 @@ Example response (SDK return; optional fields depend on state):
     'data' => [
         [
             'id' => 'assignment-id',
+            'document_id' => 'document-id',
             'sender_email' => 'person@example.com',
             'method' => 'virtual',
             'expires_at' => null,
             'message' => null,
+            'created_at' => '2026-09-01T12:00:00Z',
             'signers' => [
                 [
                     'id' => 'signer-id',
@@ -1834,6 +1853,7 @@ Example response (SDK return; optional fields depend on state):
 @param array<string, mixed> $options
     Optional keys: `entries` (required for collect), `message`, `expires_at`, `copy_receivers`.
 @return array<string, mixed>
+@throws ValidationException when a DigitalCertificate signer is used with a non-virtual method
 
 ### `resend()`
 
@@ -1924,10 +1944,12 @@ Example response (SDK return; optional fields depend on state):
 [
     'resource' => 'assignment',
     'id' => 'assignment-id',
+    'document_id' => 'document-id',
     'sender_email' => 'person@example.com',
     'method' => 'virtual',
     'expires_at' => '2026-12-31T23:59:59Z',
     'message' => null,
+    'created_at' => '2026-09-01T12:00:00Z',
     'signers' => [
         [
             'id' => 'signer-id',
@@ -2621,6 +2643,256 @@ Example response (SDK return; optional fields depend on state):
 @throws ValidationException on a malformed email, or an empty token or password
 @throws \Assinafy\SDK\Exceptions\ApiException 400 when the token is expired or already used
 
+## `Resources/ContractResource`
+
+Contract tracking for documents in the configured workspace.
+
+A document may hold the root contract terms or be linked as an amendment, renewal,
+or termination. Reading requires `documents:read`; writes require `documents:write`
+for OAuth clients and a plan that includes contract tracking.
+
+@see https://api.assinafy.com.br/v1/docs
+
+### `list()`
+
+```php
+public function list(int $page = 1, int $perPage = 25, array $filters = []): array
+```
+
+List tracked contracts in the workspace.
+`GET /accounts/{account_id}/contracts`
+
+Request query example:
+```php
+[
+    'page' => 1,
+    'per-page' => 25,
+    'status' => 'active,expired',
+    'counterparty' => 'Example',
+    'search' => 'services',
+    'end_date_from' => '2026-11-01',
+    'end_date_to' => '2027-10-31',
+    'ending_within_days' => 90,
+    'external_system' => 'erp',
+    'external_id' => 'C-1042',
+    'sort' => '-updated_at',
+    'expand' => 'document',
+]
+```
+
+Example response (SDK return):
+```php
+[
+    'status' => 200,
+    'message' => '',
+    'data' => [[
+        'resource' => 'document_contract',
+        'document_id' => 'document-id',
+        'status' => 'active',
+        'counterparty_name' => 'Example Company',
+        'counterparty_taxpayer_id' => '11222333000181',
+        'value' => 120000.50,
+        'currency' => 'BRL',
+        'start_date' => '2026-11-01',
+        'end_date' => '2027-10-31',
+        'auto_renew' => true,
+        'renewal_term_months' => 12,
+        'notice_period_days' => 30,
+        'term' => 1,
+        'owner_id' => 'user-id',
+        'metadata' => ['crm_stage' => 'won'],
+        'external_references' => [['system' => 'erp', 'id' => 'C-1042']],
+        'created_at' => '2026-10-23T12:00:00Z',
+        'updated_at' => '2026-10-23T12:00:00Z',
+    ]],
+    'pagination' => [
+        'current_page' => 1,
+        'page_count' => 1,
+        'per_page' => 25,
+        'total_count' => 1,
+    ],
+]
+```
+
+@param array<string, scalar> $filters optional `status`, `counterparty`, `search`,
+    `end_date_from`, `end_date_to`, `ending_within_days`, `external_system`,
+    `external_id`, `sort`, and `expand` filters
+@return array{status?: int, message?: string, data?: array<int, array<string, mixed>>,
+    pagination?: array{current_page: int, page_count: int, per_page: int, total_count: int}}
+@throws ValidationException when `$page` < 1 or `$perPage` is outside 1–100
+
+### `get()`
+
+```php
+public function get(string $documentId): array
+```
+
+Read the terms or amendment link tracked on a document.
+`GET /accounts/{account_id}/documents/{document_id}/contract`
+
+Request: no query or body.
+
+Example root-contract response (SDK return):
+```php
+[
+    'resource' => 'document_contract',
+    'document_id' => 'document-id',
+    'status' => 'active',
+    'counterparty_name' => 'Example Company',
+    'counterparty_taxpayer_id' => '11222333000181',
+    'value' => 120000.50,
+    'currency' => 'BRL',
+    'start_date' => '2026-11-01',
+    'end_date' => '2027-10-31',
+    'auto_renew' => true,
+    'renewal_term_months' => 12,
+    'notice_period_days' => 30,
+    'term' => 1,
+    'owner_id' => 'user-id',
+    'metadata' => ['crm_stage' => 'won'],
+    'external_references' => [['system' => 'erp', 'id' => 'C-1042']],
+    'amendments' => [],
+    'created_at' => '2026-10-23T12:00:00Z',
+    'updated_at' => '2026-10-23T12:00:00Z',
+]
+```
+
+An amendment document returns `resource: document_contract_amendment` with
+`parent_document_id`, `relation_type`, `status`, `document_status`, `terms`,
+`changes`, `apply_error`, and `applied_at` instead.
+
+@return array<string, mixed> the contract terms or amendment link
+@throws ValidationException when `$documentId` is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when the document has no contract terms
+
+### `update()`
+
+```php
+public function update(string $documentId, array $data): array
+```
+
+Create or partially update contract terms, or link a document as an amendment.
+`PUT /accounts/{account_id}/documents/{document_id}/contract`
+
+Request body example for root terms:
+```php
+[
+    'status' => 'active',
+    'counterparty_name' => 'Example Company',
+    'counterparty_taxpayer_id' => '11.222.333/0001-81',
+    'value' => 120000.50,
+    'currency' => 'BRL',
+    'start_date' => '2026-11-01',
+    'end_date' => '2027-10-31',
+    'auto_renew' => true,
+    'renewal_term_months' => 12,
+    'notice_period_days' => 30,
+    'owner_id' => 'user-id',
+    'metadata' => ['crm_stage' => 'won'],
+    'external_references' => [['system' => 'erp', 'id' => 'C-1042']],
+    'updated_at' => '2026-10-23T12:00:00Z',
+]
+```
+
+Link an amendment with `parent_document_id`, `relation_type` (`amendment`, `renewal`,
+or `termination`) and the changed terms. `external_references` replaces the list;
+`parent_document_id: null` unlinks a pending amendment. Send the last `updated_at`
+to make concurrent changes fail with 409.
+
+Example response (SDK return): the `document_contract` shape from {@see self::get()},
+or this amendment shape:
+```php
+[
+    'resource' => 'document_contract_amendment',
+    'document_id' => 'amendment-document-id',
+    'document_name' => 'Amendment 1.pdf',
+    'parent_document_id' => 'document-id',
+    'relation_type' => 'amendment',
+    'number' => null,
+    'status' => 'pending',
+    'document_status' => 'pending_signature',
+    'apply_error' => null,
+    'currency' => 'BRL',
+    'terms' => ['value' => 130000, 'end_date' => '2028-06-30'],
+    'changes' => ['value' => ['from' => 120000.50, 'to' => 130000]],
+    'applied_at' => null,
+    'created_at' => '2027-05-10T15:00:00Z',
+    'updated_at' => '2027-05-10T15:00:00Z',
+]
+```
+
+@param array<string, mixed> $data at least one documented contract or amendment field
+@return array<string, mixed> the saved contract terms or amendment link
+@throws ValidationException when `$documentId` or `$data` is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 403 when the plan lacks contract tracking,
+    409 when `updated_at` no longer matches
+
+### `related()`
+
+```php
+public function related(string $documentId): array
+```
+
+Read the root contract and every related amendment, renewal, or termination document.
+`GET /accounts/{account_id}/documents/{document_id}/contract/related`
+
+Request: no query or body. `$documentId` may identify the root or any related document.
+The response is the root `document_contract` shape from {@see self::get()}, including
+its complete `amendments` array.
+
+@return array<string, mixed> the root contract and its related documents
+@throws ValidationException when `$documentId` is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 404 when the document has no contract family
+
+### `renew()`
+
+```php
+public function renew(string $documentId, array $data = []): array
+```
+
+Start the contract's next term.
+`POST /accounts/{account_id}/documents/{document_id}/contract/renew`
+
+Request body examples:
+```php
+['term' => 1, 'value' => 126000, 'updated_at' => '2026-10-23T12:00:00Z']
+['end_date' => '2029-06-30', 'value' => 130000]
+```
+
+With no explicit `end_date`, send the current `term`; the API advances by
+`renewal_term_months` (12 when unset). A terminated contract cannot be renewed.
+The SDK returns the updated `document_contract` shape from {@see self::get()}.
+
+@param array<string, mixed> $data optional `end_date`, `value`, `term`, and `updated_at`
+@return array<string, mixed> the renewed contract
+@throws ValidationException when `$documentId` is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 400 for an invalid/repeated renewal,
+    403 when the plan lacks contract tracking, or 409 on a stale `updated_at`
+
+### `terminate()`
+
+```php
+public function terminate(string $documentId, array $data = []): array
+```
+
+Terminate a contract and stop its lifecycle alerts.
+`POST /accounts/{account_id}/documents/{document_id}/contract/terminate`
+
+Request body example:
+```php
+['reason' => 'Supplier replaced', 'updated_at' => '2026-10-23T12:00:00Z']
+```
+
+Both fields are optional; `reason` is stored on the
+`document_contract_terminated` event and is limited by the API to 500 characters.
+The SDK returns the terminated `document_contract` shape from {@see self::get()}.
+
+@param array<string, mixed> $data optional `reason` and `updated_at`
+@return array<string, mixed> the terminated contract
+@throws ValidationException when `$documentId` is empty
+@throws \Assinafy\SDK\Exceptions\ApiException 403 when the plan lacks contract tracking,
+    or 409 on a stale `updated_at`
+
 ## `Resources/DocumentResource`
 
 Documents resource — covers every documented endpoint under `/documents`
@@ -2658,6 +2930,7 @@ Example response (SDK return; optional fields depend on state):
         'original' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/download/original',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -2700,6 +2973,7 @@ Example response (SDK return; optional fields depend on state):
         'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -2754,6 +3028,7 @@ Example response (SDK return; optional fields depend on state):
                 'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
             ],
             'is_closed' => false,
+            'has_contract' => false,
             'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
             'decline_reason' => null,
             'declined_by' => null,
@@ -2824,6 +3099,7 @@ Example response (SDK return; optional fields depend on state):
                 'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
             ],
             'is_closed' => false,
+            'has_contract' => false,
             'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
             'decline_reason' => null,
             'declined_by' => null,
@@ -2883,6 +3159,7 @@ Example response (SDK return; optional fields depend on state):
         'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -3452,6 +3729,7 @@ Example response shape (SDK return; relationship expansion depends on document s
         'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -3572,6 +3850,7 @@ Example response (SDK return; optional fields depend on state):
         'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -4284,8 +4563,8 @@ whose `data[0].id` belongs in the connection record next to the tokens.
     returned; `code_verifier`, `redirect_uri` and `resource` are read from it
 @return array<string, mixed> `{ access_token, token_type, expires_in, scope,
     refresh_token?, id_token? }`
-@throws ValidationException on an empty code or a transaction missing its verifier
-    or redirect URI
+@throws ValidationException on an empty code or a transaction missing its verifier,
+    redirect URI, or resource
 @throws ApiException `invalid_grant` (expired, replayed, or mismatched code),
     `invalid_client`, `invalid_target`; 429 when rate-limited — wait the `Retry-After`
     seconds, readable via {@see ApiException::getRetryAfter()}
@@ -4602,6 +4881,7 @@ Example response (SDK return; optional fields depend on state):
         'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -4763,6 +5043,7 @@ Example response (SDK return; optional fields depend on state):
                 'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
             ],
             'is_closed' => false,
+            'has_contract' => false,
             'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
             'decline_reason' => null,
             'declined_by' => null,
@@ -4872,6 +5153,7 @@ Example response (SDK return; optional fields depend on state):
             'original' => 'https://api.assinafy.com.br/v1/documents/doc1/download/original',
         ],
         'is_closed' => false,
+        'has_contract' => false,
         'signing_url' => 'https://api.assinafy.com.br/v1/sign/document-id',
         'decline_reason' => null,
         'declined_by' => null,
@@ -5597,6 +5879,7 @@ Example response (SDK return; optional fields depend on state):
         'thumbnail' => 'https://sandbox.assinafy.com.br/v1/documents/document-id/thumbnail',
     ],
     'is_closed' => false,
+    'has_contract' => false,
     'signing_url' => 'https://app-sandbox.assinafy.com.br/sign/signing-token',
     'decline_reason' => null,
     'declined_by' => null,
@@ -6524,15 +6807,15 @@ Available in production and sandbox; access depends on the authenticated account
 public function notificationPreferences(#[\SensitiveParameter] ?string $accessToken = null): array
 ```
 
-Get all owner-facing document email preferences.
+Get all owner-facing document and contract email preferences.
 `GET /users/self/notification-preferences`
 
-These are the emails the document **owner** receives about their own documents — not
-the signature invitations sent to signers. Account and security email (welcome,
+These are the emails the document or contract **owner** receives — not the signature
+invitations sent to signers. Account and security email (welcome,
 password reset, invitations, account deletion) is not configurable and never appears
 here.
 
-All nine keys are always returned; everything defaults to `true`. The codes are
+All 13 keys are always returned; everything defaults to `true`. The codes are
 available as {@see self::NOTIFICATION_PREFERENCE_CODES}.
 
 Request: no parameters.
@@ -6549,6 +6832,10 @@ Example response (SDK return; optional fields depend on state):
     'DocumentProcessingFailed' => true,
     'TemplateProcessingFailed' => true,
     'SignerWhatsappFailed' => true,
+    'ContractRenewalNotice' => true,
+    'ContractExpiring' => true,
+    'ContractExpired' => true,
+    'ContractRenewed' => true,
 ]
 ```
 
@@ -6559,7 +6846,9 @@ Available in production and sandbox; access depends on the authenticated account
 @return array{DocumentCompleted?: bool, SignerDeclined?: bool,
     DocumentCancelled?: bool, DocumentAboutToExpire?: bool, DocumentExpired?: bool,
     DocumentExpirationReset?: bool, DocumentProcessingFailed?: bool,
-    TemplateProcessingFailed?: bool, SignerWhatsappFailed?: bool}
+    TemplateProcessingFailed?: bool, SignerWhatsappFailed?: bool,
+    ContractRenewalNotice?: bool, ContractExpiring?: bool, ContractExpired?: bool,
+    ContractRenewed?: bool}
 
 ### `updateNotificationPreferences()`
 
@@ -6570,7 +6859,7 @@ public function updateNotificationPreferences(
     ): array
 ```
 
-Merge selected owner-facing document email preferences.
+Merge selected owner-facing document and contract email preferences.
 `PUT /users/self/notification-preferences`
 
 A merge, not a replace: omitted keys keep their current values, so you never have to
@@ -6599,6 +6888,10 @@ Example response (SDK return; optional fields depend on state):
     'DocumentProcessingFailed' => true,
     'TemplateProcessingFailed' => true,
     'SignerWhatsappFailed' => false,
+    'ContractRenewalNotice' => true,
+    'ContractExpiring' => true,
+    'ContractExpired' => true,
+    'ContractRenewed' => true,
 ]
 ```
 
@@ -6610,7 +6903,9 @@ Available in production and sandbox; access depends on the authenticated account
 @return array{DocumentCompleted?: bool, SignerDeclined?: bool,
     DocumentCancelled?: bool, DocumentAboutToExpire?: bool, DocumentExpired?: bool,
     DocumentExpirationReset?: bool, DocumentProcessingFailed?: bool,
-    TemplateProcessingFailed?: bool, SignerWhatsappFailed?: bool}
+    TemplateProcessingFailed?: bool, SignerWhatsappFailed?: bool,
+    ContractRenewalNotice?: bool, ContractExpiring?: bool, ContractExpired?: bool,
+    ContractRenewed?: bool}
 
 ### `mfaMethods()`
 
@@ -6839,12 +7134,12 @@ Example response (SDK return; optional fields depend on state):
 The subscription body has no signing field; enable signing on the endpoint with
 {@see self::updateEndpoint()}.
 
-@param string            $url    absolute HTTP(S) endpoint to POST deliveries to
+@param string            $url    absolute HTTPS endpoint to POST deliveries to
 @param string            $email  address alerted when delivery fails
 @param array<int, mixed> $events event type IDs; when empty, {@see DEFAULT_EVENTS} is sent
 @param bool              $isActive whether to start delivering immediately
 @return array<string, mixed> the stored subscription
-@throws ValidationException on a non-absolute URL, a malformed email, or a
+@throws ValidationException on a non-HTTPS URL, a malformed email, or a
     non-string event
 
 ### `get()`
@@ -6954,6 +7249,8 @@ Example response (SDK return; a direct list, no pagination):
         'email' => 'ops@example.com',
         'events' => ['document_ready', 'signer_signed_document'],
         'is_active' => true,
+        'is_held' => false,
+        'held_since' => null,
         'signing_enabled' => true,
         'created_at' => '2026-10-01T12:00:00Z',
         'updated_at' => '2026-10-01T12:00:00Z',
@@ -7002,12 +7299,15 @@ Request body:
 Example response (SDK return):
 ```php
 [
+    'resource' => 'webhook_endpoint',
     'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
     'name' => 'ERP',
     'url' => 'https://example.com/webhooks/assinafy',
     'email' => 'ops@example.com',
     'events' => ['document_ready', 'signer_signed_document'],
     'is_active' => true,
+    'is_held' => false,
+    'held_since' => null,
     'signing_enabled' => true,
     'created_at' => '2026-10-01T12:00:00Z',
     'updated_at' => '2026-10-01T12:00:00Z',
@@ -7015,14 +7315,14 @@ Example response (SDK return):
 ]
 ```
 
-@param string            $url    absolute HTTP(S) URL that receives deliveries
+@param string            $url    absolute HTTPS URL that receives deliveries
 @param string            $email  address alerted when deliveries fail
 @param array<int, mixed> $events event type IDs; when empty, {@see DEFAULT_EVENTS} is sent
 @param string|null       $name   label telling endpoints apart
 @param bool              $isActive whether to deliver subscribed events
 @param bool              $signingEnabled whether deliveries carry an HMAC signature
 @return array<string, mixed> the created endpoint
-@throws ValidationException on a non-absolute URL, a malformed email or a non-string event
+@throws ValidationException on a non-HTTPS URL, a malformed email or a non-string event
 @throws \Assinafy\SDK\Exceptions\ApiException 403 past the plan's endpoint limit,
     400 on a duplicate URL
 
@@ -7040,12 +7340,15 @@ Request: no parameters. OAuth scope: `account:read`.
 Example response (SDK return):
 ```php
 [
+    'resource' => 'webhook_endpoint',
     'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
     'name' => 'ERP',
     'url' => 'https://example.com/webhooks/assinafy',
     'email' => 'ops@example.com',
     'events' => ['document_ready', 'signer_signed_document'],
     'is_active' => true,
+    'is_held' => false,
+    'held_since' => null,
     'signing_enabled' => true,
     'created_at' => '2026-10-01T12:00:00Z',
     'updated_at' => '2026-10-01T12:00:00Z',
@@ -7064,9 +7367,10 @@ public function updateEndpoint(string $endpointId, #[\SensitiveParameter] array 
 Change selected fields of a webhook endpoint.
 `PUT /accounts/{account_id}/webhooks/endpoints/{endpoint_id}`
 
-A partial update: only the keys sent change. `url` cannot repeat another endpoint's
-(`400`). Turning `signing_enabled` on generates a secret when the endpoint has none and
-keeps the existing one otherwise; turning it off discards the secret.
+A partial update: only the keys sent change. A changed `url` must use HTTPS and cannot
+repeat another endpoint's (`400`). Changing the URL or setting `is_active` to true lifts
+a delivery hold. Turning `signing_enabled` on generates a secret when the endpoint has
+none and keeps the existing one otherwise; turning it off discards the secret.
 OAuth scope: `webhooks:write`.
 
 Request body (any subset, at least one key):
@@ -7084,12 +7388,15 @@ Request body (any subset, at least one key):
 Example response (SDK return, the updated endpoint):
 ```php
 [
+    'resource' => 'webhook_endpoint',
     'id' => '65f1c2a9b3e4d5f60718293a4b5c6d7e',
     'name' => 'ERP',
     'url' => 'https://example.com/webhooks/assinafy',
     'email' => 'ops@example.com',
     'events' => ['document_ready', 'signer_signed_document'],
     'is_active' => true,
+    'is_held' => false,
+    'held_since' => null,
     'signing_enabled' => true,
     'created_at' => '2026-10-01T12:00:00Z',
     'updated_at' => '2026-10-01T12:00:00Z',
@@ -7099,8 +7406,8 @@ Example response (SDK return, the updated endpoint):
 @param array<string, mixed> $changes subset of `url`, `email`, `events`, `name`,
     `is_active`, `signing_enabled`
 @return array<string, mixed> the updated endpoint
-@throws ValidationException when `$changes` is empty, has an unknown key, or a value of
-    the wrong type
+@throws ValidationException when `$changes` is empty, has an unknown key, a value of
+    the wrong type, or a non-HTTPS URL
 
 ### `deleteEndpoint()`
 
@@ -7180,8 +7487,8 @@ Replace an endpoint's signing secret and return the new one.
 `POST /accounts/{account_id}/webhooks/endpoints/{endpoint_id}/secret/rotate`
 
 The old secret stops working immediately: deliveries sent afterwards are signed only
-with the new one, so update the receiver's stored secret right away. Not available to
-OAuth applications.
+with the new one, so update the receiver's stored secret right away. OAuth applications
+require the `webhooks:write` scope.
 
 Request: no body.
 
@@ -7316,9 +7623,14 @@ Example response (SDK return; optional fields depend on state):
             'id' => 'webhook-dispatch-id',
             'event' => 'document_ready',
             'activity_id' => 456,
+            'endpoint_id' => 'endpoint-id',
             'endpoint' => 'https://example.com/webhook',
             'payload' => null,
             'delivered' => true,
+            'webhook_id' => 'message-id',
+            'attempt' => 1,
+            'kind' => 'scheduled',
+            'will_retry' => false,
             'http_status' => 200,
             'response_body' => 'OK',
             'error' => null,
@@ -7372,9 +7684,14 @@ Example response (SDK return; optional fields depend on state):
     'id' => 'webhook-dispatch-id',
     'event' => 'document_ready',
     'activity_id' => 456,
+    'endpoint_id' => 'endpoint-id',
     'endpoint' => 'https://example.com/webhook',
     'payload' => null,
     'delivered' => true,
+    'webhook_id' => 'message-id',
+    'attempt' => 1,
+    'kind' => 'manual',
+    'will_retry' => false,
     'http_status' => 200,
     'response_body' => 'OK',
     'error' => null,

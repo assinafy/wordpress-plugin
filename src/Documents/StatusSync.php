@@ -207,9 +207,15 @@ final class StatusSync {
 		}
 
 		try {
-			DocumentContext::bind_or_fail( $post_id, $account_id, $environment );
-			$previous = $this->records->hydrate_from_api( $post_id, $document );
-			$current  = $this->records->status( $post_id );
+			list( $previous, $current ) = ProjectionLock::run(
+				$post_id,
+				function () use ( $post_id, $account_id, $environment, $document ): array {
+					DocumentContext::bind_or_fail( $post_id, $account_id, $environment );
+					$previous = $this->records->hydrate_from_api( $post_id, $document );
+
+					return array( $previous, $this->records->status( $post_id ) );
+				}
+			);
 		} catch ( \Throwable $e ) {
 			$this->records->set_last_error( $post_id, $e->getMessage() );
 
