@@ -367,7 +367,7 @@ final class ApiContractTest extends AssinafyTestCase {
 
 		$activities = $this->client()->documents()->activities( self::DOCUMENT_ID );
 
-		$this->assert_request( 'GET', 'documents/' . self::DOCUMENT_ID . '/activities' );
+		$this->assert_request( 'GET', 'documents/' . self::DOCUMENT_ID . '/activities?page=1&per-page=20&sort=-id' );
 		$this->assertCount( 2, $activities );
 		$this->assertSame( 17172, $activities[0]['id'], 'Activities arrive newest first.' );
 		$this->assertSame( 'jane@example.com', $activities[0]['payload']['signer_email'] );

@@ -294,9 +294,7 @@ final class WebhookRegistrationAjaxTest extends WP_Ajax_UnitTestCase {
 	/**
 	 * Only the fifteen subscribable events are ever sent.
 	 *
-	 * `template_created`, `template_processed` and `template_processing_failed` exist as SDK
-	 * constants and in the published catalog, but `GET /webhooks/event-types` does not offer
-	 * them — so one left on an endpoint by another tool must not be carried back in the name
+	 * Template events do not affect the document projection and are excluded from registration.
 	 * of keeping what was there.
 	 */
 	public function test_events_the_api_does_not_offer_are_dropped(): void {

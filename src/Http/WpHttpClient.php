@@ -78,6 +78,9 @@ final class WpHttpClient implements HttpClientInterface {
 	 */
 	private ?\Closure $renew_token;
 
+	/** Credential owned by the renewal callback; explicit per-call tokens stay separate. */
+	private string $refresh_header;
+
 	/**
 	 * @param Configuration        $config      Base URL, timeout and default headers.
 	 * @param LoggerInterface|null $logger      Optional PSR-3 logger for structural diagnostics.
@@ -96,6 +99,7 @@ final class WpHttpClient implements HttpClientInterface {
 		);
 		$this->responses            = new ResponseReader( $this->logger );
 		$this->renew_token          = $renew_token;
+		$this->refresh_header       = Headers::line( $headers, 'Authorization' );
 	}
 
 	/**
@@ -355,7 +359,7 @@ final class WpHttpClient implements HttpClientInterface {
 	}
 
 	/**
-	 * OAuth: when the API rejects the access token, refresh once and resend once. A failed
+	 * OAuth: when the API rejects this client's workspace token, refresh once and resend once. A failed
 	 * refresh has already dropped the connection, so its reason (reconnect) replaces the 401.
 	 * A 401 means the API processed nothing, so resending cannot duplicate an action.
 	 *
@@ -370,7 +374,7 @@ final class WpHttpClient implements HttpClientInterface {
 	private function renew_on_401( array $result, string $url, #[\SensitiveParameter] array $args, string $safe_request ): array {
 		$renew   = $this->renew_token;
 		$headers = $args['headers'] ?? null;
-		if ( null === $renew || 401 !== (int) wp_remote_retrieve_response_code( $result ) || ! is_array( $headers ) || ! Headers::has( $headers, 'Authorization' ) ) {
+		if ( null === $renew || 401 !== (int) wp_remote_retrieve_response_code( $result ) || ! is_array( $headers ) || '' === $this->refresh_header || ! hash_equals( $this->refresh_header, Headers::line( $headers, 'Authorization' ) ) ) {
 			return $result;
 		}
 

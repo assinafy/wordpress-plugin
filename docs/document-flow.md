@@ -12,10 +12,11 @@ Os exemplos HTTP mostram a chave de API legada/Sandbox; uma conexão OAuth de pr
 
 Além do fluxo Email abaixo, hooks e o serviço compartilhado aceitam `Whatsapp`,
 `DigitalCertificate` (A1/A3) e `IdDocumentFaceMatchBasic` (biometria). Certificado e biometria
-aceitam uma notificação Email ou Whatsapp e exigem um signatário existente com CPF válido
+aceitam uma notificação Email ou Whatsapp e exigem um signatário existente. Certificados
+exigem CPF ou CNPJ válido; biometria exige CPF válido
 configurado na Assinafy; biometria também exige consentimento no fluxo hospedado.
 Quando há revisão biométrica, a certificação aguarda aprovação no painel da Assinafy.
-Veja [métodos e requisitos](../README.md#métodos-de-verificação-e-de-notificação).
+Veja [métodos e requisitos](user-guide.md#métodos-de-verificação-e-de-notificação).
 
 ### Passo 0 — Validar localmente, antes de gastar uma requisição
 
@@ -43,65 +44,7 @@ criam um assignment apenas se não houver um. Uma reserva sem ID remoto conhecid
 do operador, porque o resultado do seu upload pode ser desconhecido. A estimativa de custo roda
 para novas reservas.
 
-### Passo 1 — Precificar o envio e ler o veredito no corpo da resposta
-
-```http
-POST /v1/documents/{documentId}/assignments/estimate-cost
-X-Api-Key: {API_KEY}
-Content-Type: application/json
-
-{"method":"virtual","signers":[{"verification_method":"Email","notification_methods":["Email"]}]}
-```
-
-```json
-{
-  "status": 200, "message": "",
-  "data": {
-    "documents": 1, "credits": 0,
-    "needs_extra_document": false, "extra_document_cost": 0,
-    "total_credits": 0, "breakdown": [],
-    "document_balance": 480, "credit_balance": 0,
-    "has_sufficient_resources": true, "blocking_reason": null, "message": null
-  }
-}
-```
-
-Um signatário notificado por WhatsApp tem preço diferente, e uma conta sem créditos recusa — **com
-HTTP 200**:
-
-```json
-{
-  "status": 200, "message": "",
-  "data": {
-    "documents": 1, "credits": 0.45,
-    "total_credits": 0.45,
-    "breakdown": [{"code":"NotificationWhatsapp","name":"WhatsApp Notification",
-                   "cost":0.45,"quantity":1,"unit_cost":0.45}],
-    "document_balance": 480, "credit_balance": 0,
-    "has_sufficient_resources": false, "blocking_reason": "InsufficientCredits",
-    "message": "A conta não possui créditos suficientes."
-  }
-}
-```
-
-**Leia `has_sufficient_resources` mesmo em HTTP 200, e trate também os erros de HTTP/API.** O
-`blocking_reason` é um entre `PendingPayment`, `InsufficientDocuments` ou `InsufficientCredits`, e
-cada um mapeia para uma mensagem específica ao administrador.
-
-A única recusa que *de fato* usa um código de status é um método de verificação restrito pelo
-plano: `DigitalCertificate` em uma conta sem o recurso responde 403
-`"A assinatura com certificado digital não está disponível para o seu plano atual."` —
-antes de qualquer documento ser consumido, que é exatamente o motivo de a estimativa rodar antes do
-upload.
-
-Os ids dos signatários não são necessários aqui: apenas a combinação de métodos é precificada. A
-rota, porém, é endereçada a um documento, então o plugin usa o id do documento espelhado mais
-recente como substituto — saldo e plano valem para a conta inteira, então qualquer documento da
-conta responde à mesma pergunta. Um site que nunca enviou nada não tem esse id e recebe
-`assinafy_estimate_unavailable`, que **nunca bloqueia um envio**: uma sondagem de preço que não
-pôde rodar não é motivo para recusar.
-
-### Passo 2 — Resolver cada signatário: buscar e então criar
+### Passo 1 — Resolver cada signatário: buscar e então criar
 
 O `email` é único por conta, então criar um signatário com um endereço que já existe é um 400 duro:
 `"Um signatário com este e-mail já existe."` Uma segunda submissão da mesma pessoa falha se você
@@ -154,7 +97,7 @@ Regras de campo, verificadas contra a API real:
   (`"390.533.447-05"` → `"39053344705"`), com validação real de dígito verificador
   (`"11111111111"` → 400 `"CPF inválido."`).
 
-### Passo 3 — Enviar o PDF
+### Passo 2 — Enviar o PDF
 
 ```http
 POST /v1/accounts/{ACCOUNT_ID}/documents
@@ -207,8 +150,59 @@ Detalhes que mudam a implementação:
   guarda o `data.name` retornado, não o nome que enviou, e é por isso que o título do post pode
   diferir do nome do arquivo na biblioteca de mídia.
 
-**Não há espera por `metadata_ready`.** O passo 4 roda imediatamente. A reserva local é criada antes
+**Não há espera por `metadata_ready`.** A estimativa roda em seguida, antes da atribuição virtual. A reserva local é criada antes
 do upload, e o id do documento retornado é armazenado antes do assignment.
+
+### Passo 3 — Precificar o envio e ler o veredito no corpo da resposta
+
+```http
+POST /v1/documents/{documentId}/assignments/estimate-cost
+X-Api-Key: {API_KEY}
+Content-Type: application/json
+
+{"method":"virtual","signers":[{"verification_method":"Email","notification_methods":["Email"]}]}
+```
+
+```json
+{
+  "status": 200, "message": "",
+  "data": {
+    "documents": 1, "credits": 0,
+    "needs_extra_document": false, "extra_document_cost": 0,
+    "total_credits": 0, "breakdown": [],
+    "document_balance": 480, "credit_balance": 0,
+    "has_sufficient_resources": true, "blocking_reason": null, "message": null
+  }
+}
+```
+
+Um signatário notificado por WhatsApp tem preço diferente, e uma conta sem créditos recusa — **com
+HTTP 200**:
+
+```json
+{
+  "status": 200, "message": "",
+  "data": {
+    "documents": 1, "credits": 0.45,
+    "total_credits": 0.45,
+    "breakdown": [{"code":"NotificationWhatsapp","name":"WhatsApp Notification",
+                   "cost":0.45,"quantity":1,"unit_cost":0.45}],
+    "document_balance": 480, "credit_balance": 0,
+    "has_sufficient_resources": false, "blocking_reason": "InsufficientCredits",
+    "message": "A conta não possui créditos suficientes."
+  }
+}
+```
+
+**Leia `has_sufficient_resources` mesmo em HTTP 200, e trate também os erros de HTTP/API.** O
+`blocking_reason` é um entre `PendingPayment`, `InsufficientDocuments` ou `InsufficientCredits`, e
+cada um mapeia para uma mensagem específica ao administrador.
+
+Um método restrito pelo plano pode retornar 403 antes de uma atribuição consumir a franquia.
+A estimativa usa este documento recém-enviado, sem atribuição, nunca um documento antigo já atribuído.
+Saldo insuficiente ou recusa do plano preserva o upload e seu recibo local para recuperação.
+Se a própria estimativa estiver indisponível, `assinafy_estimate_unavailable` não bloqueia o envio;
+o endpoint de atribuição continua validando preço, saldo e permissões do plano.
 
 ### Passo 4 — Criar o assignment
 
@@ -359,7 +353,7 @@ para antes da hora quando o orçamento de requisições registrado está abaixo 
 capacidade às requisições em primeiro plano. Isso é um corte consultivo, não uma cota reservada ou
 atômica para toda a conta.
 
-**Uma entrega de webhook** faz exatamente a mesma coisa — veja a [§7](../README.md#7-webhooks). O corpo da
+**Uma entrega de webhook** faz exatamente a mesma coisa — veja a [§7](user-guide.md#7-webhooks). O corpo da
 entrega nunca é gravado no estado local; ele é uma dica que dispara a mesma releitura.
 
 Ambos passam por uma única chamada:

@@ -76,7 +76,7 @@ devolve o ID do post local `assinafy_document`. Em caso de falha, devolve um `WP
 envio já reservou um registro local, os dados do erro podem incluir esse `post_id` de recuperação.
 
 O PDF, os signatários, a mensagem, a expiração e o `post_id` opcional do espelho mantêm o
-[contrato documentado](../README.md#assinafy_send_document--enviar-agora) atual. O `post_id` do espelho
+[contrato documentado](user-guide.md#assinafy_send_document--enviar-agora) atual. O `post_id` do espelho
 não é o ID da entry nem do pedido no host. A identidade do host pertence a `source`:
 
 ```php

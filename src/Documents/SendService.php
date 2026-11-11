@@ -435,7 +435,10 @@ final class SendService {
 		$explicit = sanitize_text_field( (string) ( $args['expires_at'] ?? '' ) );
 
 		if ( '' !== $explicit ) {
-			return $explicit;
+			if ( 10 === strlen( $explicit ) ) {
+				return $explicit . 'T23:59:00Z';
+			}
+			return preg_match( '/T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/D', $explicit ) ? $explicit . 'Z' : $explicit;
 		}
 
 		$days = (int) Settings::get( Settings::OPTION_EXPIRY_DAYS );

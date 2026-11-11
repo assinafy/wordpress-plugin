@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -159,6 +159,12 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.6.0 =
+* Includes PHP SDK 2.9.2 with envelopes, embedded signing, certified-copy delivery and workspace notification APIs.
+* Keeps workspace credentials off public signing, branding and download-token requests, and preserves explicit user tokens on authorization failures.
+* Aligns date-only and timezone-free deadlines with the API's UTC behavior.
+* Updates development dependencies and adds mobile browser coverage.
+
 = 1.5.0 =
 * Adds native contract tracking, lifecycle controls, amendment links and WP-CLI commands.
 * Includes Assinafy PHP SDK 2.8.0 and contract lifecycle webhooks.
@@ -229,6 +235,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+Adds current SDK resources and fixes credential isolation and UTC deadlines. Requires PHP 8.2 or newer.
 
 = 1.5.0 =
 Adds contract tracking with the existing OAuth document scopes. Register the webhook again to enable contract events and recover a missing signing secret.

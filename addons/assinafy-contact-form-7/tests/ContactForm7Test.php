@@ -233,6 +233,18 @@ final class ContactForm7Test extends AssinafyTestCase {
 		$this->assertFalse( $this->adapter->settings( $this->form )['enabled'] );
 	}
 
+	/** An attachment record is insufficient when the local PDF was removed. */
+	public function test_missing_pdf_disables_the_workflow(): void {
+		update_post_meta( $this->pdf, '_wp_attached_file', '/missing-assinafy-fixture.pdf' );
+		$_POST = array(
+			'post_ID'      => (string) $this->form->id(),
+			'_wpnonce'     => wp_create_nonce( 'wpcf7-save-contact-form_' . $this->form->id() ),
+			'assinafy_cf7' => array_merge( $this->adapter->settings( $this->form ), array( 'enabled' => '1' ) ),
+		);
+		$this->form->save();
+		$this->assertFalse( $this->adapter->settings( $this->form )['enabled'] );
+	}
+
 	/** A role allowed to manage configuration still needs permission to authorize sending. */
 	public function test_manage_without_send_cannot_configure_the_workflow(): void {
 		wp_get_current_user()->add_cap( 'assinafy_send', false );

@@ -6,16 +6,23 @@ function wp( ...args ) {
 	return execFileSync( process.execPath, [ 'node_modules/@wordpress/env/bin/wp-env', 'run', 'cli', '--env-cwd=wp-content/plugins/assinafy', 'wp', ...args ], { encoding: 'utf8' } );
 }
 
+async function login( page ) {
+	await page.goto( '/wp-login.php' );
+	const username = page.getByLabel( 'Username or Email Address' );
+	// WordPress focuses this field on a timer, which can steal focus during password input.
+	await expect( username ).toBeFocused();
+	await username.fill( 'admin' );
+	await page.getByLabel( 'Password', { exact: true } ).fill( 'password' );
+	await page.getByRole( 'button', { name: 'Log In', exact: true } ).click();
+	await page.waitForURL( '**/wp-admin/**' );
+}
+
 // Uses only wp-env's local site. Requests are intercepted before any API traffic.
 test.use( { baseURL: 'http://localhost:8888' } );
 
 test( 'PDF selection, signer validation and contiguous submitted rows', async ( { page } ) => {
 	test.setTimeout( 60000 );
-	await page.goto( '/wp-login.php' );
-	await page.getByLabel( 'Username or Email Address' ).fill( 'admin' );
-	await page.getByLabel( 'Password', { exact: true } ).fill( 'password' );
-	await page.getByRole( 'button', { name: 'Log In', exact: true } ).click();
-	await page.waitForURL( '**/wp-admin/**' );
+	await login( page );
 	await page.goto( '/wp-admin/admin.php?page=assinafy-send' );
 	await expect( page.getByRole( 'heading', { name: 'Send for signature' } ) ).toBeVisible();
 	await page.getByRole( 'button', { name: 'Choose a PDF', exact: true } ).click();
@@ -69,11 +76,7 @@ test( 'document action submits its own form and nonce inside the WordPress edito
 	const output = wp( 'eval', '$id = wp_insert_post(array("post_type" => "assinafy_document", "post_status" => "private", "post_title" => "E2E contract")); (new Assinafy\\WP\\Documents\\DocumentRecord())->hydrate_from_api($id, array("id" => "104618d0d63884bc446c534e5ff5", "status" => "metadata_ready", "is_closed" => false)); echo "ASSINAFY_E2E_POST=" . $id;' );
 	const postId = output.match( /ASSINAFY_E2E_POST=(\d+)/ )[ 1 ];
 	try {
-		await page.goto( '/wp-login.php' );
-		await page.getByLabel( 'Username or Email Address' ).fill( 'admin' );
-		await page.getByLabel( 'Password', { exact: true } ).fill( 'password' );
-		await page.getByRole( 'button', { name: 'Log In', exact: true } ).click();
-		await page.waitForURL( '**/wp-admin/**' );
+		await login( page );
 		await page.goto( `/wp-admin/post.php?post=${ postId }&action=edit` );
 		const rename = page.getByRole( 'button', { name: 'Rename', exact: true } );
 		await expect( rename ).toBeVisible();
@@ -163,11 +166,7 @@ add_filter('pre_http_request', static function ($preempt, $args, $url) {
 			(new Assinafy\\WP\\Credentials())->set_api_key('local-contract-fixture-key');
 			update_option('${ fixtureKey }_state', json_decode(base64_decode('${ Buffer.from( JSON.stringify( contract ) ).toString( 'base64' ) }'), true), false);
 		` );
-		await page.goto( '/wp-login.php' );
-		await page.getByLabel( 'Username or Email Address' ).fill( 'admin' );
-		await page.getByLabel( 'Password', { exact: true } ).fill( 'password' );
-		await page.getByRole( 'button', { name: 'Log In', exact: true } ).click();
-		await page.waitForURL( '**/wp-admin/**' );
+		await login( page );
 		await page.goto( `/wp-admin/admin.php?page=assinafy-contracts&document=${ documentId }` );
 		const forms = page.locator( 'form:has(input[name="action"][value="assinafy_contract"])' );
 		await expect( forms ).toHaveCount( 3 );

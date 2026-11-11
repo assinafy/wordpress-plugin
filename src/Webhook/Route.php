@@ -57,9 +57,8 @@ final class Route {
 	/**
 	 * The documented document, signer and contract events the receiver understands.
 	 *
-	 * Document, signer and contract events. `template_created`, `template_processed` and
-	 * `template_processing_failed` exist as SDK constants and in the published event catalog
-	 * but are not subscribable, so they are absent here. Registration also filters against
+	 * Template events do not affect the plugin's document projection and are excluded.
+	 * Registration also filters against
 	 * the target environment catalog returned by `GET /webhooks/event-types`.
 	 *
 	 * @var array<int, string>

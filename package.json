@@ -5,7 +5,7 @@
   "description": "Local development harness for the Assinafy WordPress plugin. No build step: the plugin ships hand-written CSS and JS.",
   "license": "GPL-2.0-or-later",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -30,7 +30,10 @@
     "qs": "6.17.0",
     "@wordpress/env": {
       "simple-git": "4.0.2",
-      "js-yaml": "4.3.2"
-    }
+      "js-yaml": "4.3.2",
+      "rimraf": "6.1.4"
+    },
+    "isomorphic-git": "1.38.6",
+    "fast-xml-parser": "5.12.0"
   }
 }

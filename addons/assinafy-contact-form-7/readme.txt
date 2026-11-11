@@ -5,7 +5,7 @@ Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
 Requires Plugins: assinafy, contact-form-7
-Stable tag: 0.1.1
+Stable tag: 0.1.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,9 @@ No. CF7 must report mail_sent. Its explicit skip_mail setting can still report s
 No. Version 0.1.1 sends an existing Media Library PDF to one mapped signer.
 
 == Changelog ==
+
+= 0.1.2 =
+* Disable workflows when the configured PDF is missing or unreadable.
 
 = 0.1.1 =
 * Reports local receipt-storage failures without interrupting an accepted form submission.

@@ -142,10 +142,17 @@ final class FormSettings {
 	 * @param array<string, mixed> $settings Configuration snapshot.
 	 */
 	public function valid_settings( WPCF7_ContactForm $form, array $settings ): bool {
-		return 'application/pdf' === get_post_mime_type( (int) ( $settings['attachment_id'] ?? 0 ) )
+		return $this->readable_pdf( (int) ( $settings['attachment_id'] ?? 0 ) )
 			&& '' !== ( $settings['name'] ?? '' ) && isset( $this->fields( $form, array( 'text', 'textarea' ) )[ $settings['name'] ] )
 			&& '' !== ( $settings['email'] ?? '' ) && isset( $this->fields( $form, array( 'email' ) )[ $settings['email'] ] )
 			&& ( '' === ( $settings['consent'] ?? '' ) || isset( $this->fields( $form, array( 'acceptance' ) )[ $settings['consent'] ] ) );
+	}
+
+	/** Require the attachment's PDF to exist locally before enabling a workflow. */
+	private function readable_pdf( int $attachment ): bool {
+		$file = get_attached_file( $attachment );
+		return is_string( $file ) && is_file( $file ) && is_readable( $file )
+			&& 'application/pdf' === get_post_mime_type( $attachment );
 	}
 
 	/**

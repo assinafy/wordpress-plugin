@@ -7,6 +7,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-11
+
+### Added
+
+- Bundle PHP SDK 2.9.2 with envelopes, embedded signing, certified-copy delivery, branding, usage and notification policy resources.
+- Run native admin browser workflows on desktop and mobile viewports.
+
+### Fixed
+
+- Suppress workspace credentials on public signing, branding and download-token requests.
+- Refresh only the configured OAuth token, preserving explicit per-request user credentials on 401 responses.
+- Interpret date-only deadlines as 23:59 UTC and timezone-free datetimes as UTC before expiry validation.
+- Disable Contact Form 7 workflows whose PDF file is missing or unreadable.
+
+### Changed
+
+- Update development dependencies with security fixes and require Node.js 22.13.0 or newer.
+- Keep concise setup and document flows in the README files, with full guides and current REST/SDK payload references under docs.
+
 ## [1.5.0] - 2026-10-28
 
 ### Added

@@ -83,3 +83,5 @@ composer.phar
 # Local credentials
 /.env
 /.env.*
+
+/playwright.config.js

@@ -563,11 +563,7 @@ final class WebhookRouteTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * An event outside the subscribable fifteen is acknowledged and dropped.
-	 *
-	 * The three `template_*` names are the interesting case: they exist as SDK constants and
-	 * in the published catalog but `GET /webhooks/event-types` does not offer them, so a
-	 * delivery carrying one is not something this account subscribed to.
+	 * Template and unknown events do not change the document projection.
 	 *
 	 * @param string $event Event name as delivered.
 	 *
@@ -585,7 +581,7 @@ final class WebhookRouteTest extends AssinafyTestCase {
 	}
 
 	/**
-	 * Names that are not subscribable events.
+	 * Names outside the document receiver vocabulary.
 	 *
 	 * @return array<string, array{string}>
 	 */

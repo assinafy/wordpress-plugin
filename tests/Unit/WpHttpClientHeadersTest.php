@@ -98,32 +98,39 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 	 */
 	public static function credentialless_routes(): array {
 		return array(
-			'oauth token'            => array( 'POST', 'oauth/token' ),
-			'oauth revocation'       => array( 'POST', 'oauth/revoke' ),
-			'login'                  => array( 'POST', 'login' ),
-			'social login'           => array( 'POST', 'authentication/social-login' ),
-			'mfa verification'       => array( 'POST', 'authentication/mfa/verify' ),
-			'password reset'         => array( 'PUT', 'authentication/reset-password' ),
-			'signer landing'         => array( 'GET', 'sign' ),
-			'code verification'      => array( 'POST', 'verify' ),
-			'signature submission'   => array( 'POST', 'signature' ),
-			'signer self'            => array( 'GET', 'signers/self' ),
-			'biometric status'       => array( 'GET', 'signers/identity-verification' ),
-			'biometric consent'      => array( 'POST', 'signers/identity-verification' ),
-			'accept terms'           => array( 'PUT', 'signers/accept-terms' ),
-			'sign multiple'          => array( 'PUT', 'signers/documents/sign-multiple' ),
-			'decline multiple'       => array( 'PUT', 'signers/documents/decline-multiple' ),
-			'document verify'        => array( 'GET', 'documents/104618b275d321f5de22240ebfda/verify' ),
-			'public document'        => array( 'GET', 'public/documents/104618b275d321f5de22240ebfda' ),
-			'send token'             => array( 'PUT', 'public/documents/104618b275d321f5de22240ebfda/send-token' ),
-			'signature by id'        => array( 'GET', 'signature/19e6b92e7895332ed9708535d8c' ),
-			'confirm signer data'    => array( 'PUT', 'documents/104618b275d321f5de22240ebfda/signers/confirm-data' ),
-			'signer signs'           => array( 'POST', 'documents/104618b275d321f5de22240ebfda/assignments/19e6b92e7895332ed9708535d8c' ),
-			'signer rejects'         => array( 'PUT', 'documents/104618b275d321f5de22240ebfda/assignments/1a09c15990f0144256b98ff38aa/reject' ),
-			'signer document'        => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/document' ),
-			'signer documents'       => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents?signer-access-code=test-code' ),
-			'signer document search' => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents/search?signer-access-code=test-code' ),
-			'signer download'        => array(
+			'oauth token'             => array( 'POST', 'oauth/token' ),
+			'oauth revocation'        => array( 'POST', 'oauth/revoke' ),
+			'login'                   => array( 'POST', 'login' ),
+			'social login'            => array( 'POST', 'authentication/social-login' ),
+			'mfa verification'        => array( 'POST', 'authentication/mfa/verify' ),
+			'password reset'          => array( 'PUT', 'authentication/reset-password' ),
+			'signer theme'            => array( 'GET', 'sign/theme' ),
+			'signer logo'             => array( 'GET', 'sign/logo' ),
+			'certified copy request'  => array( 'POST', 'sign/certified-copy' ),
+			'certified copy download' => array( 'GET', 'signers/downloads/test-token' ),
+			'certified copy pades'    => array( 'GET', 'signers/downloads/test-token/pades' ),
+			'certified copy resend'   => array( 'POST', 'signers/downloads/test-token/resend' ),
+			'embedded exchange'       => array( 'POST', 'embed/sessions/test-token/exchange' ),
+			'signer landing'          => array( 'GET', 'sign' ),
+			'code verification'       => array( 'POST', 'verify' ),
+			'signature submission'    => array( 'POST', 'signature' ),
+			'signer self'             => array( 'GET', 'signers/self' ),
+			'biometric status'        => array( 'GET', 'signers/identity-verification' ),
+			'biometric consent'       => array( 'POST', 'signers/identity-verification' ),
+			'accept terms'            => array( 'PUT', 'signers/accept-terms' ),
+			'sign multiple'           => array( 'PUT', 'signers/documents/sign-multiple' ),
+			'decline multiple'        => array( 'PUT', 'signers/documents/decline-multiple' ),
+			'document verify'         => array( 'GET', 'documents/104618b275d321f5de22240ebfda/verify' ),
+			'public document'         => array( 'GET', 'public/documents/104618b275d321f5de22240ebfda' ),
+			'send token'              => array( 'PUT', 'public/documents/104618b275d321f5de22240ebfda/send-token' ),
+			'signature by id'         => array( 'GET', 'signature/19e6b92e7895332ed9708535d8c' ),
+			'confirm signer data'     => array( 'PUT', 'documents/104618b275d321f5de22240ebfda/signers/confirm-data' ),
+			'signer signs'            => array( 'POST', 'documents/104618b275d321f5de22240ebfda/assignments/19e6b92e7895332ed9708535d8c' ),
+			'signer rejects'          => array( 'PUT', 'documents/104618b275d321f5de22240ebfda/assignments/1a09c15990f0144256b98ff38aa/reject' ),
+			'signer document'         => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/document' ),
+			'signer documents'        => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents?signer-access-code=test-code' ),
+			'signer document search'  => array( 'GET', 'signers/19e6b92e7895332ed9708535d8c/documents/search?signer-access-code=test-code' ),
+			'signer download'         => array(
 				'GET',
 				'signers/19e6b92e7895332ed9708535d8c/documents/104618b275d321f5de22240ebfda/download/original',
 			),
@@ -137,21 +144,47 @@ final class WpHttpClientHeadersTest extends TransportTestCase {
 	 * @param string $uri    Request URI.
 	 */
 	public function test_a_credentialless_route_receives_neither_credential( string $method, string $uri ): void {
-		FakeHttp::queue( 200, '{"status":200,"message":"","data":[]}', array( 'Content-Type' => 'application/json' ) );
+		foreach ( array( null, 'workspace-test-token' ) as $token ) {
+			FakeHttp::queue( 200, '{"status":200,"message":"","data":[]}', array( 'Content-Type' => 'application/json' ) );
 
-		$client = $this->client();
+			$client = new WpHttpClient( $this->config( $token ) );
 
-		match ( strtoupper( $method ) ) {
-			'GET'  => $client->get( $uri ),
-			'POST' => $client->post( $uri, array() ),
-			'PUT'  => $client->put( $uri, array() ),
-		};
+			match ( strtoupper( $method ) ) {
+				'GET'  => $client->get( $uri ),
+				'POST' => $client->post( $uri, array() ),
+				'PUT'  => $client->put( $uri, array() ),
+			};
 
-		$headers = FakeHttp::last_headers();
+			$headers = FakeHttp::last_headers();
 
-		$this->assertArrayNotHasKey( 'x-api-key', $headers, "{$method} {$uri} must not carry the API key." );
-		$this->assertArrayNotHasKey( 'authorization', $headers, "{$method} {$uri} must not carry a bearer token." );
-		$this->assertSame( 'application/json', $headers['accept'], 'Non-credential defaults still apply.' );
+			$this->assertArrayNotHasKey( 'x-api-key', $headers, "{$method} {$uri} must not carry the API key." );
+			$this->assertArrayNotHasKey( 'authorization', $headers, "{$method} {$uri} must not carry a bearer token." );
+			$this->assertSame( 'application/json', $headers['accept'], 'Non-credential defaults still apply.' );
+		}
+	}
+
+	/** An explicit user token must never be replaced by the connected workspace's token. */
+	public function test_an_explicit_bearer_does_not_refresh_the_workspace(): void {
+		$renewals = 0;
+		$client   = new WpHttpClient(
+			$this->config( 'workspace-token' ),
+			null,
+			static function () use ( &$renewals ): string {
+				++$renewals;
+				return 'renewed-workspace-token';
+			}
+		);
+		FakeHttp::queue( 401, '{"status":401,"message":"Unauthorized","data":null}' );
+		$this->queue_ok();
+		try {
+			$client->get( 'users/self', array(), array( 'authorization' => 'Bearer explicit-user-token' ) );
+			$this->fail( 'An invalid explicit user token must remain unauthorized.' );
+		} catch ( \Assinafy\SDK\Exceptions\ApiException $error ) {
+			$this->assertSame( 401, $error->getStatusCode() );
+		} finally {
+			$this->assertSame( 0, $renewals );
+			$this->assertCount( 1, FakeHttp::$requests );
+		}
 	}
 
 	/** Workspace signer lists use the configured credential when no access code is supplied. */

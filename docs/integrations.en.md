@@ -74,7 +74,7 @@ returns the local `assinafy_document` post ID. Failure returns a `WP_Error`; whe
 already reserved a local record, its error data can include that recovery `post_id`.
 
 The PDF, signers, message, expiry and optional mirror `post_id` retain their existing
-[documented contract](../README.en.md#assinafy_send_document--send-now). A mirror `post_id` is not
+[documented contract](user-guide.en.md#assinafy_send_document--send-now). A mirror `post_id` is not
 the host's entry or order ID. Host identity belongs in `source`:
 
 ```php

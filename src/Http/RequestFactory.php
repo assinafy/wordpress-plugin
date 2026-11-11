@@ -44,6 +44,9 @@ final class RequestFactory {
 		'PUT authentication/request-password-reset',
 		'PUT authentication/reset-password',
 		'GET sign',
+		'GET sign/theme',
+		'GET sign/logo',
+		'POST sign/certified-copy',
 		'POST verify',
 		'POST signature',
 		'GET signers/self',
@@ -60,6 +63,9 @@ final class RequestFactory {
 	 * @var list<non-empty-string>
 	 */
 	private const CREDENTIALLESS_ROUTE_PATTERNS = array(
+		'~^POST embed/sessions/[^/]+/exchange$~',
+		'~^GET signers/downloads/[^/]+(?:/pades)?$~',
+		'~^POST signers/downloads/[^/]+/resend$~',
 		'~^GET documents/[^/]+/verify$~',
 		'~^GET public/documents/[^/]+$~',
 		'~^PUT public/documents/[^/]+/send-token$~',

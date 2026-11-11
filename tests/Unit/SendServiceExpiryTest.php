@@ -55,6 +55,16 @@ final class SendServiceExpiryTest extends TestCase {
 		$this->assertSame( array(), FakeHttp::$requests );
 	}
 
+	/** Date-only and offset-free input use the same UTC instants as the API. */
+	public function test_expirations_follow_the_api_utc_defaults(): void {
+		$method  = new \ReflectionMethod( SendService::class, 'expires_at' );
+		$service = $this->service();
+		$this->assertSame( '2099-01-01T23:59:00Z', $method->invoke( $service, $this->args( '2099-01-01' ) ) );
+		$this->assertSame( '2099-01-01T12:30:00Z', $method->invoke( $service, $this->args( '2099-01-01T12:30:00' ) ) );
+		$this->assertSame( '2099-01-01T12:30:00-03:00', $method->invoke( $service, $this->args( '2099-01-01T12:30:00-03:00' ) ) );
+		$this->assertSame( array(), FakeHttp::$requests );
+	}
+
 	private function service(): SendService {
 		$credentials = new Credentials();
 		$credentials->set_api_key( 'test-api-key-not-a-real-credential' );
