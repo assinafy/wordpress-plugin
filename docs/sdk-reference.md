@@ -15,8 +15,7 @@ public function __construct(
         #[\SensitiveParameter] Configuration $config,
         ?HttpClientInterface $httpClient = null,
         ?LoggerInterface $logger = null
-    ) {
-        $this->config = $config;
+    )
 ```
 
 Construct a client without making an HTTP request.
@@ -32,8 +31,7 @@ public static function create(
         #[\SensitiveParameter] string $apiKey,
         string $accountId,
         string $baseUrl = Configuration::DEFAULT_BASE_URL
-    ): self {
-        return new self(new Configuration($apiKey, $accountId, $baseUrl));
+    ): self
 ```
 
 Create a workspace client using an API key; no network request is made.
@@ -80,8 +78,7 @@ public static function forBearer(
         #[\SensitiveParameter] string $accessToken,
         string $accountId,
         string $baseUrl = Configuration::DEFAULT_BASE_URL
-    ): self {
-        return new self(Configuration::forBearer($accessToken, $accountId, $baseUrl));
+    ): self
 ```
 
 Build an account-scoped client authenticated with a Bearer access token.
@@ -213,14 +210,7 @@ credential exists.
 public function oauth(
         string $clientId,
         #[\SensitiveParameter] ?string $clientSecret = null
-    ): OAuthResource {
-        return new OAuthResource(
-            $this->httpClient,
-            $this->config,
-            $this->loggerProxy,
-            $clientId,
-            $clientSecret
-        );
+    ): OAuthResource
 ```
 
 Marketplace OAuth: the authorization-code + PKCE flow for acting on **another**
@@ -302,8 +292,7 @@ public function uploadAndRequestSignatures(
         #[\SensitiveParameter] ?string $message = null,
         ?string $expiresAt = null,
         bool $waitForReady = true
-    ): array {
-        $this->validateSignerDescriptions($signers);
+    ): array
 ```
 
 High-level helper: upload a PDF, create signers if needed, then dispatch a virtual
@@ -519,8 +508,7 @@ public function __construct(
         int $timeout = 30,
         int $connectTimeout = 10,
         #[\SensitiveParameter] ?string $accessToken = null
-    ) {
-        $this->validateCredentials($apiKey, $accountId, $accessToken);
+    )
 ```
 
 Validate and store connection settings without making a request.
@@ -570,8 +558,7 @@ public static function forBearer(
         string $baseUrl = self::DEFAULT_BASE_URL,
         int $timeout = 30,
         int $connectTimeout = 10
-    ): self {
-        return new self('', $accountId, $baseUrl, $timeout, $connectTimeout, $accessToken);
+    ): self
 ```
 
 Configure all workspace resources with OAuth/Bearer authentication instead
@@ -673,8 +660,7 @@ public function __construct(
         #[\SensitiveParameter] ?array $responseData = null,
         ?\Throwable $previous = null,
         array $responseHeaders = []
-    ) {
-        parent::__construct($message, $statusCode, $previous, ['response_data' => $responseData]);
+    )
 ```
 
 @param array<string, mixed>|null $responseData
@@ -757,8 +743,7 @@ public static function fromResponse(
         #[\SensitiveParameter] array $responseData,
         ?\Throwable $previous = null,
         array $responseHeaders = []
-    ): self {
-        $message = $responseData['message'] ?? $responseData['error'] ?? 'API request failed';
+    ): self
 ```
 
 @param array<string, mixed> $responseData
@@ -774,8 +759,7 @@ public function __construct(
         int $code = 0,
         ?\Throwable $previous = null,
         #[\SensitiveParameter] array $context = []
-    ) {
-        parent::__construct($message, $code, $previous);
+    )
 ```
 
 @param array<string, mixed> $context
@@ -807,8 +791,7 @@ public function __construct(
         string $message = 'Validation failed',
         #[\SensitiveParameter] array $errors = [],
         int $code = 422
-    ) {
-        parent::__construct($message, $code, null, ['errors' => $errors]);
+    )
 ```
 
 @param array<array-key, mixed> $errors
@@ -838,12 +821,7 @@ public function __construct(
         #[\SensitiveParameter] Configuration $config,
         ?LoggerInterface $logger = null,
         #[\SensitiveParameter] ?ClientInterface $client = null
-    ) {
-        if ($client instanceof Client) {
-            if ($client->getConfig('auth') !== null && $client->getConfig('auth') !== false) {
-                throw new \InvalidArgumentException(
-                    'Injected Guzzle clients cannot define default HTTP authentication'
-                );
+    )
 ```
 
 @param ClientInterface|null $client Pre-built Guzzle client. Leave null in production —
@@ -867,11 +845,7 @@ public function get(
         #[\SensitiveParameter] string $uri,
         #[\SensitiveParameter] array $params = [],
         #[\SensitiveParameter] array $headers = []
-    ): Response {
-        return $this->request('GET', $uri, [
-            'query' => $params,
-            'headers' => $headers,
-        ]);
+    ): Response
 ```
 
 {@inheritDoc}
@@ -884,8 +858,7 @@ public function post(
         #[\SensitiveParameter] ?array $data = null,
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = []
-    ): Response {
-        return $this->request('POST', $uri, $this->jsonOptions($data, $headers, $query));
+    ): Response
 ```
 
 {@inheritDoc}
@@ -898,8 +871,7 @@ public function put(
         #[\SensitiveParameter] ?array $data = null,
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = []
-    ): Response {
-        return $this->request('PUT', $uri, $this->jsonOptions($data, $headers, $query));
+    ): Response
 ```
 
 {@inheritDoc}
@@ -912,8 +884,7 @@ public function patch(
         #[\SensitiveParameter] ?array $data = null,
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = []
-    ): Response {
-        return $this->request('PATCH', $uri, $this->jsonOptions($data, $headers, $query));
+    ): Response
 ```
 
 {@inheritDoc}
@@ -926,8 +897,7 @@ public function delete(
         #[\SensitiveParameter] array $headers = [],
         #[\SensitiveParameter] array $query = [],
         #[\SensitiveParameter] array $data = []
-    ): Response {
-        $options = ['headers' => $data === [] ? $headers : $this->withJsonHeaders($headers)];
+    ): Response
 ```
 
 {@inheritDoc}
@@ -940,9 +910,7 @@ public function uploadFile(
         #[\SensitiveParameter] string $filePath,
         #[\SensitiveParameter] array $data = [],
         #[\SensitiveParameter] array $headers = []
-    ): Response {
-        if (!is_file($filePath) || !is_readable($filePath)) {
-            throw new \InvalidArgumentException("File not found: {$filePath}");
+    ): Response
 ```
 
 {@inheritDoc}
@@ -956,12 +924,7 @@ public function postRaw(
         string $contentType,
         #[\SensitiveParameter] array $query = [],
         #[\SensitiveParameter] array $headers = []
-    ): Response {
-        return $this->request('POST', $uri, [
-            'query' => $query,
-            'body' => $body,
-            'headers' => array_merge(['Content-Type' => $contentType], $headers),
-        ]);
+    ): Response
 ```
 
 {@inheritDoc}
@@ -1194,8 +1157,7 @@ public function __construct(
         HttpClientInterface $httpClient,
         #[\SensitiveParameter] Configuration $config,
         ?LoggerInterface $logger = null
-    ) {
-        $this->httpClient = $httpClient;
+    )
 ```
 
 Inject transport, immutable-by-interface configuration and an optional PSR-3 logger.
@@ -1297,7 +1259,7 @@ Response: ['editable' => true, 'owners_receive_all' => false, 'events' =>
 'ContractRenewalNotice' => true, 'ContractExpiring' => true, 'ContractExpired' => true,
 'ContractRenewed' => true, 'SignerViewed' => false, 'SignerSigned' => true,
 'SignerIdentityReviewRequired' => true]].
-The complete event map is documented in docs/WORKSPACE.md.
+The complete event map is documented in [webhook payload reference](api-payloads.md#webhook-payloads).
 @return array<string, mixed>
 
 ### `updateNotificationPolicy()`
@@ -1384,9 +1346,7 @@ public function create(
         string $name,
         ?string $notificationSenderType = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        if (trim($name) === '') {
-            throw new ValidationException('Account name cannot be empty');
+    ): array
 ```
 
 Create a new account (workspace).
@@ -1524,11 +1484,7 @@ Example response (SDK return; optional fields depend on state):
 public function stats(
         string $granularity = self::GRANULARITY_MONTHLY,
         ?string $month = null
-    ): array {
-        $response = $this->httpClient->get(
-            $this->accountPath('stats'),
-            $this->statsQuery($granularity, $month)
-        );
+    ): array
 ```
 
 Return the configured account's document-funnel KPI series.
@@ -1667,8 +1623,7 @@ public function create(
         #[\SensitiveParameter] array $signers,
         string $method = self::METHOD_VIRTUAL,
         #[\SensitiveParameter] array $options = []
-    ): array {
-        $this->assertMethod($method);
+    ): array
 ```
 
 Create an assignment (signature request).
@@ -1966,8 +1921,7 @@ public function estimateCost(
         #[\SensitiveParameter] array $signers,
         string $method = self::METHOD_VIRTUAL,
         #[\SensitiveParameter] array $options = []
-    ): array {
-        $this->assertMethod($method);
+    ): array
 ```
 
 Estimate the credit cost of creating an assignment, without creating it.
@@ -2281,9 +2235,7 @@ public function identityVerificationImage(
         string $assignmentId,
         string $signerId,
         string $name
-    ): string {
-        if (!in_array($name, ['document_front', 'document_back', 'document_pdf', 'face'], true)) {
-            throw new ValidationException('Unknown identity verification image name');
+    ): string
 ```
 
 Download one identity-review evidence image or PDF as raw bytes.
@@ -2315,9 +2267,7 @@ public function reviewIdentityVerification(
         string $signerId,
         string $decision,
         #[\SensitiveParameter] ?string $note = null
-    ): array {
-        if (!in_array($decision, [self::IDENTITY_REVIEW_APPROVED, self::IDENTITY_REVIEW_REJECTED], true)) {
-            throw new ValidationException('Identity review decision must be Approved or Rejected');
+    ): array
 ```
 
 Approve or reject an InReview identity verification.
@@ -2372,8 +2322,7 @@ API supports three concurrent auth schemes:
 public function login(
         #[\SensitiveParameter] string $email,
         #[\SensitiveParameter] string $password
-    ): array {
-        $this->assertEmail($email);
+    ): array
 ```
 
 Sign in with email + password.
@@ -2433,8 +2382,7 @@ When the user has two-factor authentication enabled, the response carries an
 public function verifyMfa(
         #[\SensitiveParameter] string $mfaToken,
         #[\SensitiveParameter] string $code
-    ): array {
-        $this->assertNotEmpty('MFA token', $mfaToken);
+    ): array
 ```
 
 Complete a two-factor login.
@@ -2489,8 +2437,7 @@ public function socialLogin(
         string $provider,
         #[\SensitiveParameter] string $token,
         bool $hasAcceptedTerms = false
-    ): array {
-        $this->assertProvider($provider);
+    ): array
 ```
 
 Sign in with a social provider.
@@ -2542,8 +2489,7 @@ public function linkSocialLogin(
         string $provider,
         #[\SensitiveParameter] string $token,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        $this->assertProvider($provider);
+    ): array
 ```
 
 Link a social provider account to the authenticated Assinafy user.
@@ -2593,7 +2539,7 @@ https://api.assinafy.com.br/v1/auth/authenticate?authclient=google
 
 This legacy social-login route is outside OpenAPI. The production route returns
 a redirect; this builder does not complete provider authentication. Marketplace
-OAuth uses the separate authorization server and PKCE flow in docs/OAUTH.md.
+OAuth uses the separate authorization server and PKCE flow in [connection guide](user-guide.en.md#3-configuration).
 
 @return string absolute URL
 @throws ValidationException on an unsupported provider
@@ -2627,8 +2573,7 @@ than JSON, so it is a redirect target rather than an endpoint to call.
 public function generateApiKey(
         #[\SensitiveParameter] ?string $accessToken,
         #[\SensitiveParameter] string $password
-    ): array {
-        $this->assertNotEmpty('Password', $password);
+    ): array
 ```
 
 Generate (or regenerate) the API key for the authenticated user.
@@ -2719,8 +2664,7 @@ public function changePassword(
         #[\SensitiveParameter] string $email,
         #[\SensitiveParameter] string $password,
         #[\SensitiveParameter] string $newPassword
-    ): array {
-        $this->assertEmail($email);
+    ): array
 ```
 
 Change the password of the authenticated user.
@@ -2788,8 +2732,7 @@ public function resetPassword(
         #[\SensitiveParameter] string $email,
         #[\SensitiveParameter] string $token,
         #[\SensitiveParameter] string $newPassword
-    ): array {
-        $this->assertEmail($email);
+    ): array
 ```
 
 Complete a password reset using the token emailed to the user.
@@ -3720,12 +3663,7 @@ public function sendToken(
         string $documentId,
         #[\SensitiveParameter] string $recipient,
         string $channel = self::SEND_TOKEN_CHANNEL_EMAIL
-    ): array {
-        if (!in_array($channel, self::SEND_TOKEN_CHANNELS, true)) {
-            throw new ValidationException(
-                "Unsupported send-token channel '{$channel}'",
-                ['allowed' => self::SEND_TOKEN_CHANNELS]
-            );
+    ): array
 ```
 
 Request an access token to be sent to a signer through email.
@@ -3905,9 +3843,7 @@ public function createFromTemplate(
         #[\SensitiveParameter] array $signers,
         #[\SensitiveParameter] array $options = [],
         ?string $idempotencyKey = null
-    ): array {
-        if ($signers === []) {
-            throw new ValidationException('At least one template signer is required');
+    ): array
 ```
 
 Create a document from a template.
@@ -3995,9 +3931,7 @@ Example response shape (SDK return; relationship expansion depends on document s
 public function estimateCostFromTemplate(
         string $templateId,
         #[\SensitiveParameter] array $signers
-    ): array {
-        if ($signers === []) {
-            throw new ValidationException('At least one template signer is required');
+    ): array
 ```
 
 Estimate cost of creating a document from a template.
@@ -4271,7 +4205,7 @@ Even a 409 refusal spends the token. Never retry or log the token or returned co
 
 Workspace document envelopes. API key or workspace Bearer authentication; reads require
 documents:read and writes documents:write. Creation, estimation and addition require the
-Envelopes plan feature. See docs/ENVELOPES.md for complete request and response examples.
+Envelopes plan feature. See [REST payload reference](api-payloads.md) for complete request and response examples.
 
 ### `list()`
 
@@ -4293,7 +4227,7 @@ public function get(string $envelopeId): array
 ```
 
 GET /accounts/{accountId}/envelopes/{envelopeId}. No body or query.
-Response: the DocumentEnvelope array illustrated in docs/ENVELOPES.md.
+Response: the DocumentEnvelope array illustrated in [REST payload reference](api-payloads.md).
 @param string $envelopeId existing envelope ID
 @return array<string, mixed> envelope with documents, counts and signing_urls
 
@@ -4306,7 +4240,7 @@ public function create(#[\SensitiveParameter] array $data, ?string $idempotencyK
 POST /accounts/{accountId}/envelopes. Documents must be metadata_ready and unassigned.
 Request: ['name' => 'Agreement', 'signers' => [['id' => 'signer-id']],
 'documents' => [['id' => 'document-id', 'signer_ids' => ['signer-id']]]].
-Response: the DocumentEnvelope array illustrated in docs/ENVELOPES.md.
+Response: the DocumentEnvelope array illustrated in [REST payload reference](api-payloads.md).
 An optional Idempotency-Key replays the original result without charging again.
 A 200 means creation succeeded; inspect notification_history for delivery failures.
 @param array<string, mixed> $data complete EnvelopeCreateRequest, including optional max_total_credits
@@ -4336,7 +4270,7 @@ public function update(string $envelopeId, #[\SensitiveParameter] array $data): 
 PATCH /accounts/{accountId}/envelopes/{envelopeId}. Open or closed envelope; sends no notice.
 Request: ['name' => 'Agreement', 'message' => null, 'document_ids' => ['document-id']].
 Send only changes; document_ids must list every current document once in its new order.
-Response: DocumentEnvelope as in docs/ENVELOPES.md, with updated values.
+Response: DocumentEnvelope as in [REST payload reference](api-payloads.md), with updated values.
 @param string $envelopeId existing envelope ID
 @param array<string, mixed> $data name, message and/or document_ids
 @return array<string, mixed> updated envelope
@@ -4417,7 +4351,7 @@ public function addDocument(string $envelopeId, #[\SensitiveParameter] array $do
 POST /accounts/{accountId}/envelopes/{envelopeId}/documents. Open envelope, ready unassigned document.
 Request: ['id' => 'document-id', 'signer_ids' => ['signer-id'], 'method' => 'virtual',
 'expires_at' => null, 'copy_receiver_ids' => [], 'max_total_credits' => 0].
-Response: DocumentEnvelope from docs/ENVELOPES.md, with the new document last.
+Response: DocumentEnvelope from [REST payload reference](api-payloads.md), with the new document last.
 Only existing envelope signers may participate. Sends invitations; certificate signatures cost credits.
 @param string $envelopeId open envelope ID
 @param array<string, mixed> $document EnvelopeDocumentRequest and optional max_total_credits
@@ -4430,7 +4364,7 @@ public function removeDocument(string $envelopeId, string $documentId): array
 ```
 
 DELETE /accounts/{accountId}/envelopes/{envelopeId}/documents/{documentId}. No body or query.
-Response: DocumentEnvelope from docs/ENVELOPES.md without that document.
+Response: DocumentEnvelope from [REST payload reference](api-payloads.md) without that document.
 Cancels the removed document and notifies its participants; 409 DocumentClosed if not cancellable.
 @param string $envelopeId existing envelope ID
 @param string $documentId cancellable document currently in the envelope
@@ -4646,8 +4580,7 @@ public function validate(
         string $fieldId,
         #[\SensitiveParameter] mixed $value,
         #[\SensitiveParameter] ?string $signerAccessCode = null
-    ): array {
-        $fieldId = $this->pathSegment($fieldId, 'field ID');
+    ): array
 ```
 
 Validate a single input value against a field definition.
@@ -4690,13 +4623,7 @@ Example response (SDK return; optional fields depend on state):
 public function validateMultiple(
         #[\SensitiveParameter] array $values,
         #[\SensitiveParameter] ?string $signerAccessCode = null
-    ): array {
-        $response = $this->httpClient->post(
-            $this->accountPath('fields/validate-multiple'),
-            array_values($values),
-            [],
-            $this->accessCodeQuery($signerAccessCode)
-        );
+    ): array
 ```
 
 Validate several input values at once.
@@ -4853,7 +4780,7 @@ $tokens = $oauth->exchangeCode($code, $transaction);
 ```
 
 The SDK does not store tokens, hold refresh locks, or renew anything automatically.
-Those are application concerns — see `docs/OAUTH.md`.
+Those are application concerns — see [connection guide](user-guide.en.md#3-configuration).
 
 @see https://api.assinafy.com.br/v1/docs#tag/OAuth-Integration-Guide
 
@@ -4867,8 +4794,7 @@ public function __construct(
         string $clientId = '',
         #[\SensitiveParameter] ?string $clientSecret = null,
         ?\Closure $discoveryTransport = null
-    ) {
-        parent::__construct($httpClient, $config, $logger);
+    )
 ```
 
 @param string      $clientId     the application's `client_id` from the Assinafy app
@@ -4897,8 +4823,7 @@ public function startAuthorization(
         string $redirectUri,
         array $scopes,
         #[\SensitiveParameter] array $options = []
-    ): array {
-        $this->assertRedirectUri($redirectUri);
+    ): array
 ```
 
 Begin a connection: mint PKCE material and build the authorization URL.
@@ -4947,8 +4872,7 @@ Feed the same array back into {@see self::handleCallback()} and
 public function handleCallback(
         #[\SensitiveParameter] array $query,
         #[\SensitiveParameter] array $transaction
-    ): string {
-        $expectedState = $this->stringOption($transaction, 'state');
+    ): string
 ```
 
 Validate the browser's return to your redirect URI and return the authorization code.
@@ -4988,9 +4912,7 @@ Declined callback, which raises `ApiException` with message `access_denied`:
 public function exchangeCode(
         #[\SensitiveParameter] string $code,
         #[\SensitiveParameter] array $transaction
-    ): array {
-        if (trim($code) === '') {
-            throw new ValidationException('Authorization code cannot be empty');
+    ): array
 ```
 
 Exchange an authorization code for tokens.
@@ -5098,9 +5020,7 @@ Example response (flat JSON — no `data` envelope):
 public function revoke(
         #[\SensitiveParameter] string $token,
         ?string $tokenTypeHint = null
-    ): array {
-        if (trim($token) === '') {
-            throw new ValidationException('Token cannot be empty');
+    ): array
 ```
 
 Disconnect: revoke an access or refresh token.
@@ -5332,8 +5252,7 @@ public function current(
         string $signerId,
         #[\SensitiveParameter] string $accessCode,
         ?string $expand = null
-    ): array {
-        $signerId = $this->pathSegment($signerId, 'signer ID');
+    ): array
 ```
 
 Get the document tied to the signer's access code, with the signer's assignment items.
@@ -5493,8 +5412,7 @@ public function list(
         string $signerId,
         #[\SensitiveParameter] string $accessCode,
         array $filters = []
-    ): array {
-        return $this->listDocuments($signerId, $this->accessCodeQuery($accessCode), $filters);
+    ): array
 ```
 
 List the signer's documents.
@@ -5609,8 +5527,7 @@ public function search(
         #[\SensitiveParameter] string $accessCode,
         string $term,
         ?string $envelopeId = null
-    ): array {
-        return $this->searchDocuments($signerId, $this->accessCodeQuery($accessCode), $term, $envelopeId);
+    ): array
 ```
 
 Search the signer's documents using the API's compact representation.
@@ -5739,8 +5656,7 @@ public function declineMultiple(
         #[\SensitiveParameter] string $accessCode,
         array $documentIds,
         #[\SensitiveParameter] string $reason
-    ): array {
-        $this->assertDocumentIds($documentIds);
+    ): array
 ```
 
 Decline several documents in one call.
@@ -5781,8 +5697,7 @@ public function download(
         string $documentId,
         #[\SensitiveParameter] string $accessCode,
         string $artifact = DocumentResource::ARTIFACT_ORIGINAL
-    ): string {
-        DocumentResource::assertArtifact($artifact);
+    ): string
 ```
 
 Download one of the signer's document artifacts (raw binary body).
@@ -5854,9 +5769,7 @@ public function create(
         #[\SensitiveParameter] ?string $email = null,
         #[\SensitiveParameter] ?string $whatsappPhoneNumber = null,
         #[\SensitiveParameter] ?string $governmentId = null
-    ): array {
-        if (trim($fullName) === '') {
-            throw new ValidationException('full_name is required', ['full_name' => $fullName]);
+    ): array
 ```
 
 Create a signer.
@@ -5939,8 +5852,7 @@ public function list(
         int $page = 1,
         int $perPage = 20,
         #[\SensitiveParameter] ?string $search = null
-    ): array {
-        $params = $this->paginationQuery($page, $perPage);
+    ): array
 ```
 
 List signers in the workspace.
@@ -6210,13 +6122,7 @@ Example response (SDK return; optional fields depend on state):
 public function verifyCode(
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] string $verificationCode
-    ): array {
-        $response = $this->httpClient->post(
-            'verify',
-            ['verification-code' => $verificationCode],
-            [],
-            $this->accessCodeQuery($accessCode)
-        );
+    ): array
 ```
 
 Verify the one-time code sent to the signer's email/WhatsApp.
@@ -6252,8 +6158,7 @@ public function confirmData(
         string $documentId,
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] array $data
-    ): array {
-        $documentId = $this->pathSegment($documentId, 'document ID');
+    ): array
 ```
 
 Confirm the signer's name, email, government ID, or terms acceptance.
@@ -6307,8 +6212,7 @@ public function uploadSignature(
         #[\SensitiveParameter] string $imageBytes,
         string $mimeType = 'image/png',
         ?bool $reuse = null
-    ): array {
-        $this->assertType($type);
+    ): array
 ```
 
 Upload a signature or initial image (PNG/JPEG bytes).
@@ -6386,8 +6290,7 @@ public function currentDocument(
         ?bool $hasAcceptedTerms = null,
         ?string $documentId = null,
         ?string $expand = null
-    ): array {
-        $query = $this->accessCodeQuery($accessCode);
+    ): array
 ```
 
 Retrieve the document/assignment the signer currently has access to.
@@ -6556,8 +6459,7 @@ public function sign(
         string $assignmentId,
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] array $fields
-    ): array {
-        $documentId = $this->pathSegment($documentId, 'document ID');
+    ): array
 ```
 
 Sign a document with input fields (collect method).
@@ -6605,9 +6507,7 @@ public function decline(
         string $assignmentId,
         #[\SensitiveParameter] string $accessCode,
         #[\SensitiveParameter] string $reason
-    ): array {
-        if (trim($reason) === '') {
-            throw new ValidationException('A decline reason is required');
+    ): array
 ```
 
 Decline (reject) an assignment as a signer.
@@ -7200,9 +7100,7 @@ public function waitUntilReady(
         string $templateId,
         int $maxWaitSeconds = 60,
         int $pollIntervalSeconds = 2
-    ): array {
-        if ($maxWaitSeconds < 1 || $pollIntervalSeconds < 1) {
-            throw new ValidationException('Wait and poll intervals must be positive integers');
+    ): array
 ```
 
 Poll {@see self::get()} until the template finishes processing.
@@ -7339,12 +7237,7 @@ public function stats(
         string $granularity = self::GRANULARITY_MONTHLY,
         ?string $month = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        $response = $this->httpClient->get(
-            'users/self/stats',
-            $this->statsQuery($granularity, $month),
-            $this->bearerHeaders($accessToken)
-        );
+    ): array
 ```
 
 Get document-funnel KPIs summed over every account the user belongs to.
@@ -7454,9 +7347,7 @@ Available in production and sandbox; access depends on the authenticated account
 public function updateNotificationPreferences(
         array $preferences,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        if ($preferences === []) {
-            throw new ValidationException('At least one notification preference is required');
+    ): array
 ```
 
 Merge selected owner-facing document and contract email preferences.
@@ -7526,9 +7417,7 @@ Response: ['SignerViewed' => true, 'SignerSigned' => true, 'DocumentCompleted' =
 public function updatePushPreferences(
         array $preferences,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        if ($preferences === []) {
-            throw new ValidationException('At least one push preference is required');
+    ): array
 ```
 
 Merge personal push preferences. PUT /users/self/push-preferences.
@@ -7575,12 +7464,7 @@ Example response (SDK return):
 public function startTotpEnrollment(
         ?string $label = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        $response = $this->httpClient->post(
-            'users/self/mfa/totp',
-            $label === null ? [] : ['label' => $label],
-            $this->bearerHeaders($accessToken)
-        );
+    ): array
 ```
 
 Start enrolling an authenticator app.
@@ -7616,9 +7500,7 @@ public function confirmTotpEnrollment(
         #[\SensitiveParameter] ?string $password = null,
         #[\SensitiveParameter] ?string $reauthCode = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        if (trim($methodId) === '' || trim($code) === '') {
-            throw new ValidationException('MFA method ID and code cannot be empty');
+    ): array
 ```
 
 Confirm an authenticator enrollment and receive the recovery codes.
@@ -7654,12 +7536,7 @@ public function regenerateRecoveryCodes(
         #[\SensitiveParameter] ?string $password = null,
         #[\SensitiveParameter] ?string $code = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        $response = $this->httpClient->post(
-            'users/self/mfa/recovery-codes',
-            $this->requiredReauthentication($password, $code),
-            $this->bearerHeaders($accessToken)
-        );
+    ): array
 ```
 
 Issue ten new recovery codes, invalidating the previous set.
@@ -7689,13 +7566,7 @@ public function removeMfaMethod(
         #[\SensitiveParameter] ?string $password = null,
         #[\SensitiveParameter] ?string $code = null,
         #[\SensitiveParameter] ?string $accessToken = null
-    ): array {
-        $response = $this->httpClient->delete(
-            'users/self/mfa/' . $this->pathSegment($methodId, 'MFA method ID'),
-            $this->bearerHeaders($accessToken),
-            [],
-            $this->requiredReauthentication($password, $code)
-        );
+    ): array
 ```
 
 Remove an enrolled two-factor method.
@@ -7745,8 +7616,7 @@ public function register(
         #[\SensitiveParameter] string $email,
         array $events = [],
         bool $isActive = true
-    ): array {
-        $this->assertUrl($url, true);
+    ): array
 ```
 
 Register or replace the workspace webhook subscription (the oldest endpoint).
@@ -7923,8 +7793,7 @@ public function createEndpoint(
         ?string $name = null,
         bool $isActive = true,
         bool $signingEnabled = false
-    ): array {
-        $this->assertUrl($url, true);
+    ): array
 ```
 
 Register an additional webhook endpoint.
@@ -8478,8 +8347,7 @@ public function verifySignature(
         #[\SensitiveParameter] string $secret,
         int $toleranceSeconds = self::SIGNATURE_TOLERANCE_SECONDS,
         ?int $now = null
-    ): bool {
-        $key = str_starts_with($secret, 'whsec_') ? base64_decode(substr($secret, 6), true) : false;
+    ): bool
 ```
 
 Check a signed delivery's `webhook-signature` against the endpoint secret.

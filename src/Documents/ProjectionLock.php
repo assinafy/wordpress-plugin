@@ -43,7 +43,7 @@ final class ProjectionLock {
 		wp_update_post(
 			array(
 				'ID'         => $post_id,
-				'post_title' => $name,
+				'post_title' => wp_slash( $name ),
 			),
 			true
 		);

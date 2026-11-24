@@ -3,11 +3,11 @@
  * Plugin Name:       Assinafy
  * Plugin URI:        https://www.assinafy.com.br/
  * Description:       Send WordPress documents for electronic signature with Assinafy and track them to completion.
- * Version:           1.6.0
+ * Version:           1.6.1
  * Requires at least: 6.8
  * Requires PHP:      8.2
  * WC requires at least: 10.2.2
- * WC tested up to:   11.1
+ * WC tested up to:   11.3
  * Author:            Assinafy
  * Author URI:        https://www.assinafy.com.br/
  * License:           GPL-2.0-or-later
@@ -22,7 +22,7 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASSINAFY_VERSION', '1.6.0' );
+define( 'ASSINAFY_VERSION', '1.6.1' );
 define( 'ASSINAFY_FILE', __FILE__ );
 define( 'ASSINAFY_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ASSINAFY_URL', plugin_dir_url( __FILE__ ) );

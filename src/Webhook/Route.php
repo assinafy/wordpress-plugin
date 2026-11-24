@@ -423,11 +423,12 @@ final class Route {
 
 		$id = is_string( $endpoint['id'] ?? null ) ? $endpoint['id'] : '';
 
-		if ( '' !== $id ) {
-			$error = SigningSecret::store( $client, $id, $endpoint );
-			if ( null !== $error ) {
-				return $error;
-			}
+		if ( '' === $id ) {
+			return new WP_Error( 'assinafy_webhook_invalid_endpoint', __( 'Assinafy returned a webhook endpoint without an ID. Try registering again later.', 'assinafy' ) );
+		}
+		$error = SigningSecret::store( $client, $id, $endpoint );
+		if ( null !== $error ) {
+			return $error;
 		}
 		unset( $endpoint['secret'] );
 

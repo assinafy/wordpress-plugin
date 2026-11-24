@@ -4,7 +4,7 @@ Source: [Assinafy OpenAPI](https://api.assinafy.com.br/v1/docs/openapi.json). Pa
 
 Each operation includes its full published parameter, body, success and error schemas. JSON blocks are schemas, not requests: `required`, `enum`, `nullable`, constraints and examples describe the permitted payload. Binary bodies remain bytes. Examples use reserved contact domains. Supply credentials, codes and identifiers from your own connection.
 
-Every `$ref` points to a complete shared definition in the [component dictionary](#component-dictionary). Keeping shared shapes together avoids inconsistent copies. For SDK signatures, examples and unwrapped return values, see [SDK reference](sdk-reference.md). Runtime account entitlements determine feature availability.
+Every `$ref` points to a complete shared definition in the [component dictionary](#component-dictionary). Keeping shared shapes together avoids inconsistent copies. For SDK signatures, examples and unwrapped return values, see [SDK reference](sdk-reference.md). Runtime account entitlements determine feature availability. See [staging payloads](api-payloads.stage.md) for staging-specific operations and schemas.
 
 The OpenAPI document declares no top-level `security` key: every API operation declares its own. An empty list denotes a public operation.
 
@@ -889,7 +889,7 @@ For **virtual**, the document may be in `uploaded`, `metadata_processing` or `me
                     "example": "615605f50e968054a5b7c9b8"
                   },
                   "verification_method": {
-                    "description": "How the signer's identity is verified before signing. `Email` (default) sends a one-time code to the signer's email; `Whatsapp` sends the code over WhatsApp — the verification itself is not billed, but it requires the WhatsApp notification channel, so the signer costs 0.45 credits (available only on paid subscriptions); `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate (A1/A3) — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id`, must be alone in its signing step, needs `method: virtual` (a `collect` assignment with a `DigitalCertificate` signer returns `400`), and is charged 0.5 credits per signer. A CPF requires that person's certificate (an e-CPF, or an e-CNPJ naming them as legal representative); a CNPJ requires an e-CNPJ for that company, from any of its representatives. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires the ID Document + Face Match feature, the signer must have a valid CPF in `government_id`, and is charged a per-signer fee. Omit to default to `Email`.",
+                    "description": "How the signer's identity is verified before signing. `Email` (default) sends a one-time code to the signer's email; `Whatsapp` sends the code over WhatsApp — the verification itself is not billed, but it requires the WhatsApp notification channel, so the signer costs 0.45 credits (available only on paid subscriptions); `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate (A1/A3) — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id`, must be alone in its signing step, needs `method: virtual` (a `collect` assignment with a `DigitalCertificate` signer returns `400`), and is charged 0.45 credits per signer. A CPF requires that person's certificate (an e-CPF, or an e-CNPJ naming them as legal representative); a CNPJ requires an e-CNPJ for that company, from any of its representatives. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires the ID Document + Face Match feature, the signer must have a valid CPF in `government_id`, and is charged a per-signer fee. Omit to default to `Email`.",
                     "type": "string",
                     "enum": [
                       "Email",
@@ -1123,9 +1123,18 @@ Per-unit costs (in credits) used to build the estimate:
 |------|------|
 | Extra document | 1 credit |
 | Email notification | 0 credits |
-| WhatsApp notification | 0.45 credits |
-| Digital certificate signature (per signer) | 0.5 credits |
+| WhatsApp notification | depends on the plan, see the table below |
+| Digital certificate signature (per signer) | 0.45 credits |
 | Identity document verification (per signer) | depends on the plan, see the table below |
+
+WhatsApp notification, per plan:
+
+| Plan | Price per signer |
+|------|------------------|
+| Pro | 0.4 credits |
+| Other plans and enterprise contracts | 0.45 credits |
+
+Identity document verification, per plan:
 
 | Plan | Price per signer |
 |------|------------------|
@@ -2034,7 +2043,7 @@ Authenticate with email and password and receive a JWT access token.
 
 Request password reset
 
-Send the user an email with instructions to reset their password. Used when the password was forgotten or never set.
+Send the user an email with instructions to reset their password. Used when the password was forgotten or never set. An address with no account gets the same `200` and no email, so the answer never tells whether an address has an account. An `email` that is not text answers `400`.
 
 ```json
 {
@@ -2090,6 +2099,9 @@ Send the user an email with instructions to reset their password. Used when the 
         }
       }
     },
+    "400": {
+      "$ref": "#/components/responses/ValidationError"
+    },
     "500": {
       "$ref": "#/components/responses/ServerError"
     }
@@ -2101,7 +2113,7 @@ Send the user an email with instructions to reset their password. Used when the 
 
 Reset password
 
-Reset the user's password using the token received by email.
+Reset the user's password using the token received by email. A wrong, expired or non-text token, and an address with no account, answer `400`. The new password needs at least 6 characters. A reset ends every session of the user (login tokens issued before it answer `401`) and revokes every connected OAuth app; the user's API key keeps working.
 
 ```json
 {
@@ -3249,7 +3261,7 @@ List documents of the workspace, most recently updated first. Every row includes
 
 Upload and create document
 
-Create a document from an uploaded file. Maximum file size 25MB; maximum 2000 pages.
+Create a document from an uploaded file: PDF, or a Word or OpenDocument text file (`.doc`, `.docx`, `.odt`), which is converted to PDF. Maximum file size 25MB; maximum 2000 pages.
 
 ```json
 {
@@ -3276,7 +3288,7 @@ Create a document from an uploaded file. Maximum file size 25MB; maximum 2000 pa
           ],
           "properties": {
             "file": {
-              "description": "The PDF file to upload.",
+              "description": "The file to upload: PDF, DOC, DOCX or ODT.",
               "type": "string",
               "format": "binary"
             }
@@ -9517,7 +9529,7 @@ Generate a new document from a template. The request is checked (roles, fields, 
                     "example": "+5548999999999"
                   },
                   "verification_method": {
-                    "description": "Verification method for this signer. If provided without notification_methods, the notification method is inferred. Defaults to Email. `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id` (a CPF requires that person's certificate; a CNPJ requires an e-CNPJ for that company), must be alone in its signing step, and is charged 0.5 credits per signer. It is refused with `400` when the template has placed signer fields, because certificate signers sign only virtual assignments. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires the ID Document + Face Match feature, the signer must have a valid CPF in `government_id`, and is charged a per-signer fee. Only applies to signers (not copy receivers).",
+                    "description": "Verification method for this signer. If provided without notification_methods, the notification method is inferred. Defaults to Email. `DigitalCertificate` has the signer sign with their own ICP-Brasil certificate — it requires the Digital Certificate feature, the signer must have a CPF or CNPJ in `government_id` (a CPF requires that person's certificate; a CNPJ requires an e-CNPJ for that company), must be alone in its signing step, and is charged 0.45 credits per signer. It is refused with `400` when the template has placed signer fields, because certificate signers sign only virtual assignments. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires the ID Document + Face Match feature, the signer must have a valid CPF in `government_id`, and is charged a per-signer fee. Only applies to signers (not copy receivers).",
                     "type": "string",
                     "enum": [
                       "Email",
@@ -9779,7 +9791,7 @@ Estimate the cost of creating a document from a template without creating it. Co
                     "example": "fa8c14f32d732271e071998246e"
                   },
                   "verification_method": {
-                    "description": "Verification method. If provided without notification_methods, the notification method is inferred. Defaults to Email. Verification is never billed on its own — the cost comes from the notification it is paired with, so `Whatsapp` verification requires the WhatsApp notification and costs 0.45 credits per signer. `DigitalCertificate` adds the per-signer signature cost (0.5 credits) on top of the notification cost, and returns `400` when the template has placed signer fields. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires its account feature, requires the signer to have a valid CPF in `government_id`, and is charged a per-signer fee.",
+                    "description": "Verification method. If provided without notification_methods, the notification method is inferred. Defaults to Email. Verification is never billed on its own — the cost comes from the notification it is paired with, so `Whatsapp` verification requires the WhatsApp notification and costs 0.45 credits per signer. `DigitalCertificate` adds the per-signer signature cost (0.45 credits) on top of the notification cost, and returns `400` when the template has placed signer fields. `IdDocumentFaceMatchBasic` verifies the signer from a photo of their government ID, a photo of them holding it and a liveness check — it requires its account feature, requires the signer to have a valid CPF in `government_id`, and is charged a per-signer fee.",
                     "type": "string",
                     "enum": [
                       "Email",
@@ -22369,6 +22381,7 @@ Sends the endpoint one `webhook_test` event now, signed and sent like any delive
                   "type": "string"
                 },
                 "fields": {
+                  "description": "The fields placed on this page. A page with none adds nothing, as on an assignment.",
                   "type": "array",
                   "items": {
                     "required": [
@@ -22390,8 +22403,7 @@ Sends the endpoint one `webhook_test` event now, signed and sent like any delive
                       }
                     },
                     "type": "object"
-                  },
-                  "minItems": 1
+                  }
                 }
               },
               "type": "object"
@@ -24685,11 +24697,12 @@ Sends the endpoint one `webhook_test` event now, signed and sent like any delive
                       "items": {
                         "properties": {
                           "code": {
-                            "description": "Machine-readable restriction code. `PendingDocuments` only appears together with `ActivePaidSubscription`, never alone.",
+                            "description": "Machine-readable restriction code. `PendingDocuments` only appears together with `ActivePaidSubscription`, never alone. `SharedWorkspacePaidPlan` (user deletion only): a workspace that stays with other members has a paid plan the request neither cancels nor keeps; `force` does not lift it.",
                             "type": "string",
                             "enum": [
                               "ActivePaidSubscription",
-                              "PendingDocuments"
+                              "PendingDocuments",
+                              "SharedWorkspacePaidPlan"
                             ],
                             "example": "ActivePaidSubscription"
                           },
@@ -25865,7 +25878,7 @@ Sends the endpoint one `webhook_test` event now, signed and sent like any delive
       },
       "signerAccessCode": {
         "type": "apiKey",
-        "description": "Signer access code used by signer-facing (Signing) endpoints instead of a user token: the code in the signer's signing link, sent as the `signer-access-code` query or body parameter. It can be used again and has no expiry; it stops working when the signing request is removed. Treat it as a secret.",
+        "description": "Signer access code used by signer-facing (Signing) endpoints instead of a user token: the code in the signer's signing link, sent as the `signer-access-code` query or body parameter, always as text (a number or any other JSON type counts as no code). It can be used again and has no expiry; it stops working when the signing request is removed. Treat it as a secret.",
         "name": "signer-access-code",
         "in": "query"
       },

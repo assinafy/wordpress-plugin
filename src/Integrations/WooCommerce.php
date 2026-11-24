@@ -134,7 +134,7 @@ final class WooCommerce {
 		$sent = $order->get_meta( self::ORDER_SENT );
 		$sent = is_array( $sent ) ? $sent : array();
 
-		$email = sanitize_email( $order->get_billing_email() );
+		$email = trim( $order->get_billing_email() );
 		$name  = trim( $order->get_formatted_billing_full_name() );
 
 		$dirty = false;
@@ -202,7 +202,7 @@ final class WooCommerce {
 			return;
 		}
 
-		$email = sanitize_email( $order->get_billing_email() );
+		$email = trim( $order->get_billing_email() );
 		$links = array();
 
 		foreach ( $sent as $post_id ) {

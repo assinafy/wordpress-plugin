@@ -1484,3 +1484,7 @@ msgstr "O endpoint de webhook foi registrado, mas não foi possível armazenar s
 #~ msgid "The document was sent but its local record could not be created."
 #~ msgstr ""
 #~ "O documento foi enviado, mas não foi possível criar o registro local."
+
+#: src/Webhook/Route.php:427
+msgid "Assinafy returned a webhook endpoint without an ID. Try registering again later."
+msgstr "A Assinafy retornou um endpoint de webhook sem ID. Tente registrá-lo novamente mais tarde."

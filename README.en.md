@@ -72,6 +72,7 @@ These are SDK APIs, not additional native WordPress screens. Account entitlement
 
 - [Every SDK method, input and return value](docs/sdk-reference.md)
 - [All published REST requests, responses and shared schemas](docs/api-payloads.md)
+- [Staging-specific REST payloads](docs/api-payloads.stage.md)
 - [Official API contract](https://api.assinafy.com.br/v1/docs)
 - [WP-CLI commands](docs/user-guide.en.md#6-wp-cli)
 - [Troubleshooting](docs/user-guide.en.md#10-troubleshooting)

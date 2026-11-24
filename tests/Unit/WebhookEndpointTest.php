@@ -587,6 +587,25 @@ final class WebhookEndpointTest extends TestCase {
 		$this->assertSame( array_values( array_intersect( Route::DEFAULT_EVENTS, $events ) ), $this->request_body( 2 )['events'] );
 	}
 
+	/** A malformed registration cannot report success without storing its signing secret. */
+	public function test_registration_refuses_a_response_without_an_endpoint_id(): void {
+		$this->queue_endpoints( array() );
+		$this->queue_envelope(
+			200,
+			$this->own_endpoint(
+				array(
+					'id'     => '',
+					'secret' => self::whsec(),
+				)
+			)
+		);
+
+		$result = Route::subscribe( $this->client(), 'ops@example.com' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'assinafy_webhook_invalid_endpoint', $result->get_error_code() );
+		$this->assertCount( 3, FakeHttp::$requests );
+	}
+
 	/** A failed secret fetch is visible even though the remote endpoint already exists. */
 	public function test_registration_reports_a_secret_fetch_failure(): void {
 		$this->queue_endpoints( array() );

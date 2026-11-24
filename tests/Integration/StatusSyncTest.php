@@ -154,6 +154,27 @@ final class StatusSyncTest extends AssinafyTestCase {
 		$this->assertTrue( DocumentContext::matches( $post_id, self::ACCOUNT_ID, self::API_HOST . 'v1' ) );
 	}
 
+	/** API names retain literal backslashes through WordPress's slashed input boundary. */
+	public function test_sync_preserves_backslashes_in_document_names(): void {
+		$post_id = $this->create_document( self::DOCUMENT_ID );
+		$name    = 'Agreement \\ revision.pdf';
+		$this->fake_response(
+			'v1/documents/' . self::DOCUMENT_ID,
+			200,
+			array(
+				'status' => 200,
+				'data'   => array(
+					'id'     => self::DOCUMENT_ID,
+					'status' => 'metadata_ready',
+					'name'   => $name,
+				),
+			)
+		);
+
+		$this->assertSame( $post_id, $this->sync->sync_one( self::DOCUMENT_ID ) );
+		$this->assertSame( $name, get_post_field( 'post_title', $post_id ) );
+	}
+
 	/** A response that loses the projection lock cannot announce the winning transition. */
 	public function test_a_newer_response_wins_before_an_older_projection_takes_the_lock(): void {
 		$post_id     = $this->create_document( self::DOCUMENT_ID, 'pending_signature' );

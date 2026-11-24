@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-24
+
+### Fixed
+
+- Preserve literal backslashes in synchronized document names.
+- Reject invalid WooCommerce billing addresses without changing the intended recipient.
+- Report malformed webhook registration responses before claiming success.
+- Restore local WordPress startup with js-yaml 4.
+
+### Changed
+
+- Refresh REST payload documentation for production and staging and correct SDK method signatures.
+
 ## [1.6.0] - 2026-11-11
 
 ### Added

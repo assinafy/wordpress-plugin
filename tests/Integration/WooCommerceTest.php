@@ -454,6 +454,23 @@ final class WooCommerceTest extends AssinafyTestCase {
 		$this->assertSame( array(), $this->sent_map( $order->get_id() ) );
 	}
 
+	/** Invalid filtered addresses must not be repaired into another recipient's address. */
+	public function test_an_invalid_billing_address_is_not_repaired_and_sent(): void {
+		$this->require_woocommerce();
+		$order   = $this->create_order( $this->create_pdf_attachment() );
+		$invalid = static fn(): string => 'wrong address@example.com';
+		add_filter( 'woocommerce_order_get_billing_email', $invalid );
+		try {
+			$this->complete( $order );
+		} finally {
+			remove_filter( 'woocommerce_order_get_billing_email', $invalid );
+		}
+
+		$this->assertStringContainsString( 'no usable billing email address', $this->latest_note( $order->get_id() ) );
+		$this->assertSame( array(), $this->requests );
+		$this->assertSame( array(), $this->sent_map( $order->get_id() ) );
+	}
+
 	/**
 	 * An order whose personal data was erased is never sent to its placeholder address.
 	 */

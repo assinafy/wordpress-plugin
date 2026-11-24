@@ -4,7 +4,7 @@ Tags: electronic-signature, signature, pdf, contracts, woocommerce
 Requires at least: 6.8
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -159,6 +159,12 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 
 == Changelog ==
 
+= 1.6.1 =
+* Preserves backslashes in synchronized document names.
+* Rejects invalid WooCommerce billing addresses without repairing them into another recipient.
+* Reports malformed webhook registration responses.
+* Restores local WordPress startup with js-yaml 4.
+
 = 1.6.0 =
 * Includes PHP SDK 2.9.2 with envelopes, embedded signing, certified-copy delivery and workspace notification APIs.
 * Keeps workspace credentials off public signing, branding and download-token requests, and preserves explicit user tokens on authorization failures.
@@ -235,6 +241,9 @@ Service terms: [Terms of Use](https://www.assinafy.com.br/termos-de-uso) and [Pr
 * First release.
 
 == Upgrade Notice ==
+
+= 1.6.1 =
+Improves document name preservation, WooCommerce recipient validation and webhook registration errors.
 
 = 1.6.0 =
 Adds current SDK resources and fixes credential isolation and UTC deadlines. Requires PHP 8.2 or newer.

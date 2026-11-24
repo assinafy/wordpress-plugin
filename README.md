@@ -72,6 +72,7 @@ Esses recursos são APIs do SDK, não telas nativas adicionais do WordPress. Per
 
 - [Cada método do SDK, entrada e retorno](docs/sdk-reference.md)
 - [Todas as requisições, respostas e schemas compartilhados da API](docs/api-payloads.md)
+- [Payloads REST específicos de staging](docs/api-payloads.stage.md)
 - [Contrato oficial da API](https://api.assinafy.com.br/v1/docs)
 - [Comandos WP-CLI](docs/user-guide.md#6-wp-cli)
 - [Solução de problemas](docs/user-guide.md#10-solução-de-problemas)
